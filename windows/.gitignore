@@ -11,3 +11,14 @@ src-tauri/gen/schemas/
 .env
 .env.*
 !.env.example
+
+# Claves SSH y credenciales (seguridad)
+claves ssh/
+claves_ssh/
+[Cc]laves*ssh*/
+*ssh*key*
+*.pem
+*.key
+*.pub
+id_rsa*
+id_ed25519*

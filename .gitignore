@@ -18,3 +18,14 @@ DerivedData/
 # Local only (never published)
 .claude/
 _prive/
+
+# Claves SSH y credenciales (seguridad)
+claves ssh/
+claves_ssh/
+[Cc]laves*ssh*/
+*ssh*key*
+*.pem
+*.key
+*.pub
+id_rsa*
+id_ed25519*
