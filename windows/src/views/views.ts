@@ -450,7 +450,7 @@ function buildSettings(actions: ViewActions): ViewHost {
       h("button", {
         class: "link-btn",
         style: "color:#8e939c;font-size:11.5px",
-        text: "Settings…",
+        text: "Configuración…",
         onclick: () => actions.openSettingsWindow(),
       }),
     ),

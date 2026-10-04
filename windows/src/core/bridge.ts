@@ -59,6 +59,15 @@ export const Bridge = {
   quit: () => call<void>("quit_app"),
 
   openSettingsWindow: () => call<void>("open_settings_window"),
+  closeSettingsWindow: async () => {
+    await call<void>("close_settings_window");
+    if (IS_TAURI) {
+      try {
+        const win = getCurrentWebviewWindow();
+        await win.hide();
+      } catch {}
+    }
+  },
 
   /** Writes to %LOCALAPPDATA%\Coucou\coucou.log, next to the Rust lines. */
   log: (message: string) => call<void>("log_line", { message }),

@@ -324,9 +324,9 @@ fn create_settings_window(app: &AppHandle) {
     let url = settings_page_url(app);
     match WebviewWindowBuilder::new(app, "settings", url)
         .additional_browser_args(BROWSER_ARGS)
-        .title("Settings — Coucou")
-        .inner_size(560.0, 680.0)
-        .min_inner_size(460.0, 480.0)
+        .title("Configuración Coco Squad")
+        .inner_size(680.0, 720.0)
+        .min_inner_size(520.0, 520.0)
         .resizable(true)
         .visible(false)
         .center()
@@ -359,6 +359,13 @@ pub fn show_settings_window(app: &AppHandle) {
 #[tauri::command]
 fn open_settings_window(app: AppHandle) {
     show_settings_window(&app);
+}
+
+#[tauri::command]
+fn close_settings_window(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("settings") {
+        let _ = win.hide();
+    }
 }
 
 #[cfg(windows)]
@@ -441,6 +448,7 @@ pub fn run() {
             refresh_integration,
             open_n8n,
             open_settings_window,
+            close_settings_window,
             set_paused,
         ])
         .setup(move |app| {
@@ -483,6 +491,10 @@ pub fn run() {
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
+            if std::env::args().any(|a| a == "--settings") {
+                log::line("CLI argument --settings detected: showing settings window");
+                show_settings_window(&handle);
+            }
             Ok(())
         });
 

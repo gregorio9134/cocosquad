@@ -216,6 +216,9 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
             let _ = app.emit("wake", ());
             let _ = app.emit_to(WINDOW_LABEL, "wake", ());
         }
+        if event == "settings" {
+            crate::show_settings_window(&app);
+        }
         let _ = app.emit("hook", payload.clone());
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
         pipe.finish();
