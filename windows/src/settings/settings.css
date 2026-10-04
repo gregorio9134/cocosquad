@@ -363,11 +363,41 @@ select option {
 .settings-actions-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 12px;
   padding-top: 14px;
   margin-top: 6px;
   border-top: 1px solid var(--hairline);
+  flex-wrap: wrap;
+}
+
+.settings-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-quit {
+  background: rgba(244, 80, 94, 0.12);
+  color: #ff8d97;
+  border: 1px solid rgba(244, 80, 94, 0.28);
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-quit:hover:not(:disabled) {
+  background: rgba(244, 80, 94, 0.24);
+  color: #ffffff;
+  border-color: rgba(244, 80, 94, 0.45);
+  box-shadow: 0 0 14px rgba(244, 80, 94, 0.25);
+}
+
+.btn-quit:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .btn-cancel {

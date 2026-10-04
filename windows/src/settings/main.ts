@@ -267,6 +267,18 @@ function generalSection(): HTMLElement {
 function actionsSection(): HTMLElement {
   const container = h("div", { class: "settings-actions-footer" });
 
+  const quitBtn = h("button", {
+    class: "btn-quit",
+    text: "Salir de Coco Squad",
+  });
+  quitBtn.addEventListener("click", async () => {
+    quitBtn.disabled = true;
+    quitBtn.textContent = "Cerrando…";
+    await Bridge.quit();
+  });
+
+  const rightGroup = h("div", { class: "settings-actions-right" });
+
   const cancelBtn = h("button", {
     class: "btn-cancel",
     text: "Cancelar",
@@ -303,7 +315,8 @@ function actionsSection(): HTMLElement {
     }
   });
 
-  container.append(cancelBtn, applyBtn);
+  rightGroup.append(cancelBtn, applyBtn);
+  container.append(quitBtn, rightGroup);
   return container;
 }
 

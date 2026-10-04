@@ -20,7 +20,10 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         .tooltip("Coco Squad")
         .menu(&menu)
         .on_menu_event(|app: &AppHandle, event| match event.id.as_ref() {
-            "quit" => app.exit(0),
+            "quit" => {
+                app.cleanup_before_exit();
+                std::process::exit(0);
+            }
             "settings" => crate::show_settings_window(app),
             id => {
                 let _ = app.emit_to(WINDOW_LABEL, "tray", id.to_string());
