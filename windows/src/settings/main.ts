@@ -34,12 +34,33 @@ function statusDot(ok: boolean): HTMLElement {
 interface IntegrationDef {
   id: string;
   name: string;
+  role?: string;
   color: string;
   /** Credential Manager keys, in the order they are shown. */
   fields: { key: string; label: string; placeholder: string; secret: boolean }[];
 }
 
 const INTEGRATIONS: IntegrationDef[] = [
+  {
+    id: "coco_verde",
+    name: "Coco Verde",
+    role: "Operaciones & Agenda",
+    color: "#10B981",
+    fields: [
+      { key: "coco-verde-endpoint", label: "Webhook / Endpoint", placeholder: "http://129.158.204.84/api/coco/ops", secret: false },
+      { key: "coco-verde-token", label: "Token / Clave API", placeholder: "sk-ops-…", secret: true },
+    ],
+  },
+  {
+    id: "coco_rojo",
+    name: "Coco Rojo",
+    role: "Deep Research & Tareas",
+    color: "#EF4444",
+    fields: [
+      { key: "coco-rojo-endpoint", label: "Endpoint de Research", placeholder: "http://129.158.204.84/api/coco/research", secret: false },
+      { key: "coco-rojo-token", label: "Token / Clave API", placeholder: "sk-res-…", secret: true },
+    ],
+  },
   {
     id: "integration_stripe",
     name: "Stripe",
@@ -87,7 +108,7 @@ const INTEGRATIONS: IntegrationDef[] = [
   },
 ];
 
-const MAX_ACTIVE = 4;
+const MAX_ACTIVE = 6;
 
 function squadMembersSection(present: Record<string, boolean>): HTMLElement {
   const note = h("div", { class: "hint" });
@@ -165,7 +186,12 @@ function squadMembersSection(present: Record<string, boolean>): HTMLElement {
         { class: "squad-member-header" },
         sw,
         h("i", { class: "dot", style: `background:${def.color}` }),
-        h("span", { class: "squad-member-name", text: def.name }),
+        h(
+          "div",
+          { style: "display:flex;flex-direction:column;gap:1px;" },
+          h("span", { class: "squad-member-name", text: def.name }),
+          def.role ? h("span", { style: "font-size:10.5px;color:#9aa1b2;line-height:1.2;", text: def.role }) : null,
+        ),
       ),
       fieldsContainer,
     );
@@ -330,6 +356,10 @@ async function main() {
   }
 
   const keys = [
+    "coco-verde-endpoint",
+    "coco-verde-token",
+    "coco-rojo-endpoint",
+    "coco-rojo-token",
     "stripe-api-key",
     "github-token",
     "vercel-token",

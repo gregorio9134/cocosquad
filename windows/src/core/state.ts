@@ -206,15 +206,15 @@ class AppState {
   /** loadIntegrationTasks() — Coco Squad always available. */
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
-      const isSquad = proto.id === "coco_blanco" || proto.id === "coco_verde" || proto.id === "coco_rojo";
-      const shouldLoad = isSquad || this.settings.activeIntegrations.includes(proto.id);
+      const isPrimary = proto.id === "coco_blanco";
+      const shouldLoad = isPrimary || this.settings.activeIntegrations.includes(proto.id);
       const idx = this.tasks.findIndex((t) => t.id === proto.id);
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
     }
     const order = INTEGRATION_AGENTS.map((t) => t.id);
     this.tasks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-    if (!this.focusId) this.focusId = "coco_blanco";
+    if (!this.focusId || !this.tasks.some((t) => t.id === this.focusId)) this.focusId = "coco_blanco";
     this.notify();
   }
 

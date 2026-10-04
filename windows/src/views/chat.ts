@@ -236,7 +236,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       { id: "coco_blanco", label: "Blanco", dot: "#ffffff", cls: "blanco", title: "Coco Blanco: General & Documentos" },
       { id: "coco_verde", label: "Verde", dot: "#10b981", cls: "verde", title: "Coco Verde: Operaciones, WhatsApp & Agenda" },
       { id: "coco_rojo", label: "Rojo", dot: "#ef4444", cls: "rojo", title: "Coco Rojo: Deep Research & Tareas Pesadas" },
-    ];
+    ].filter((c) => c.id === "coco_blanco" || State.settings.activeIntegrations.includes(c.id));
 
     for (const c of cocos) {
       const pill = h(
