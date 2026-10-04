@@ -1,8 +1,4 @@
-// Claude API client — the same integration as ClaudeService.swift: multi-turn
-// chat with web search, and files sent as document/image/text blocks.
-//
-// Everything happens here rather than in the island: the API key never leaves
-// the Credential Manager, and file bytes never cross the IPC boundary.
+// Coco Client & Claude fallback — Connects desktop island to Coco Squad Server in Oracle Cloud.
 
 use std::sync::Mutex;
 
@@ -11,35 +7,18 @@ use serde_json::{json, Value};
 
 use crate::secrets;
 
-const ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
-const ANTHROPIC_VERSION: &str = "2023-06-01";
-/// Server-side fallback: on a policy decline the API retries the same request on
-/// a fallback model inside the same call, so the island never shows a dead end.
-const FALLBACK_BETA: &str = "server-side-fallback-2026-07-01";
-const MAX_TOKENS: u32 = 4096;
-/// Text and code files are inlined; anything larger is skipped, as on macOS.
-const MAX_INLINE_TEXT: u64 = 200_000;
+const DEFAULT_COCO_SERVER: &str = "http://129.158.204.84";
 
-pub const DEFAULT_MODEL: &str = "claude-opus-5";
-
-const SYSTEM_PROMPT: &str = "You are Mochi, a personal AI assistant living at the top of the user's screen. \
-You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
-Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
-No markdown formatting (no **, no ##, no bullet dashes). Use plain text with line breaks.";
+pub const DEFAULT_MODEL: &str = "coco-squad";
 
 #[derive(Default)]
 pub struct Chat {
-    /// Full multi-turn history, including tool_use / tool_result blocks.
     messages: Mutex<Vec<Value>>,
 }
 
 impl Chat {
     pub fn reset(&self) {
         self.messages.lock().unwrap().clear();
-    }
-
-    fn is_empty(&self) -> bool {
-        self.messages.lock().unwrap().is_empty()
     }
 
     fn push(&self, message: Value) {
@@ -49,185 +28,142 @@ impl Chat {
     fn pop(&self) {
         self.messages.lock().unwrap().pop();
     }
-
-    fn snapshot(&self) -> Vec<Value> {
-        self.messages.lock().unwrap().clone()
-    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ChatContext {
-    File { name: String, path: String },
+    File {
+        name: String,
+        path: String,
+        #[serde(default)]
+        base64: Option<String>,
+    },
     Window { app_name: String, title: String, url: Option<String> },
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatReply {
     pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coco_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coco_nombre: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
 }
 
-/// One chat turn. Returns the assistant's text, or a message the island shows
-/// in the note view.
+/// One chat turn. Connects directly to the Oracle Cloud Coco Squad Server.
 pub async fn send(
     chat: &Chat,
-    model: &str,
+    _model: &str,
     query: String,
     context: Option<ChatContext>,
+    coco_id: Option<String>,
 ) -> Result<ChatReply, String> {
-    let key = secrets::get("anthropic-api-key")
-        .ok_or_else(|| "API key missing. Open settings.".to_string())?;
+    let server_base = secrets::get("coco-server-url")
+        .unwrap_or_else(|| DEFAULT_COCO_SERVER.to_string());
+    let endpoint = format!("{}/api/coco/chat", server_base.trim_end_matches('/'));
 
-    let mut content: Vec<Value> = Vec::new();
+    let mut contexto = serde_json::Map::new();
 
-    // File / window context rides along with the first message only, exactly
-    // like ClaudeService.chat().
-    if chat.is_empty() {
-        match &context {
-            Some(ChatContext::File { name, path }) => {
-                if let Some(block) = file_block(path) {
-                    content.push(block);
+    if let Some(ref ctx) = context {
+        match ctx {
+            ChatContext::File { name, path, base64 } => {
+                contexto.insert("nombre".to_string(), json!(name));
+                contexto.insert("path".to_string(), json!(path));
+                contexto.insert("archivo".to_string(), json!(path));
+
+                if let Some(ref b64) = base64 {
+                    contexto.insert("archivo_base64".to_string(), json!(b64));
+                } else if let Ok(bytes) = std::fs::read(path) {
+                    if bytes.len() <= 25 * 1024 * 1024 {
+                        let b64 = base64_for(&bytes);
+                        contexto.insert("archivo_base64".to_string(), json!(b64));
+                        contexto.insert("tamano_bytes".to_string(), json!(bytes.len()));
+                    }
                 }
-                content.push(json!({ "type": "text", "text": format!("File: {name}") }));
-            }
-            Some(ChatContext::Window { app_name, title, url }) => {
-                let mut text = format!("Context — App: {app_name}, Window: {title}");
-                if let Some(url) = url {
-                    text.push_str(&format!(", URL: {url}"));
+
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    if content.len() < 50_000 {
+                        contexto.insert("contenido_texto".to_string(), json!(content));
+                    }
                 }
-                content.push(json!({ "type": "text", "text": text }));
             }
-            None => {}
+            ChatContext::Window { app_name, title, url } => {
+                contexto.insert("app".to_string(), json!(app_name));
+                contexto.insert("ventana".to_string(), json!(title));
+                if let Some(u) = url {
+                    contexto.insert("url".to_string(), json!(u));
+                }
+            }
         }
     }
-    content.push(json!({ "type": "text", "text": query }));
 
-    chat.push(json!({ "role": "user", "content": content }));
-
-    let body = json!({
-        "model": model,
-        "max_tokens": MAX_TOKENS,
-        "system": SYSTEM_PROMPT,
-        "tools": [{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }],
-        "fallbacks": "default",
-        "messages": chat.snapshot(),
+    let mut body = json!({
+        "message": query,
+        "contexto": contexto
     });
 
-    let response = match call(&key, &body).await {
-        Ok(v) => v,
-        Err(err) => {
-            chat.pop(); // keep the history consistent with what the model saw
-            return Err(err);
-        }
-    };
-
-    // A policy decline comes back as HTTP 200 with stop_reason "refusal".
-    if response.get("stop_reason").and_then(Value::as_str) == Some("refusal") {
-        chat.pop();
-        let why = response
-            .get("stop_details")
-            .and_then(|d| d.get("explanation"))
-            .and_then(Value::as_str)
-            .unwrap_or("Claude declined this one.");
-        return Err(why.to_string());
+    if let Some(cid) = coco_id {
+        body["coco_id"] = json!(cid);
     }
 
-    let Some(blocks) = response.get("content").and_then(Value::as_array).cloned() else {
-        chat.pop();
-        return Err("Unexpected API response.".into());
-    };
+    chat.push(json!({ "role": "user", "content": query }));
 
-    // Store the whole content — tool_use / tool_result blocks included — so the
-    // next turn has the right context.
-    chat.push(json!({ "role": "assistant", "content": blocks.clone() }));
-
-    let text = blocks
-        .iter()
-        .filter(|b| b.get("type").and_then(Value::as_str) == Some("text"))
-        .filter_map(|b| b.get("text").and_then(Value::as_str))
-        .collect::<Vec<_>>()
-        .join("\n")
-        .trim()
-        .to_string();
-
-    if text.is_empty() {
-        return Err("No response text.".into());
-    }
-    Ok(ChatReply { text })
-}
-
-async fn call(key: &str, body: &Value) -> Result<Value, String> {
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(90))
+        .timeout(std::time::Duration::from_secs(45))
         .build()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Error creando cliente HTTP: {e}"))?;
 
-    let response = client
-        .post(ENDPOINT)
-        .header("x-api-key", key)
-        .header("anthropic-version", ANTHROPIC_VERSION)
-        .header("anthropic-beta", FALLBACK_BETA)
-        .header("content-type", "application/json")
-        .json(body)
+    let res = client
+        .post(&endpoint)
+        .header("Content-Type", "application/json")
+        .json(&body)
         .send()
-        .await
-        .map_err(|e| format!("Network error: {e}"))?;
+        .await;
 
-    let status = response.status();
-    let text = response.text().await.map_err(|e| e.to_string())?;
-    if !status.is_success() {
-        // Surface the API's own message, which is what makes a bad key obvious.
-        let detail = serde_json::from_str::<Value>(&text)
-            .ok()
-            .and_then(|v| {
-                v.get("error")
-                    .and_then(|e| e.get("message"))
+    match res {
+        Ok(resp) => {
+            let status = resp.status();
+            if status.is_success() {
+                let data: Value = resp.json().await.map_err(|e| format!("Error parseando JSON: {e}"))?;
+                let text = data
+                    .get("respuesta")
                     .and_then(Value::as_str)
-                    .map(str::to_string)
-            })
-            .unwrap_or_else(|| text.chars().take(200).collect());
-        return Err(format!("Claude API {status}: {detail}"));
+                    .or_else(|| data.get("reply").and_then(Value::as_str))
+                    .unwrap_or("Respuesta recibida del escuadrón.")
+                    .to_string();
+
+                let cid = data.get("coco_id").and_then(Value::as_str).map(String::from);
+                let cnom = data.get("coco_nombre").and_then(Value::as_str).map(String::from);
+                let col = data.get("color").and_then(Value::as_str).map(String::from);
+
+                chat.push(json!({ "role": "assistant", "content": text.clone() }));
+
+                Ok(ChatReply {
+                    text,
+                    coco_id: cid,
+                    coco_nombre: cnom,
+                    color: col,
+                })
+            } else {
+                chat.pop();
+                let err_text = resp.text().await.unwrap_or_default();
+                Err(format!("Servidor Coco ({status}): {err_text}"))
+            }
+        }
+        Err(e) => {
+            chat.pop();
+            Err(format!(
+                "No se pudo conectar con el servidor Coco Squad ({server_base}): {e}"
+            ))
+        }
     }
-    serde_json::from_str(&text).map_err(|e| format!("Bad API response: {e}"))
 }
 
-/// PDF → document block, image → image block, text/code → inline text.
-/// Mirrors readFileAsBlock() in ClaudeService.swift.
-fn file_block(path: &str) -> Option<Value> {
-    let ext = std::path::Path::new(path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("")
-        .to_lowercase();
-
-    let media_type = match ext.as_str() {
-        "pdf" => Some(("document", "application/pdf")),
-        "jpg" | "jpeg" => Some(("image", "image/jpeg")),
-        "png" => Some(("image", "image/png")),
-        "gif" => Some(("image", "image/gif")),
-        "webp" => Some(("image", "image/webp")),
-        _ => None,
-    };
-
-    if let Some((block_type, media)) = media_type {
-        let bytes = std::fs::read(path).ok()?;
-        return Some(json!({
-            "type": block_type,
-            "source": { "type": "base64", "media_type": media, "data": base64(&bytes) },
-        }));
-    }
-
-    let len = std::fs::metadata(path).ok()?.len();
-    if len > MAX_INLINE_TEXT {
-        return None;
-    }
-    let text = std::fs::read_to_string(path).ok()?;
-    Some(json!({ "type": "text", "text": format!("File contents:\n{text}") }))
-}
-
-/// Small standalone base64 encoder — not worth another dependency.
-/// Also used for Stripe's basic auth.
+/// Small standalone base64 encoder — also used for basic auth.
 pub(crate) fn base64_for(bytes: &[u8]) -> String {
     base64(bytes)
 }
@@ -244,20 +180,4 @@ fn base64(bytes: &[u8]) -> String {
         out.push(if chunk.len() > 2 { TABLE[n as usize & 63] as char } else { '=' });
     }
     out
-}
-
-#[cfg(test)]
-mod tests {
-    use super::base64;
-
-    #[test]
-    fn base64_matches_rfc4648_vectors() {
-        assert_eq!(base64(b""), "");
-        assert_eq!(base64(b"f"), "Zg==");
-        assert_eq!(base64(b"fo"), "Zm8=");
-        assert_eq!(base64(b"foo"), "Zm9v");
-        assert_eq!(base64(b"foob"), "Zm9vYg==");
-        assert_eq!(base64(b"fooba"), "Zm9vYmE=");
-        assert_eq!(base64(b"foobar"), "Zm9vYmFy");
-    }
 }

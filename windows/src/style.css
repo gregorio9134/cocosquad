@@ -88,51 +88,6 @@ body {
   pointer-events: none;
 }
 
-/* The drop sequence. Sits under the header and takes over the island body; it
-   cross-fades in and out, so the last frame stays up while the views return. */
-#upload-layer {
-  position: absolute;
-  top: 0;
-  width: 640px;
-  height: 176px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.22s ease-in-out;
-}
-
-#upload-layer.on {
-  opacity: 1;
-}
-
-#upload-canvas {
-  position: absolute;
-  inset: 0;
-}
-
-#upload-overlay {
-  position: absolute;
-  inset: 0;
-  display: none;
-}
-
-/* Invisible hit areas over the buttons the canvas paints. */
-.upload-hit {
-  position: absolute;
-  padding: 0;
-  border: 0;
-  border-radius: 13px;
-  background: none;
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-/* The ordinary views step aside while the sequence owns the body. */
-#views.hidden-by-upload {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.22s ease-in-out;
-}
-
 #bot-glow {
   position: absolute;
   pointer-events: none;
@@ -143,13 +98,16 @@ body {
 
 #countdown {
   position: absolute;
-  bottom: 0;
+  bottom: 4px;
   left: 50%;
   transform: translateX(-50%);
-  height: 2px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.35);
+  height: 2.5px;
   width: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+  filter: drop-shadow(0 0 2.5px rgba(255, 255, 255, 0.5));
 }
 
 /* Compact 2×2 mini grid, to the right of the notch. */
@@ -760,34 +718,151 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 12px 16px 14px 84px;
 }
 
-.chip-row:empty {
-  display: none;
+.chip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px 6px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 4px;
 }
 
-.chip {
+.squad-selector {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.squad-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2.5px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font: 500 11px var(--font);
+  color: var(--dim-3);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.squad-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink);
+}
+
+.squad-pill.active {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.squad-pill.active.blanco {
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
+}
+
+.squad-pill.active.verde {
+  border-color: rgba(16, 185, 129, 0.7);
+  color: #6ee7b7;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
+}
+
+.squad-pill.active.rojo {
+  border-color: rgba(239, 68, 68, 0.7);
+  color: #fca5a5;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.35);
+}
+
+.squad-pill i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.file-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 2.5px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  font: 400 11.5px var(--font);
-  color: var(--ink-2);
-  border: 1.5px solid rgba(255, 255, 255, 0.75);
-  transform: scale(1.06);
-  transition: border-color 0.3s ease-out 0.45s, transform 0.3s ease-out 0.45s;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font: 500 11px var(--font);
+  color: #f8fafc;
+  max-width: 230px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
-.chip.settled {
-  border-color: rgba(255, 255, 255, 0);
-  transform: scale(1);
+.file-chip span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.chip-dot {
-  width: 7px;
-  height: 7px;
+.file-chip .memory-tag {
+  font-size: 9.5px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 1px 5px;
+  border-radius: 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip-remove {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff6b5b, #f7b32b, #2dd4a7, #38bdf8, #a78bfa);
+  flex-shrink: 0;
+}
+
+.chip-remove:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.thinking-doc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 6px 12px;
+  font: 400 12px var(--font);
+  color: #f1f5f9;
+  animation: pulse-soft 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { border-color: rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.08); }
+  50% { border-color: rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.18); }
+}
+
+.chat-card.chat-dragover {
+  outline: 2px dashed rgba(255, 255, 255, 0.65);
+  outline-offset: -3px;
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+.attach-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--dim) !important;
+}
+
+.attach-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
 }
 
 .chat-log {
@@ -796,37 +871,122 @@ input[type="range"]::-webkit-slider-thumb {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 2px 0;
+  gap: 12px;
+  padding: 4px 0 10px 0;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
 }
 
 .chat-row {
   display: flex;
+  width: 100%;
 }
 
 .chat-row.user {
   justify-content: flex-end;
-  padding-left: 32px;
+  padding-left: 36px;
+  margin-top: 12px;
+  margin-bottom: 2px;
+}
+
+.chat-row.user:first-child {
+  margin-top: 2px;
+}
+
+.chat-row.assistant,
+.chat-row:not(.user) {
+  justify-content: flex-start;
+  margin-bottom: 8px;
 }
 
 .bubble {
-  background: rgba(255, 255, 255, 0.13);
-  border-radius: 12px;
-  padding: 6px 10px;
-  font: 400 12.5px var(--font);
-  color: var(--ink-2);
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px 14px 4px 14px;
+  padding: 7px 12px;
+  font: 400 13px var(--font);
+  color: #f8fafc;
   white-space: pre-wrap;
   user-select: text;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .reply {
-  font: 400 12.5px var(--font);
-  color: #b0b5be;
-  white-space: pre-wrap;
+  font: 400 13px/1.55 var(--font);
+  color: #d1d5db;
   padding-right: 8px;
   user-select: text;
+  width: 100%;
+}
+
+.reply p {
+  margin: 0 0 8px 0;
+}
+
+.reply p:last-child {
+  margin-bottom: 0;
+}
+
+.reply strong,
+.reply b {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.reply em,
+.reply i {
+  font-style: italic;
+  color: #e2e8f0;
+}
+
+.reply h1,
+.reply h2,
+.reply h3,
+.reply h4 {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 10px 0 4px 0;
+}
+
+.reply ul,
+.reply ol {
+  padding-left: 20px;
+  margin: 6px 0 8px 0;
+}
+
+.reply li {
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+
+.reply code {
+  background: rgba(255, 255, 255, 0.12);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  color: #f8fafc;
+}
+
+.reply pre {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 10px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+
+.reply pre code {
+  background: none;
+  padding: 0;
+}
+
+.reply a {
+  color: #60a5fa;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .typing {
@@ -919,8 +1079,9 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .drop-card.over {
-  background: radial-gradient(200px 200px at 50% 100%, rgba(34, 197, 94, 0.13), transparent 70%),
+  background: radial-gradient(420px 140px at 50% 100%, rgba(34, 197, 94, 0.45), rgba(34, 197, 94, 0.16) 50%, transparent 80%),
     var(--card-flat);
+  box-shadow: 0 8px 32px -4px rgba(34, 197, 94, 0.25);
 }
 
 .drop-card.over .drop-frame rect {
@@ -945,7 +1106,8 @@ input[type="range"]::-webkit-slider-thumb {
   flex-direction: column;
   justify-content: center;
   gap: 8px;
-  padding-left: 196px;
+  padding-left: 118px;
+  padding-right: 24px;
 }
 
 .drop-title {
@@ -971,27 +1133,74 @@ input[type="range"]::-webkit-slider-thumb {
   color: #b9bdc4;
 }
 
+/* ── The drop sequence canvas layer ────────────────────────────────────── */
+
+#upload-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 640px;
+  height: 176px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease-in-out;
+  z-index: 8;
+}
+
+#upload-layer.on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#upload-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+#upload-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+
+/* Invisible hit areas over the buttons the canvas paints. */
+.upload-hit {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  border-radius: 13px;
+  background: none;
+  cursor: pointer;
+}
+
+/* The ordinary views step aside while the sequence owns the body. */
+#views.hidden-by-upload {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease-in-out;
+}
+
 /* ── Uploading ──────────────────────────────────────────────────────────── */
 
 .up-card {
-  background: radial-gradient(260px 260px at 50% 140%, rgba(52, 211, 153, 0.14), transparent 70%),
+  background: radial-gradient(420px 140px at 50% 100%, rgba(34, 197, 94, 0.35), rgba(34, 197, 94, 0.12) 50%, transparent 80%),
     var(--card);
 }
 
 .up-card.done {
-  background: radial-gradient(260px 260px at 50% 140%, rgba(52, 211, 153, 0.28), transparent 70%),
+  background: radial-gradient(420px 140px at 50% 100%, rgba(34, 197, 94, 0.45), rgba(34, 197, 94, 0.18) 50%, transparent 80%),
     var(--card);
 }
 
 .up-row {
   position: absolute;
-  left: 26px;
-  top: 36px;
-  width: 526px;
+  left: 118px;
+  top: 48px;
+  width: calc(100% - 146px);
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font: 400 12.5px var(--font);
+  font: 500 13px var(--font);
   color: #a9adb5;
 }
 
@@ -999,45 +1208,51 @@ input[type="range"]::-webkit-slider-thumb {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 500;
+  color: #e2e8f0;
 }
 
 .up-name.done {
-  color: var(--green-2);
+  color: #34d399;
   font-weight: 600;
 }
 
 .up-pct {
   font-variant-numeric: tabular-nums;
-  font-weight: 500;
+  font-weight: 600;
+  color: #34d399;
   flex: 0 0 auto;
 }
 
 .up-track {
   position: absolute;
-  left: 26px;
-  top: 58px;
-  width: 526px;
+  left: 118px;
+  top: 76px;
+  width: calc(100% - 146px);
   height: 6px;
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.09);
+  overflow: visible;
 }
 
 .up-fill {
   height: 6px;
   border-radius: 3px;
   background: linear-gradient(90deg, #1fa87a, #34d399);
+  transition: width 0.04s linear;
 }
 
 .up-glow {
   position: absolute;
-  left: 0;
   top: -3px;
-  width: 28px;
+  width: 24px;
   height: 12px;
   border-radius: 50%;
-  background: rgba(110, 231, 183, 0.45);
-  filter: blur(5px);
+  background: rgba(110, 231, 183, 0.65);
+  filter: blur(4px);
+  transform: translateX(-50%);
   pointer-events: none;
+  transition: left 0.04s linear;
 }
 
 /* ── Integration cards (overview, left card) ────────────────────────────── */

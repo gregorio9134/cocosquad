@@ -183,6 +183,15 @@ function handleHook(island: Island, payload: HookPayload) {
   };
 
   switch (name) {
+    case "wake":
+    case "open":
+      void Bridge.log("hooks: received wake/open event -> expanding home");
+      island.wake();
+      island.expand(State.defaultView());
+      State.isPinned = false;
+      Sound.play("open");
+      break;
+
     case "SessionStart":
       ensurePill();
       surface("overview", false);

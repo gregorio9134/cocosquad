@@ -23,7 +23,7 @@ export const USC = {
   TEXT_X: 196,
   TEXT_Y: 94,
   BAR_X0: 46,
-  BAR_X1: 520,
+  BAR_X1: 574,
   BAR_Y: 118,
   CHOOSE_X: 60,
   CHOOSE_Y: 101,
@@ -276,6 +276,7 @@ class UploadSequence {
   exitZone() {}
 
   performDrop(uploadDuration: number) {
+    this.isActive = true;
     this.uploadDuration = uploadDuration;
     this.dropWall = this.now();
     // Restart the canonical post-drop timeline however long the user hovered.
@@ -385,11 +386,11 @@ class UploadSequence {
     // long hover never trips the post-drop visuals.
     const pt = isDragging ? Math.min(t, USC.T_DROP - USC.DT) : t;
 
-    // Morph: 0→1 on entry, 1→0 shrinking to a ball, 0→1 growing back at choose.
+    // Morph: 0→1 on entry, morph to 0.35 squircle during progress bar, 0.35→1 at choose.
     let morph: number;
     if (pt < USC.T_CHEW_END) morph = eBack(seg(pt, entered, entered + 0.38));
-    else if (pt < growStart) morph = 1 - eOut(seg(pt, USC.T_CHEW_END, USC.T_SHRINK_END));
-    else morph = eBack(seg(pt, growStart, growEnd));
+    else if (pt < growStart) morph = 1 - 0.65 * eOut(seg(pt, USC.T_CHEW_END, USC.T_SHRINK_END));
+    else morph = lerp(0.35, 1, eBack(seg(pt, growStart, growEnd)));
     f.morph = Math.max(0, Math.min(morph, 1.08));
 
     // Position and diameter.
@@ -400,23 +401,24 @@ class UploadSequence {
       const k = eInOut(seg(pt, USC.T_CHEW_END, USC.T_SHRINK_END));
       x = lerp(this.bx.v, USC.BAR_X0, k);
       y = lerp(this.by.v, USC.BAR_Y, k);
-      d = lerp(USC.D_BOX, 14, k);
+      d = lerp(USC.D_BOX, 26, k);
     }
     if (pt >= USC.T_PROG_START) {
       const p = progressAt(pt, USC.T_PROG_START, progEnd);
       x = lerp(USC.BAR_X0, USC.BAR_X1, p);
       y = USC.BAR_Y;
-      d = 14;
+      d = 26;
     }
     if (pt >= progEnd) {
       x = USC.BAR_X1;
-      y = USC.BAR_Y - 8 * Math.sin(Math.PI * seg(pt, progEnd, progEnd + 0.2));
+      y = USC.BAR_Y - 6 * Math.sin(Math.PI * seg(pt, progEnd, progEnd + 0.25));
+      d = 26;
     }
     if (pt >= growStart) {
       const k = eInOut(seg(pt, growStart, growEnd));
       x = lerp(USC.BAR_X1, USC.CHOOSE_X, k);
       y = lerp(USC.BAR_Y, USC.CHOOSE_Y, k);
-      d = lerp(14, USC.CHOOSE_D, eBack(seg(pt, growStart, growEnd)));
+      d = lerp(26, USC.CHOOSE_D, eBack(seg(pt, growStart, growEnd)));
     }
     f.x = x;
     f.y = y;
@@ -497,7 +499,7 @@ class UploadSequence {
     f.flash = pt >= progEnd ? Math.sin(Math.PI * seg(pt, progEnd, progEnd + 0.3)) : 0;
     f.check = pt >= progEnd ? eBack(seg(pt, progEnd, progEnd + 0.25)) : 0;
 
-    const hoverGreen = f.zoneOver ? 0.22 : 0;
+    const hoverGreen = f.zoneOver ? 0.45 : 0;
     let uploadGreen = 0;
     if (pt >= USC.T_PROG_START) {
       const baseGreen = f.progress * 0.5;

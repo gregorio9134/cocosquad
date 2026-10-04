@@ -6,18 +6,25 @@ use std::process::Command;
 
 use tauri::{AppHandle, Manager, WebviewWindow};
 
-use ::windows::core::{BOOL, PWSTR};
-use ::windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT};
+use ::windows::core::{implement, BOOL, PWSTR};
+use ::windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT, POINTL};
 use ::windows::Win32::Security::Authorization::ConvertSidToStringSidW;
 use ::windows::Win32::Security::{GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
-use ::windows::Win32::System::Ole::RevokeDragDrop;
+use ::windows::Win32::System::Com::{IDataObject, FORMATETC, TYMED_HGLOBAL, DVASPECT_CONTENT};
+use ::windows::Win32::System::Ole::{
+    IDropTarget, IDropTarget_Impl, RegisterDragDrop, RevokeDragDrop,
+    CF_HDROP, DROPEFFECT, DROPEFFECT_COPY, DROPEFFECT_NONE,
+};
 use ::windows::Win32::System::SystemInformation::GetLocalTime;
+use ::windows::Win32::System::SystemServices::MODIFIERKEYS_FLAGS;
 use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
+use ::windows::Win32::UI::Shell::{DragQueryFileW, DragFinish, HDROP};
 use ::windows::Win32::UI::WindowsAndMessaging::{
     EnumChildWindows, GetClassNameW, GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW,
     GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
 };
+use tauri::Emitter;
 
 use super::LocalTime;
 use crate::island::WINDOW_LABEL;
@@ -175,33 +182,155 @@ fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
 
 /// Lets dropped files reach the app again.
 ///
-/// wry installs its drop target by walking the webview's child windows **once**,
-/// when the webview is created. WebView2 creates `Chrome_RenderWidgetHostHWND`
-/// later and registers its own target on it; being the innermost window, that one
-/// wins, and since the page has no HTML5 drop handler it refuses everything — the
-/// "no drop" cursor, with nothing reaching Tauri. Revoking it makes OLE fall
-/// through to the target wry registered on the parent widget, which is the one
-/// that feeds Tauri's drag events.
-///
-/// Cheap and idempotent, so it is simply re-run whenever a drag might be starting.
+#[derive(serde::Serialize, Clone)]
+pub struct FileDragPayload {
+    pub r#type: String,
+    pub paths: Option<Vec<String>>,
+}
+
+#[implement(IDropTarget)]
+struct CustomDropTarget {
+    app: AppHandle,
+}
+
+#[allow(non_snake_case)]
+impl IDropTarget_Impl for CustomDropTarget_Impl {
+    fn DragEnter(
+        &self,
+        pDataObj: windows_core::Ref<'_, IDataObject>,
+        _grfKeyState: MODIFIERKEYS_FLAGS,
+        _pt: &POINTL,
+        pdwEffect: *mut DROPEFFECT,
+    ) -> windows::core::Result<()> {
+        let paths = extract_paths(pDataObj);
+        let has_files = !paths.is_empty();
+        unsafe {
+            *pdwEffect = if has_files { DROPEFFECT_COPY } else { DROPEFFECT_NONE };
+        }
+        if has_files {
+            crate::log::line(format!("CustomDropTarget DragEnter with {} files", paths.len()));
+            let _ = self.app.emit(
+                "file-drag-drop",
+                FileDragPayload {
+                    r#type: "enter".into(),
+                    paths: Some(paths),
+                },
+            );
+        }
+        Ok(())
+    }
+
+    fn DragOver(
+        &self,
+        _grfKeyState: MODIFIERKEYS_FLAGS,
+        _pt: &POINTL,
+        pdwEffect: *mut DROPEFFECT,
+    ) -> windows::core::Result<()> {
+        unsafe {
+            *pdwEffect = DROPEFFECT_COPY;
+        }
+        let _ = self.app.emit(
+            "file-drag-drop",
+            FileDragPayload {
+                r#type: "over".into(),
+                paths: None,
+            },
+        );
+        Ok(())
+    }
+
+    fn DragLeave(&self) -> windows::core::Result<()> {
+        let _ = self.app.emit(
+            "file-drag-drop",
+            FileDragPayload {
+                r#type: "leave".into(),
+                paths: None,
+            },
+        );
+        Ok(())
+    }
+
+    fn Drop(
+        &self,
+        pDataObj: windows_core::Ref<'_, IDataObject>,
+        _grfKeyState: MODIFIERKEYS_FLAGS,
+        _pt: &POINTL,
+        pdwEffect: *mut DROPEFFECT,
+    ) -> windows::core::Result<()> {
+        unsafe {
+            *pdwEffect = DROPEFFECT_COPY;
+        }
+        let paths = extract_paths(pDataObj);
+        crate::log::line(format!("CustomDropTarget Drop with {} files", paths.len()));
+        if !paths.is_empty() {
+            let _ = self.app.emit(
+                "file-drag-drop",
+                FileDragPayload {
+                    r#type: "drop".into(),
+                    paths: Some(paths),
+                },
+            );
+        }
+        Ok(())
+    }
+}
+
+fn extract_paths(data_obj: windows_core::Ref<'_, IDataObject>) -> Vec<String> {
+    let drop_format = FORMATETC {
+        cfFormat: CF_HDROP.0,
+        ptd: std::ptr::null_mut(),
+        dwAspect: DVASPECT_CONTENT.0,
+        lindex: -1,
+        tymed: TYMED_HGLOBAL.0 as u32,
+    };
+
+    let mut result = Vec::new();
+    let Some(data_ref) = data_obj.as_ref() else { return result };
+    let Ok(medium) = (unsafe { data_ref.GetData(&drop_format) }) else { return result };
+    let hdrop = unsafe { HDROP(medium.u.hGlobal.0 as _) };
+
+    let count = unsafe { DragQueryFileW(hdrop, 0xFFFF_FFFF, None) };
+    for i in 0..count {
+        let len = unsafe { DragQueryFileW(hdrop, i, None) } as usize;
+        let mut buf = vec![0u16; len + 1];
+        unsafe { DragQueryFileW(hdrop, i, Some(&mut buf)) };
+        let path = String::from_utf16_lossy(&buf[..len]);
+        result.push(path);
+    }
+    unsafe { DragFinish(hdrop) };
+    result
+}
+
 pub fn unblock_webview_drops(app: &AppHandle) {
     for label in [WINDOW_LABEL, "settings"] {
         let Some(win) = app.get_webview_window(label) else { continue };
         let Some(hwnd) = hwnd_of(&win) else { continue };
+
+        let target: IDropTarget = CustomDropTarget { app: app.clone() }.into();
+        let _ = unsafe { RevokeDragDrop(hwnd) };
+        let _ = unsafe { RegisterDragDrop(hwnd, &target) };
+
+        let handle = app.clone();
         unsafe {
-            let _ = EnumChildWindows(Some(hwnd), Some(revoke_render_widget), LPARAM(0));
+            let _ = EnumChildWindows(
+                Some(hwnd),
+                Some(register_child_drop_target),
+                LPARAM(&handle as *const _ as isize),
+            );
         }
     }
 }
 
-unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
-    let mut name = [0u16; 64];
-    let len = unsafe { GetClassNameW(hwnd, &mut name) };
-    if len > 0 {
-        let class = String::from_utf16_lossy(&name[..len as usize]);
-        if class == "Chrome_RenderWidgetHostHWND" {
-            let _ = unsafe { RevokeDragDrop(hwnd) };
-        }
+unsafe extern "system" fn register_child_drop_target(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    let app = &*(lparam.0 as *const AppHandle);
+    let target: IDropTarget = CustomDropTarget { app: app.clone() }.into();
+    let _ = RevokeDragDrop(hwnd);
+    let res = RegisterDragDrop(hwnd, &target);
+    if res.is_ok() {
+        let mut name = [0u16; 64];
+        let len = GetClassNameW(hwnd, &mut name);
+        let class = if len > 0 { String::from_utf16_lossy(&name[..len as usize]) } else { "".into() };
+        crate::log::line(format!("Registered custom drop target on child HWND({:?}, {})", hwnd.0, class));
     }
     true.into()
 }
@@ -233,3 +362,18 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
 
 /// Click-through here is the poll's WS_EX_TRANSPARENT toggle, not a region.
 pub fn set_input_region(_win: &WebviewWindow, _rect: Option<(f64, f64, f64, f64)>) {}
+
+pub fn force_foreground(win: &WebviewWindow) {
+    let Some(hwnd) = hwnd_of(win) else { return };
+    unsafe {
+        use ::windows::Win32::UI::WindowsAndMessaging::{
+            ShowWindow, SetWindowPos, SetForegroundWindow, BringWindowToTop,
+            SW_SHOW, HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
+        };
+        set_activating(win, true);
+        let _ = ShowWindow(hwnd, SW_SHOW);
+        let _ = SetWindowPos(hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+        let _ = BringWindowToTop(hwnd);
+        let _ = SetForegroundWindow(hwnd);
+    }
+}

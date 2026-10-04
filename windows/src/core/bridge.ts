@@ -5,6 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { Settings } from "./state";
 
 export const IS_TAURI =
@@ -81,9 +82,9 @@ export const Bridge = {
   approvalDecline: (requestId: string) => call<void>("approval_decline", { requestId }),
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
-  /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+  /** One chat turn to the Coco Squad Server. */
+  chatSend: (query: string, context: ChatContext | null, cocoId?: string | null) =>
+    callOrThrow<ChatReply>("chat_send", { query, context, cocoId: cocoId ?? null }),
   chatReset: () => call<void>("chat_reset"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
@@ -108,8 +109,15 @@ export interface IntegrationUpdate {
   event: { success: boolean; label: string; detail: string | null } | null;
 }
 
+export interface ChatReply {
+  text: string;
+  cocoId?: string | null;
+  cocoNombre?: string | null;
+  color?: string | null;
+}
+
 export type ChatContext =
-  | { kind: "file"; name: string; path: string }
+  | { kind: "file"; name: string; path?: string; base64?: string }
   | { kind: "window"; appName: string; title: string; url?: string };
 
 export interface DroppedFile {
@@ -153,12 +161,30 @@ export interface DragDropPayload {
 /** Files dragged onto the island. Only reaches us when the window takes the mouse. */
 export async function onDragDrop(handler: (e: DragDropPayload) => void) {
   if (!IS_TAURI) return () => {};
-  return getCurrentWebview().onDragDropEvent((event) => {
+  const unlistenCustom = await listen<DragDropPayload>("file-drag-drop", (e) => {
+    handler(e.payload);
+  });
+  const unlistenNative = await getCurrentWebview().onDragDropEvent((event) => {
     handler(event.payload as DragDropPayload);
   });
+  return () => {
+    unlistenCustom();
+    unlistenNative();
+  };
 }
 
 export async function onEvent<T>(name: string, handler: (payload: T) => void) {
   if (!IS_TAURI) return () => {};
-  return listen<T>(name, (e) => handler(e.payload));
+  const unlistenGlobal = await listen<T>(name, (e) => handler(e.payload));
+  let unlistenWin = () => {};
+  try {
+    const win = getCurrentWebviewWindow();
+    if (win) {
+      unlistenWin = await win.listen<T>(name, (e) => handler(e.payload));
+    }
+  } catch {}
+  return () => {
+    unlistenGlobal();
+    unlistenWin();
+  };
 }

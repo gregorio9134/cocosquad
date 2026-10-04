@@ -53,6 +53,69 @@ const OPEN_URLS: Record<string, string> = {
   integration_calcom: "https://app.cal.com/bookings",
 };
 
+function cocoSquadCard(task: AgentTask, hooks?: IntegrationCardHooks): HTMLElement {
+  const isGreen = task.id === "coco_verde";
+  const isRed = task.id === "coco_rojo";
+
+  let roleDesc = "Asistente General & Documentos";
+  let subText = "Chat fluido, lectura inteligente de documentos PDF, Word o PowerPoint.";
+  let badgeText = "⚪ Coco Blanco · Asistente Principal";
+  let action1Text = "💬 Chatear con Blanco";
+  let action2Text = "📎 Adjuntar Archivo";
+
+  if (isGreen) {
+    roleDesc = "Operaciones, Agenda & WhatsApp";
+    subText = "Atención a clientes, verificación de comprobantes y gestión de turnos.";
+    badgeText = "🟢 Coco Verde · Operaciones";
+    action1Text = "📅 Consultar Agenda";
+    action2Text = "💬 Atender WhatsApp";
+  } else if (isRed) {
+    roleDesc = "Deep Research & Tareas Pesadas";
+    subText = "Investigaciones científicas, monografías con citas arXiv/DOI y síntesis web.";
+    badgeText = "🔴 Coco Rojo · Deep Research";
+    action1Text = "🔬 Iniciar Investigación";
+    action2Text = "🌐 Sintetizar Web";
+  }
+
+  const head = header(task.color, task.name, roleDesc);
+  const statusRow = h(
+    "div",
+    { class: "int-row first", style: `background:${task.color}14;padding:6px 8px;border-radius:6px;margin:4px 0;display:flex;align-items:center;gap:6px;` },
+    dot(task.color, 6),
+    h("span", { style: "font-weight:600;font-size:11px;color:#fff;", text: badgeText }),
+  );
+  const descEl = h("div", { style: "font-size:11.5px;color:#9aa1b2;line-height:1.45;margin-top:6px;margin-bottom:8px;", text: subText });
+
+  const actions = h("div", { class: "int-actions", style: "display:flex;gap:6px;margin-top:auto;" });
+  const b1 = h(
+    "button",
+    {
+      class: "btn secondary",
+      style: "font-size:11px;padding:4px 8px;border-radius:6px;",
+      onclick: () => {
+        State.setFocus(task.id);
+        hooks?.openChat?.(task.id);
+      },
+    },
+    h("span", { text: action1Text }),
+  );
+  const b2 = h(
+    "button",
+    {
+      class: "btn primary",
+      style: "font-size:11px;padding:4px 8px;border-radius:6px;",
+      onclick: () => {
+        State.setFocus(task.id);
+        hooks?.openChat?.(task.id);
+      },
+    },
+    h("span", { text: action2Text }),
+  );
+  actions.append(b1, b2);
+
+  return h("div", { class: "int-card", style: "display:flex;flex-direction:column;height:100%;" }, head, statusRow, descEl, actions);
+}
+
 function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const info = State.integrations[task.id];
   const configured = info?.configured ?? false;
@@ -379,6 +442,7 @@ export interface IntegrationCardHooks {
   openDetail(): void;
   closeDetail(): void;
   openSettings(): void;
+  openChat?: (cocoId: string) => void;
 }
 
 /** True when this integration has data worth showing instead of the idle card. */
@@ -404,6 +468,9 @@ export function hasIntegrationData(id: string): boolean {
 }
 
 export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHooks): HTMLElement {
+  if (task.id === "coco_blanco" || task.id === "coco_verde" || task.id === "coco_rojo") {
+    return cocoSquadCard(task, hooks);
+  }
   if (task.id === "integration_n8n") {
     const hasActivity = task.steps.length > 0 && (task.state === "finished" || task.state === "error");
     return hooks.detailOpen && hasActivity

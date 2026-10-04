@@ -16,10 +16,10 @@ use crate::platform::{self, cursor_physical, left_button_down};
 
 /// Logical size of the full window — the largest island view, like the macOS panel.
 pub const PANEL_W: f64 = 720.0;
-pub const PANEL_H: f64 = 320.0;
+pub const PANEL_H: f64 = 410.0;
 /// Logical size of the invisible strip that wakes the island when it is hidden.
 pub const STRIP_W: f64 = 240.0;
-pub const STRIP_H: f64 = 6.0;
+pub const STRIP_H: f64 = 10.0;
 
 pub const WINDOW_LABEL: &str = "island";
 
@@ -236,50 +236,45 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
                     Err(_) => (PANEL_W, PANEL_H),
                 };
-                if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
-                    continue;
-                }
-                last = (x, y);
-
                 // Click-through: the window only takes the mouse over the island
                 // shape. A small entry margin means the flag is already off by the
                 // time a moving cursor reaches a button.
+                let is_collapsed = gate.collapsed.load(Ordering::Relaxed);
                 let r = *gate.rect.lock().unwrap();
-                let on_island = r.w > 0.0
-                    && x >= r.x - HIT_MARGIN
-                    && x <= r.x + r.w + HIT_MARGIN
-                    && y >= r.y - HIT_MARGIN
-                    && y <= r.y + r.h + HIT_MARGIN;
+                let on_island = if is_collapsed || r.h <= 2.0 {
+                    let strip_w = STRIP_W;
+                    let strip_x = (size.0 - strip_w) / 2.0;
+                    x >= strip_x - 10.0 && x <= strip_x + strip_w + 10.0 && y >= 0.0 && y <= 16.0
+                } else {
+                    r.w > 0.0
+                        && x >= (r.x - HIT_MARGIN).max(0.0)
+                        && x <= r.x + r.w + HIT_MARGIN
+                        && y >= 0.0
+                        && y <= r.h + HIT_MARGIN
+                };
 
-                // A file being dragged has to be able to find us. WS_EX_TRANSPARENT
-                // — what click-through is on Windows — hides the window from
-                // WindowFromPoint, so OLE finds no drop target and shows the "no
-                // drop" cursor. macOS has no such problem: AppKit delivers drags to
-                // registered destinations whatever ignoresMouseEvents says. So while
-                // a button is held anywhere over the panel, the whole panel takes
-                // the mouse, which also makes the drop zone as forgiving as the Mac's.
-                // A press may be the start of a drag: make sure the drop target is
-                // ours before the file arrives.
                 let down = left_button_down();
-                if down && !was_down {
-                    let handle = app.clone();
-                    let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
+                if down != was_down {
+                    if down {
+                        let handle = app.clone();
+                        let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
+                    }
+                    was_down = down;
                 }
-                was_down = down;
 
-                let dragging = down
-                    && x >= 0.0
-                    && x <= size.0
-                    && y >= 0.0
-                    && y <= size.1;
-
-                let accept = on_island || dragging;
+                // Window only takes the mouse directly over the island shape.
+                // Everywhere else (including below the island or on the desktop),
+                // the window is transparent to clicks and drags.
+                let accept = on_island;
                 if gate.ignoring.load(Ordering::Relaxed) == accept {
                     gate.ignoring.store(!accept, Ordering::Relaxed);
                     let _ = win.set_ignore_cursor_events(!accept);
                 }
 
-                let _ = win.emit("cursor", CursorPayload { x, y });
+                if (x - last.0).abs() >= 1.0 || (y - last.1).abs() >= 1.0 {
+                    last = (x, y);
+                    let _ = win.emit("cursor", CursorPayload { x, y });
+                }
             }
         }
     });

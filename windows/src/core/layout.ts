@@ -48,10 +48,10 @@ export interface ViewLayout {
   agentMode: AgentLayoutMode;
 }
 
-// The window is a fixed 720×320 (largest view) like the macOS panel; the island is
+// The window is a fixed 720×410 (largest view) like the macOS panel; the island is
 // drawn inside it, glued to the top edge and horizontally centred.
 export const PANEL_W = 720;
-export const PANEL_H = 320;
+export const PANEL_H = 410;
 
 // No notch on a PC: these are the hidden/compact sizes from docs/SPEC.md.
 export const NOTCH_W = 184;
@@ -74,13 +74,11 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   error: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   finished: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   confused: { height: 160, botX: 76, botY: null, botDiameter: 66, agentMode: "column" },
-  upload: { height: 176, botX: 140, botY: 104, botDiameter: 62, agentMode: "column" },
-  // botY 103 = bar top (42 + 58) + 3, so the dot really rides the bar. The Swift
-  // layout says 118 while its own comment says 103; the comment matches the spec.
-  uploading: { height: 176, botX: 46, botY: 103, botDiameter: 20, agentMode: "none" },
-  choose: { height: 176, botX: 60, botY: 101, botDiameter: 52, agentMode: "column" },
+  upload: { height: 176, botX: 68, botY: null, botDiameter: 60, agentMode: "column" },
+  uploading: { height: 176, botX: 68, botY: null, botDiameter: 60, agentMode: "column" },
+  choose: { height: 176, botX: 68, botY: null, botDiameter: 60, agentMode: "column" },
   mail: { height: 240, botX: 56, botY: null, botDiameter: 46, agentMode: "column" },
-  prompt: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
+  prompt: { height: 180, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
   searching: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
   result: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
   note: { height: 160, botX: 60, botY: null, botDiameter: 50, agentMode: "column" },
@@ -92,9 +90,9 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
 // dropped the whole sequence — Mochi included — is drawn by src/upload, which
 // owns its own constants (USC) straight from UploadSequenceEngine.swift.
 
-/** Chat view grows with the conversation — IslandContainer.chatPromptHeight. */
+/** Chat view grows with the conversation — expanded by 25-30% downward for better readability. */
 export function chatPromptHeight(messageCount: number): number {
-  return Math.min(300, 240 + messageCount * 40);
+  return Math.min(390, 275 + messageCount * 45);
 }
 
 export function islandSize(
@@ -128,7 +126,7 @@ export function botPosition(
   mode: IslandMode,
   view: IslandViewName,
   islandH: number,
-  uploadProgress = 0,
+  _uploadProgress = 0,
 ): BotPlacement {
   switch (mode) {
     case "hidden":
@@ -137,14 +135,6 @@ export function botPosition(
       return { cx: 40, cy: 16, diameter: 20, opacity: 1 };
     case "expanded": {
       const layout = VIEW_LAYOUTS[view];
-      if (view === "uploading") {
-        return {
-          cx: 36 + uploadProgress * 526,
-          cy: layout.botY ?? 103,
-          diameter: layout.botDiameter,
-          opacity: 1,
-        };
-      }
       if (layout.botY != null) {
         return { cx: layout.botX, cy: layout.botY, diameter: layout.botDiameter, opacity: 1 };
       }
@@ -157,7 +147,10 @@ export function botPosition(
   }
 }
 
-export function botGlowColor(s: BotStateName): string {
+export function botGlowColor(s: BotStateName, squadId?: string): string {
+  if (squadId === "coco_verde") return "#10B981";
+  if (squadId === "coco_rojo") return "#EF4444";
+  if (squadId === "coco_blanco" && s === "idle") return "#FFFFFF";
   switch (s) {
     case "working":
       return "#3B9EFF";
@@ -182,7 +175,7 @@ export function botGlowOpacity(s: BotStateName): number {
   switch (s) {
     case "idle":
     case "sleeping":
-      return 0.15;
+      return 0.30;
     case "dizzy":
       return 0;
     default:

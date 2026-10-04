@@ -197,6 +197,26 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
 
     if event != "PermissionRequest" {
         log::line(format!("hook {event}"));
+        if event == "wake" {
+            log::line("wake event: forcing foreground, showing, expanding geometry and focusing island");
+            if let Some(shared) = app.try_state::<crate::Shared>() {
+                shared.gate.collapsed.store(false, std::sync::atomic::Ordering::Relaxed);
+                let pref = shared.settings.lock().unwrap().screen.clone();
+                crate::island::apply_geometry(&app, &pref, false);
+                crate::island::refresh_click_through(&app, &shared.gate);
+            }
+            if let Some(win) = app.get_webview_window(WINDOW_LABEL) {
+                let _ = win.unminimize();
+                let _ = win.show();
+                let _ = win.set_focus();
+                crate::platform::force_foreground(&win);
+                let _ = win.emit("wake", ());
+            }
+            crate::island::set_ignore_cursor(&app, false);
+            let _ = app.emit("wake", ());
+            let _ = app.emit_to(WINDOW_LABEL, "wake", ());
+        }
+        let _ = app.emit("hook", payload.clone());
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
         pipe.finish();
         return;

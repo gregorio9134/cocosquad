@@ -300,6 +300,8 @@ fn apply_input_region(gw: &impl IsA<gtk::Widget>, rect: Region) {
     }
 }
 
+pub fn force_foreground(_win: &WebviewWindow) {}
+
 #[cfg(test)]
 mod tests {
     use super::*;

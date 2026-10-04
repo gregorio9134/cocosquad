@@ -35,7 +35,7 @@ export const GREETING_END = T.end;
 
 const C0 = { x: 320, y: 90 };
 const HB = 58;
-const ASP = 1.34;
+const ASP = 1.0; // Spherical Grokbot mascot
 const EAR_X = 40;
 const EAR_Y = 16;
 const EAR_HB = 17;
@@ -249,29 +249,25 @@ function rr(x: CanvasRenderingContext2D, X: number, Y: number, W: number, H: num
 }
 
 function mochiPath(hw: number, hh: number): Path2D {
-  const n = 3.2;
   const p = new Path2D();
-  const steps = 96;
-  for (let i = 0; i <= steps; i++) {
-    const a = (i / steps) * 2 * Math.PI;
-    const ca = Math.cos(a);
-    const sa = Math.sin(a);
-    const px = hw * (ca < 0 ? -1 : 1) * Math.pow(Math.abs(ca), 2 / n);
-    const py = hh * (sa < 0 ? -1 : 1) * Math.pow(Math.abs(sa), 2 / n);
-    if (i === 0) p.moveTo(px, py);
-    else p.lineTo(px, py);
-  }
-  p.closePath();
+  const r = Math.max(hw, hh);
+  p.arc(0, 0, r, 0, Math.PI * 2);
   return p;
 }
 
 function whiteFill(
   x: CanvasRenderingContext2D, path: Path2D,
-  x0: number, y0: number, x1: number, y1: number,
+  x0: number, _y0: number, x1: number, _y1: number,
 ) {
-  const g = x.createLinearGradient(x0, y0, x1, y1);
-  g.addColorStop(0, "rgb(251,251,252)");
-  g.addColorStop(1, "rgb(231,233,236)");
+  const R = Math.max(Math.abs(x0), Math.abs(x1), 24);
+  const lightX = -R * 0.32;
+  const lightY = -R * 0.36;
+  const g = x.createRadialGradient(lightX, lightY, R * 0.08, lightX, lightY, R * 1.75);
+  g.addColorStop(0.0, "#ffffff");
+  g.addColorStop(0.25, "#f4f6fa");
+  g.addColorStop(0.65, "#d3d8e2");
+  g.addColorStop(0.92, "#9aa1b2");
+  g.addColorStop(1.0, "#7d8495");
   x.save();
   x.fillStyle = g;
   x.fill(path);
@@ -374,31 +370,31 @@ function drawMochi(x: CanvasRenderingContext2D, p: Pose) {
   // Eyes
   x.save();
   x.clip(body);
-  x.fillStyle = "#16171A";
-  x.strokeStyle = "#16171A";
-  const er = p.hb * 0.06;
+  x.fillStyle = "#0a0b0e";
+  x.strokeStyle = "#0a0b0e";
+  const ew = p.hb * 0.10;
+  const eh = p.hb * 0.19;
   const sp = p.hb * 0.19;
   const lx = p.lookX * hw * 0.42;
-  const ly = p.lookY * hh * 0.28 + hh * 0.12 + p.eyeRoll * hh * 1.25;
+  const ly = p.lookY * hh * 0.28 + hh * 0.08 + p.eyeRoll * hh * 1.25;
   for (const sd of [-1, 1]) {
     x.save();
     x.translate(sd * sp + lx, ly);
     if (p.eye === "happy") {
-      x.lineWidth = er * 0.95;
+      x.lineWidth = Math.max(1.8, ew * 0.3);
       x.lineCap = "round";
       x.beginPath();
-      x.arc(0, er * 0.6, er * 1.25, Math.PI * 1.15, Math.PI * 1.85);
+      x.arc(0, eh * 0.1, ew * 0.65, Math.PI, 0);
       x.stroke();
     } else if (p.eye === "content") {
-      x.lineWidth = er * 0.95;
+      x.lineWidth = Math.max(1.8, ew * 0.3);
       x.lineCap = "round";
       x.beginPath();
-      x.arc(0, -er * 0.5, er * 1.25, Math.PI * 0.15, Math.PI * 0.85);
+      x.arc(0, -eh * 0.1, ew * 0.65, 0, Math.PI);
       x.stroke();
     } else {
-      x.scale(1, Math.max(0.12, p.open));
-      x.beginPath();
-      x.arc(0, 0, er, 0, Math.PI * 2);
+      const hhOpen = Math.max(eh * p.open, ew * 0.3);
+      rr(x, -ew / 2, -hhOpen / 2, ew, hhOpen, ew / 2);
       x.fill();
     }
     x.restore();

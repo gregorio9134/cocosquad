@@ -29,11 +29,11 @@ function dashedFrame(): SVGSVGElement {
 
 export function buildUpload(): ViewHost {
   const frame = dashedFrame();
-  const title = h("div", { class: "drop-title", text: "Drop your files here" });
+  const title = h("div", { class: "drop-title", text: "Arrastra tus archivos aquí" });
   const tags = h(
     "div",
     { class: "drop-tags" },
-    ...["PDF", "Images", "Code", "Docs"].map((t) => h("span", { text: t })),
+    ...["PDF", "Word", "PPTX", "Excel", "Docs", "+"].map((t) => h("span", { text: t })),
   );
   const card = h(
     "div",
@@ -52,14 +52,21 @@ export function buildUpload(): ViewHost {
 }
 
 export function buildUploading(): ViewHost {
+  const cloud = h("span", {
+    class: "up-cloud",
+    html: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:middle;margin-right:6px;opacity:0.8"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>`,
+  });
   const label = h("span", { class: "up-name" });
+  const leftCol = h("div", { style: "display:flex;align-items:center;min-width:0;overflow:hidden" }, cloud, label);
   const percent = h("span", { class: "up-pct" });
+  const info = h("span", { style: "font-size:12px;opacity:0.6;margin-left:4px", text: "ⓘ" });
+  const rightCol = h("div", { style: "display:flex;align-items:center" }, percent, info);
   const fill = h("div", { class: "up-fill" });
   const glow = h("div", { class: "up-glow" });
   const card = h(
     "div",
     { class: "card up-card" },
-    h("div", { class: "up-row" }, label, percent),
+    h("div", { class: "up-row" }, leftCol, rightCol),
     h("div", { class: "up-track" }, fill, glow),
   );
   const el = h("div", { class: "view" }, card);
@@ -68,16 +75,15 @@ export function buildUploading(): ViewHost {
     el,
     sync() {
       const done = State.uploadProgress >= 0.999;
-      const pct = Math.round(State.uploadProgress * 100);
+      const pct = Math.min(100, Math.round(State.uploadProgress * 100));
       label.textContent = done
-        ? `✓  ${State.droppedFile?.name ?? "File"}`
-        : `Uploading ${State.droppedFile?.name ?? "file"}`;
+        ? `✓  ${State.droppedFile?.name ?? "Archivo listo"}`
+        : `Subiendo ${State.droppedFile?.name ?? "archivos..."}`;
       label.classList.toggle("done", done);
-      percent.textContent = done ? "" : `${pct} %`;
-      const w = State.uploadProgress * 526;
-      fill.style.width = `${w}px`;
-      glow.style.transform = `translateX(${Math.max(0, w - 14)}px)`;
-      glow.style.opacity = State.uploadProgress > 0.01 ? "1" : "0";
+      percent.textContent = `${pct}%`;
+      fill.style.width = `${pct}%`;
+      glow.style.left = `${pct}%`;
+      glow.style.opacity = State.uploadProgress > 0.01 && !done ? "1" : "0";
       card.classList.toggle("done", done);
     },
   };
@@ -85,18 +91,21 @@ export function buildUploading(): ViewHost {
 
 export function buildChoose(actions: ViewActions): ViewHost {
   const title = h("div", { class: "title" });
-  const sub = h("div", { class: "sub", text: "What do you want to do with it?" });
+  const sub = h("div", { class: "sub", text: "¿Qué deseas hacer con el documento?" });
   const row = h(
     "div",
     { class: "actions" },
     h("button", {
       class: "btn primary",
-      text: "Ask a question",
-      onclick: () => actions.setView("prompt"),
+      text: "Consultar con Coco Blanco",
+      onclick: () => {
+        State.setFocus("coco_blanco");
+        actions.setView("prompt");
+      },
     }),
     h("button", {
       class: "btn secondary",
-      text: "Cancel",
+      text: "Cancelar",
       onclick: () => actions.setView(State.defaultView()),
     }),
   );
@@ -106,7 +115,7 @@ export function buildChoose(actions: ViewActions): ViewHost {
     h(
       "div",
       { class: "card" },
-      h("div", { class: "stack", style: "padding:0 18px 0 98px" }, title, sub, row),
+      h("div", { class: "stack", style: "padding:0 24px 0 118px" }, title, sub, row),
     ),
   );
 
@@ -115,8 +124,8 @@ export function buildChoose(actions: ViewActions): ViewHost {
     sync() {
       clear(title);
       title.append(
-        h("b", { text: State.droppedFile?.name ?? "file" }),
-        document.createTextNode(" is ready."),
+        h("b", { text: State.droppedFile?.name ?? "El documento" }),
+        document.createTextNode(" está listo."),
       );
     },
   };

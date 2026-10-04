@@ -24,10 +24,7 @@ const BOT_OVERHANG = 40;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
 
-/** The three views the drop sequence owns; leaving them stops the engine. */
 const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading", "choose"]);
-
-/** Seconds between the drop and the moment the progress bar starts filling. */
 const PRE_PROGRESS = USC.T_PROG_START - USC.T_DROP;
 
 const modeOrder = (m: IslandMode) => (m === "hidden" ? 0 : m === "compact" ? 1 : 2);
@@ -46,10 +43,12 @@ export class Island {
   private miniGrid!: HTMLElement;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
+  private uploadCanvas!: UploadCanvas;
+  private uploadTens = 0;
+  private uploadDone = false;
 
   private header!: ViewHost;
   private views!: Map<IslandViewName, ViewHost>;
-  private uploadCanvas!: UploadCanvas;
 
   private width = new Tracked(NOTCH_W);
   private height = new Tracked(0);
@@ -72,7 +71,6 @@ export class Island {
   private wasInIsland = false;
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
-  private homeCollapseAt: number | null = null;
 
   // Bot hover → love (IslandWindowController.botHoverIn)
   private botHovering = false;
@@ -83,10 +81,6 @@ export class Island {
   private confusedRecovery: number | null = null;
   private prevViewBeforeConfused: IslandViewName = "overview";
   private lastSyncedView: IslandViewName | null = null;
-
-  /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
-  private uploadTens = 0;
-  private uploadDone = false;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -127,7 +121,9 @@ export class Island {
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
         };
-        if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
+        if (task.id === "coco_blanco" || task.id === "coco_verde" || task.id === "coco_rojo") {
+          this.setView("prompt");
+        } else if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
         else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
@@ -174,7 +170,10 @@ export class Island {
     this.botCanvas = h("canvas", { id: "bot-canvas" });
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
-    this.countdown = h("div", { id: "countdown" });
+    this.countdown = h("div", {
+      id: "countdown",
+      html: `<svg viewBox="0 0 100 4" preserveAspectRatio="none" style="width:100%;height:100%;display:block;overflow:visible;"><defs><linearGradient id="cd-grad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#ffffff" stop-opacity="0"/><stop offset="15%" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="50%" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="85%" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0"/></linearGradient></defs><path d="M 0 2 Q 50 0 100 2 Q 50 4 0 2 Z" fill="url(#cd-grad)"/></svg>`,
+    });
 
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
@@ -182,24 +181,29 @@ export class Island {
     for (const v of this.views.values()) this.viewsEl.append(v.el);
     this.contentEl = h("div", { id: "content" }, this.header.el, this.viewsEl);
 
-    // The drop sequence draws the card, the bar and its own Mochi. It sits under
-    // the header, which stays visible on top of it exactly as on macOS.
     this.uploadCanvas = new UploadCanvas({
       ask: () => {
+        UploadSeq.deactivate();
+        this.setView("prompt");
         State.promptContext = State.droppedFile
           ? { kind: "file", name: State.droppedFile.name, path: State.droppedFile.path }
           : null;
-        this.setView("prompt");
+        State.notify();
       },
-      cancel: () => this.setView(State.defaultView()),
+      cancel: () => {
+        UploadSeq.deactivate();
+        State.droppedFile = null;
+        State.promptContext = null;
+        this.setView(State.defaultView());
+      },
     });
 
     this.clipEl = h(
       "div",
       { id: "island-clip" },
       this.greetingCanvas,
-      this.uploadCanvas.el,
       this.contentEl,
+      this.uploadCanvas.el,
     );
     this.islandEl = h(
       "div",
@@ -267,10 +271,9 @@ export class Island {
       void Bridge.focusWindow(false);
     }
     if (mode !== "expanded") {
+      this.countdown.style.opacity = "0";
+      this.countdown.style.width = "0px";
       this.engine.resetMorph();
-      // Nothing can be seen of the sequence once the island is shut, and leaving
-      // it running would keep the frame loop awake — the island must cost
-      // nothing while hidden.
       UploadSeq.deactivate();
     }
     this.updateWindowCollapsed();
@@ -278,24 +281,34 @@ export class Island {
     State.notify();
   }
 
-  /** True while the drop sequence owns the island body. */
   private get uploadActive(): boolean {
-    return State.mode === "expanded" && UploadSeq.isActive && UPLOAD_VIEWS.has(State.view);
+    return (
+      State.mode === "expanded" &&
+      UploadSeq.isActive &&
+      (State.fileDragOver || State.view === "uploading" || State.view === "choose")
+    );
   }
 
-  /** Navigating out of the drop flow ends the sequence, as on macOS. */
   private stopSequenceIfLeaving(view: IslandViewName) {
     if (UploadSeq.isActive && !UPLOAD_VIEWS.has(view)) UploadSeq.deactivate();
   }
 
+  resetInactivity() {
+    State.lastActivity = performance.now();
+    if (State.mode === "expanded" && !State.isPinned && State.view !== "greeting") {
+      this.ensureRunning();
+    }
+  }
+
   expand(view: IslandViewName) {
-    this.stopSequenceIfLeaving(view);
     State.view = view;
     if (State.mode !== "expanded") this.setMode("expanded");
     else this.animateGeometry(false);
     State.lastActivity = performance.now();
-    this.homeCollapseAt = null;
+    this.countdown.style.opacity = "0";
+    this.countdown.style.width = "0px";
     State.notify();
+    this.ensureRunning();
   }
 
   setView(view: IslandViewName) {
@@ -304,23 +317,53 @@ export class Island {
       this.fsm.forceHome();
       State.view = view;
       this.animateGeometry(false);
+      State.lastActivity = performance.now();
+      this.countdown.style.opacity = "0";
+      this.countdown.style.width = "0px";
       State.notify();
+      this.ensureRunning();
       return;
     }
     const grew = VIEW_LAYOUTS[view].height >= VIEW_LAYOUTS[State.view].height;
     State.view = view;
     State.lastActivity = performance.now();
+    this.countdown.style.opacity = "0";
+    this.countdown.style.width = "0px";
     this.animateGeometry(!grew);
     State.notify();
+    this.ensureRunning();
   }
 
   collapse() {
+    this.countdown.style.opacity = "0";
+    this.countdown.style.width = "0px";
     State.isPinned = false;
     this.fsm.pinned = false;
-    // Drive the state machine rather than the mode: setting the mode behind its
-    // back left it thinking the island was still open, and a click on the compact
-    // island then did nothing — the island could never be reopened.
+    this.setMode("compact");
     this.fsm.forcePetit();
+  }
+
+  wake() {
+    if (this.collapsed) {
+      this.collapsed = false;
+      void Bridge.setCollapsed(false);
+    }
+    this.fsm.cancelTimers();
+    this.fsm.forceHome();
+    State.mode = "expanded";
+    State.view = State.defaultView();
+    State.isPinned = false;
+    const { w, h, r } = this.targetSize();
+    this.width.jump(w);
+    this.height.jump(h);
+    this.radius.jump(r);
+    this.applyGeometry();
+    this.dirty = false;
+    this.syncDom();
+    this.resetInactivity();
+    Sound.play("open");
+    void Bridge.focusWindow(true);
+    this.ensureRunning();
   }
 
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
@@ -347,21 +390,20 @@ export class Island {
     switch (e.type) {
       case "enter":
       case "over": {
-        if (State.fileDragOver) return;
-        State.fileDragOver = true;
-        this.engine.animateMorph(1);
-        // enterZone must run before the island expands, so the sequence is
-        // already active by the time the view becomes `upload`.
-        UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
-        this.alert("upload");
+        if (!State.fileDragOver) {
+          State.fileDragOver = true;
+          UploadSeq.enterZone(State.mouseInIsland.x || USC.REST_X, State.mouseInIsland.y || USC.REST_Y);
+          this.alert("upload");
+          State.notify();
+        }
         break;
       }
       case "leave": {
         if (!State.fileDragOver) return;
         State.fileDragOver = false;
-        this.engine.animateMorph(0);
-        // The island deliberately stays open: the drag session is still alive.
-        UploadSeq.exitZone();
+        if (State.view !== "uploading" && State.view !== "choose") {
+          UploadSeq.deactivate();
+        }
         State.notify();
         break;
       }
@@ -369,7 +411,7 @@ export class Island {
         State.fileDragOver = false;
         const path = e.paths?.[0];
         if (!path) {
-          this.engine.animateMorph(0);
+          UploadSeq.deactivate();
           this.setView(State.defaultView());
           return;
         }
@@ -380,29 +422,39 @@ export class Island {
   }
 
   /**
-   * Mochi eats the file. Nothing here waits on the file system: the copy into
-   * the inbox runs in the background and swaps the path in when it lands, so a
-   * slow disk can never stall the animation — same as FileDropHandler on macOS.
+   * Novra Grokbot: Mascot devours the file with authentic suction animation,
+   * snaps mouth shut, chews happily with ^ ^ closed eyes, and smooth progress bar.
    */
   private swallow(path: string) {
+    if (State.view === "uploading") return;
     const name = path.split(/[\\/]/).pop() || "file";
     State.droppedFile = { name, path };
     State.promptContext = { kind: "file", name, path };
     State.chatHistory = [];
     void Bridge.chatReset();
 
+    if (State.mode !== "expanded") {
+      this.fsm.cancelTimers();
+      State.mode = "expanded";
+      if (this.collapsed) {
+        this.collapsed = false;
+        void Bridge.setCollapsed(false);
+      }
+      this.updateWindowCollapsed();
+      this.animateGeometry(false);
+    }
+
+    State.view = "uploading";
+    State.uploadProgress = 0;
+    State.notify();
+
+    if (!UploadSeq.isActive) {
+      UploadSeq.enterZone(USC.REST_X, USC.REST_Y);
+    }
     UploadSeq.performDrop(State.uploadDuration);
     this.uploadTens = 0;
     this.uploadDone = false;
-
-    this.engine.gulp();
     Sound.play("approve");
-    this.engine.triggerEmote("happy");
-    this.engine.animateMorph(0);
-
-    State.uploadProgress = 0;
-    this.setView("uploading");
-    this.ensureRunning();
 
     void Bridge.ingestFile(path)
       .then((file) => {
@@ -413,22 +465,20 @@ export class Island {
       .catch((err) => {
         UploadSeq.deactivate();
         State.noteMessage = String(err).replace(/^Error:\s*/, "");
-        this.engine.animateMorph(0);
         this.setView("note");
         Sound.play("error");
         window.setTimeout(() => this.setView(State.defaultView()), 2400);
       });
+
+    this.ensureRunning();
   }
 
-  /**
-   * Sounds and view changes hung off the canvas timeline: a `tick` every 10 %,
-   * the ✓ chime when the bar completes, then `choose` once Mochi has grown back.
-   */
   private stepSequence() {
     const since = UploadSeq.sinceDrop();
     if (since == null) return;
     const dur = State.uploadDuration;
     const p = Math.max(0, Math.min(1, (since - PRE_PROGRESS) / dur));
+    State.uploadProgress = p;
 
     const tens = Math.floor(p * 10);
     if (tens > this.uploadTens && tens < 10) {
@@ -441,8 +491,8 @@ export class Island {
       Sound.play("approve");
       this.engine.triggerEmote("happy");
     }
-    // The extra second is the grow-back, after which the choose card is up.
-    if (since >= PRE_PROGRESS + dur + 1 && State.view === "uploading") {
+    // After bar completes and mascot celebrates, show choose card
+    if (since >= PRE_PROGRESS + dur + 0.8 && State.view === "uploading") {
       this.setView("choose");
     }
   }
@@ -482,7 +532,6 @@ export class Island {
     this.miniGrid.style.left = `${w - 40 - 14.5}px`;
     this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
-    this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
     const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
     const p = this.pushedRect;
@@ -494,6 +543,9 @@ export class Island {
 
   /** Island rect in window coordinates (origin top-left of the 720×320 window). */
   private islandRect(): { x: number; y: number; w: number; h: number } {
+    if (this.collapsed || State.mode === "hidden") {
+      return { x: 0, y: 0, w: 240, h: Math.max(16, this.height.value) };
+    }
     const w = this.width.value;
     const hh = this.height.value;
     return { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
@@ -530,10 +582,14 @@ export class Island {
       Sound.resume();
       if (State.mode === "hidden") this.fsm.mouseEntered();
     });
+    this.wakeStrip.addEventListener("mousedown", () => {
+      Sound.resume();
+      this.wake();
+    });
 
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
-      State.lastActivity = performance.now();
+      this.resetInactivity();
       if (State.mode !== "expanded") {
         this.fsm.click();
         return;
@@ -544,9 +600,36 @@ export class Island {
       }
     });
 
+    this.islandEl.addEventListener("keydown", () => this.resetInactivity(), true);
+    this.islandEl.addEventListener("input", () => this.resetInactivity(), true);
+    this.islandEl.addEventListener("wheel", () => this.resetInactivity(), { capture: true, passive: true });
+
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && State.mode === "expanded" && !State.isPinned) this.collapse();
-      State.lastActivity = performance.now();
+      if (e.key === "Escape" && State.mode === "expanded") {
+        this.collapse();
+      } else {
+        this.resetInactivity();
+      }
+    });
+
+
+
+    window.addEventListener("dragenter", (e) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+    });
+    window.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+    });
+    window.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0 && !State.droppedFile) {
+        const file = files[0];
+        const path = (file as any).path || file.name;
+        this.swallow(path);
+      }
     });
 
     void onDragDrop((e) => this.onDragDrop(e));
@@ -575,9 +658,7 @@ export class Island {
     const rect = this.islandRect();
     State.mouseInIsland = { x: x - rect.x, y: y - rect.y };
 
-    // Windows sends no cursor position with an OLE drag, so the drop sequence is
-    // fed from the Win32 cursor poll instead — it runs throughout the drag.
-    if (UploadSeq.isActive && !UploadSeq.dropped) {
+    if (this.uploadActive && !UploadSeq.dropped) {
       UploadSeq.updateCursor(State.mouseInIsland.x, State.mouseInIsland.y);
     }
 
@@ -585,16 +666,14 @@ export class Island {
       x >= rect.x - HIT_MARGIN && x <= rect.x + rect.w + HIT_MARGIN &&
       y >= rect.y - HIT_MARGIN && y <= rect.y + rect.h + HIT_MARGIN;
 
-    if (inIsland && !this.wasInIsland) {
-      if (this.fsm.state === "coucou") this.greeting.hover();
-      this.fsm.mouseEntered();
-      this.homeCollapseAt = null;
-    }
-    if (!inIsland && this.wasInIsland) {
-      this.fsm.mouseLeft();
-      if (this.fsm.state === "home" && !State.isPinned) {
-        this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
+    if (inIsland) {
+      if (!this.wasInIsland) {
+        if (this.fsm.state === "coucou") this.greeting.hover();
+        this.fsm.mouseEntered();
       }
+      this.resetInactivity();
+    } else if (this.wasInIsland) {
+      this.fsm.mouseLeft();
     }
     this.wasInIsland = inIsland;
 
@@ -679,67 +758,77 @@ export class Island {
   }
 
   private frame = (nowMs: number) => {
-    const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
-    this.lastFrame = nowMs;
+    try {
+      const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
+      this.lastFrame = nowMs;
 
-    this.width.step(dt, nowMs);
-    this.height.step(dt, nowMs);
-    this.radius.step(dt, nowMs);
-    this.applyGeometry();
+      this.width.step(dt, nowMs);
+      this.height.step(dt, nowMs);
+      this.radius.step(dt, nowMs);
+      this.applyGeometry();
 
-    if (this.dirty) {
-      this.dirty = false;
-      this.syncDom();
-    }
-
-    this.updateBotTargets();
-    this.botCx.step(dt);
-    this.botCy.step(dt);
-    this.botSize.step(dt);
-
-    const greetingActive = State.mode === "expanded" && State.view === "greeting";
-    if (greetingActive) {
-      const gctx = this.greetingCanvas.getContext("2d");
-      if (gctx) {
-        const dpr = Math.min(2, window.devicePixelRatio || 1);
-        gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        this.greeting.draw(gctx);
+      if (this.dirty) {
+        this.dirty = false;
+        this.syncDom();
       }
-    } else {
-      // Kept running even while the drop canvas is up, so the island's own Mochi
-      // is already in the right place the moment the canvas fades out.
-      this.drawBot(dt);
-    }
 
-    const uploadActive = this.uploadActive;
-    if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
-    this.uploadCanvas.el.classList.toggle("on", uploadActive);
-    this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
+      this.updateBotTargets();
+      this.botCx.step(dt);
+      this.botCy.step(dt);
+      this.botSize.step(dt);
 
-    tickMiniBots(dt);
-    this.views.get(State.view)?.tick?.(nowMs);
-    if (UploadSeq.isActive) this.stepSequence();
-    this.updateCountdown(nowMs);
+      const greetingActive = State.mode === "expanded" && State.view === "greeting";
+      if (greetingActive) {
+        const gctx = this.greetingCanvas.getContext("2d");
+        if (gctx) {
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          this.greeting.draw(gctx);
+        }
+      } else {
+        // Kept running even while the drop canvas is up, so the island's own Mochi
+        // is already in the right place the moment the canvas fades out.
+        this.drawBot(dt);
+      }
 
-    // Nothing is drawn while the island is hidden, so nothing may keep the loop
-    // alive either. This used to read `... || this.engine.busy || State.mode !==
-    // "hidden"`, and engine.busy is permanently true for any state with a
-    // looping animation — breathing, ratelimit sweat, sleeping z's, the search
-    // sweep — so a hidden island went on burning frames in exactly the states it
-    // spends most of its life in. Geometry still has to finish retracting.
-    const settling =
-      this.width.animating || this.height.animating || this.radius.animating;
-    const busy = State.mode === "hidden"
-      ? settling
-      : settling ||
-        !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive;
+      const uploadActive = this.uploadActive;
+      if (uploadActive) {
+        this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
+      }
+      this.uploadCanvas.el.classList.toggle("on", uploadActive);
+      this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
 
-    if (busy) {
-      requestAnimationFrame(this.frame);
-    } else {
+      tickMiniBots(dt);
+      this.views.get(State.view)?.tick?.(nowMs);
+      if (UploadSeq.isActive) this.stepSequence();
+      this.updateCountdown(nowMs);
+
+      // Nothing is drawn while the island is hidden, so nothing may keep the loop
+      // alive either. This used to read `... || this.engine.busy || State.mode !==
+      // "hidden"`, and engine.busy is permanently true for any state with a
+      // looping animation — breathing, ratelimit sweat, sleeping z's, the search
+      // sweep — so a hidden island went on burning frames in exactly the states it
+      // spends most of its life in. Geometry still has to finish retracting.
+      const countdownActive =
+        State.mode === "expanded" && !State.isPinned;
+
+      const settling =
+        this.width.animating || this.height.animating || this.radius.animating;
+      const busy = State.mode === "hidden"
+        ? settling
+        : settling ||
+          !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
+          greetingActive || this.engine.busy || UploadSeq.isActive || countdownActive;
+
+      if (busy) {
+        requestAnimationFrame(this.frame);
+      } else {
+        this.running = false;
+        Sound.idle();
+      }
+    } catch (err: any) {
       this.running = false;
-      Sound.idle();
+      void Bridge.log(`FRAME_ERROR: ${err?.stack || err?.message || String(err)}`);
     }
   };
 
@@ -750,13 +839,12 @@ export class Island {
     this.botSize.target = p.diameter / 0.6;
 
     const greetingActive = State.mode === "expanded" && State.view === "greeting";
-    // The drop canvas draws its own Mochi; two of them would overlap.
     const visible = p.opacity > 0 && !greetingActive && !this.uploadActive;
     this.botCanvas.style.opacity = visible ? "1" : "0";
 
-    if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive) {
+    if (State.mode === "expanded" && !greetingActive && !this.uploadActive) {
       const d = p.diameter;
-      const color = botGlowColor(State.effectiveState);
+      const color = botGlowColor(State.effectiveState, State.focusTask?.id);
       this.botGlow.style.display = "block";
       this.botGlow.style.width = `${d * 2.2}px`;
       this.botGlow.style.height = `${d * 2.2}px`;
@@ -788,19 +876,22 @@ export class Island {
     if (!ctx) return;
 
     const focus = State.focusTask;
-    this.engine.bodyColor = focus?.isIntegration ? hexToRGB(focus.color) : null;
+    if (focus?.id === "coco_verde") {
+      this.engine.setCocoSquadRole("green");
+      this.engine.bodyColor = null;
+    } else if (focus?.id === "coco_rojo") {
+      this.engine.setCocoSquadRole("red");
+      this.engine.bodyColor = null;
+    } else if (focus?.id === "coco_blanco") {
+      this.engine.setCocoSquadRole("white");
+      this.engine.bodyColor = null;
+    } else {
+      this.engine.setCocoSquadRole("white");
+      this.engine.bodyColor = focus?.isIntegration ? hexToRGB(focus.color) : null;
+    }
     this.engine.particleOverhang = BOT_OVERHANG;
     this.engine.lookX = this.lookX();
     this.engine.lookY = this.lookY();
-    if (this.engine.morph > 0.3) {
-      this.engine.slotHTarget = State.fileDragOver ? 0.2 : 0;
-    } else {
-      this.engine.slotHTarget = 0;
-      if (this.engine.morph < 0.05) {
-        this.engine.slotH = 0;
-        this.engine.slotHVel = 0;
-      }
-    }
     this.engine.update(dt);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, hCss);
@@ -819,15 +910,53 @@ export class Island {
   }
 
   private updateCountdown(nowMs: number) {
-    if (State.mode !== "expanded" || State.isPinned || this.homeCollapseAt == null) {
-      this.countdown.style.width = "0px";
+    const greetingActive = State.mode === "expanded" && State.view === "greeting";
+    if (
+      State.mode !== "expanded" ||
+      State.isPinned ||
+      State.view === "upload" ||
+      State.view === "uploading" ||
+      greetingActive
+    ) {
+      if (this.countdown.style.opacity !== "0") {
+        this.countdown.style.opacity = "0";
+      }
+      if (this.countdown.style.width !== "0px") {
+        this.countdown.style.width = "0px";
+      }
       return;
     }
-    const autoClose = State.settings.autoCloseInterval;
-    const windowS = Math.min(10, autoClose * 0.6);
-    const remaining = (this.homeCollapseAt - nowMs) / 1000;
-    this.countdown.style.width =
-      remaining < windowS ? `${Math.max(0, clamp(remaining / windowS, 0, 1) * 160)}px` : "0px";
+
+    const autoClose = Math.max(5, State.settings.autoCloseInterval || 15);
+    const inactiveSec = (nowMs - State.lastActivity) / 1000;
+    const INACTIVITY_THRESHOLD = 3.0; // Aparece cuando detecta 3 seg de inactividad
+
+    if (inactiveSec < INACTIVITY_THRESHOLD) {
+      if (this.countdown.style.opacity !== "0") {
+        this.countdown.style.opacity = "0";
+      }
+      if (this.countdown.style.width !== "0px") {
+        this.countdown.style.width = "0px";
+      }
+      return;
+    }
+
+    const remainingSec = autoClose - inactiveSec;
+    if (remainingSec <= 0) {
+      this.countdown.style.opacity = "0";
+      this.countdown.style.width = "0px";
+      this.collapse();
+      return;
+    }
+
+    // A partir de los 3 seg de inactividad, la línea aparece y se va encogiendo hacia el centro
+    const countdownDuration = Math.max(1, autoClose - INACTIVITY_THRESHOLD);
+    const fraction = clamp(remainingSec / countdownDuration, 0, 1);
+    const maxW = 200; // Línea fina y delicada de 200px max
+    this.countdown.style.width = `${Math.round(fraction * maxW)}px`;
+    if (this.countdown.style.opacity !== "1") {
+      this.countdown.style.opacity = "1";
+    }
   }
 
   // ── DOM sync ────────────────────────────────────────────────────────────────

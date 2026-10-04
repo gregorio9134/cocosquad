@@ -74,15 +74,14 @@ export class IslandStateMachine {
   /** Greeting animation finished (T.end). Doesn't override a running hover timer. */
   greetComplete() {
     if (this.state !== "coucou") return;
-    if (this.greetCollapse == null) this.scheduleGreetCollapse(this.greetAutoCollapseDelay);
+    this.cancelTimers();
+    this.transition("petit");
   }
 
   /** Non-alert work event: show compact from hidden. */
   reveal() {
-    if (this.state !== "hidden") return;
     this.cancelTimers();
     this.transition("petit");
-    this.schedulePetitHide();
   }
 
   /** Alert or explicit request: open straight to expanded. */
@@ -106,19 +105,12 @@ export class IslandStateMachine {
 
   private schedulePetitHide() {
     this.clear("petitHide");
-    this.petitHide = window.setTimeout(() => {
-      this.petitHide = null;
-      if (this.state === "petit") this.transition("hidden");
-    }, this.petitToHiddenDelay * 1000);
+    // Miniature island stays always active unless explicitly hidden via pause
   }
 
   private scheduleHomeCollapse() {
     this.clear("homeCollapse");
-    if (this.pinned) return;
-    this.homeCollapse = window.setTimeout(() => {
-      this.homeCollapse = null;
-      if (this.state === "home") this.transition("petit");
-    }, this.homeToPetitDelay * 1000);
+    // Visual countdown and home collapse are synchronized in Island.updateCountdown
   }
 
   private scheduleGreetCollapse(delay: number) {

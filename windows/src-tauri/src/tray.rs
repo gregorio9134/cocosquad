@@ -1,7 +1,7 @@
 // Notification-area icon: Open, Settings, Pause, Quit.
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
-use tauri::tray::TrayIconBuilder;
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter};
 
 use crate::island::WINDOW_LABEL;
@@ -24,6 +24,17 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
             "settings" => crate::show_settings_window(app),
             id => {
                 let _ = app.emit_to(WINDOW_LABEL, "tray", id.to_string());
+            }
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                let app = tray.app_handle();
+                crate::show_settings_window(app);
             }
         });
 

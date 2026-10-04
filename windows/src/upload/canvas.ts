@@ -135,14 +135,15 @@ export class UploadCanvas {
     ctx.fillStyle = "#0D0E10";
     ctx.fillRect(USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H);
 
-    // Green glow, fanning up from the bottom edge of the card.
+    // Green glow, fanning up from the bottom edge of the card (ambient underglow from video).
     if (f.greenWash > 0) {
       const gx = USC.CARD_X + USC.CARD_W / 2;
       const gy = USC.CARD_Y + USC.CARD_H;
-      const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, USC.CARD_H * 1.5);
-      g.addColorStop(0, `rgba(40,212,130,${f.greenWash * 0.9})`);
-      g.addColorStop(0.55, `rgba(40,212,130,${f.greenWash * 0.3})`);
-      g.addColorStop(1, "rgba(40,212,130,0)");
+      const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, USC.CARD_H * 1.35);
+      g.addColorStop(0, `rgba(34,197,94,${f.greenWash * 0.95})`);
+      g.addColorStop(0.45, `rgba(34,197,94,${f.greenWash * 0.4})`);
+      g.addColorStop(0.8, `rgba(34,197,94,${f.greenWash * 0.1})`);
+      g.addColorStop(1, "rgba(34,197,94,0)");
       ctx.fillStyle = g;
       ctx.fillRect(USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H);
     }
@@ -152,7 +153,7 @@ export class UploadCanvas {
     if (f.zoneAlpha > 0) {
       ctx.save();
       ctx.globalAlpha = f.zoneAlpha;
-      ctx.strokeStyle = f.zoneOver ? "rgba(52,212,153,0.55)" : "rgba(255,255,255,0.14)";
+      ctx.strokeStyle = f.zoneOver ? "rgba(52,211,153,0.7)" : "rgba(255,255,255,0.14)";
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 5]);
       ctx.lineDashOffset = -wallTime * 20;
@@ -174,16 +175,17 @@ export class UploadCanvas {
   private drawDropText(ctx: CanvasRenderingContext2D, f: UploadFrame) {
     ctx.save();
     ctx.globalAlpha = f.textAlpha;
-    text(ctx, "Drop your files here", USC.TEXT_X, USC.TEXT_Y - 4, `500 13px ${FONT}`, "#D5D7DB");
+    text(ctx, "Arrastra tus archivos aquí", USC.TEXT_X, USC.TEXT_Y - 4, `500 13px ${FONT}`, "#D5D7DB");
 
     let cx = USC.TEXT_X;
-    for (const chip of ["PDF", "Images", "Code", "Docs"]) {
-      // The macOS port measures chips the same rough way, so the row lines up.
-      const w = chip.length * 6.5 + 16;
+    for (const chip of ["PDF", "Word", "PPTX", "Excel", "Docs", "+"]) {
+      // The tags row from video
+      const isPlus = chip === "+";
+      const w = isPlus ? 20 : chip.length * 6.5 + 16;
       ctx.fillStyle = "rgba(255,255,255,0.07)";
       rr(ctx, cx, USC.TEXT_Y + 9, w, 18, 9);
       ctx.fill();
-      text(ctx, chip, cx + 8, USC.TEXT_Y + 18, `500 11px ${FONT}`, "#B9BDC4");
+      text(ctx, chip, isPlus ? cx + 10 : cx + 8, USC.TEXT_Y + 18, `500 11px ${FONT}`, "#B9BDC4", isPlus ? "center" : "left");
       cx += w + 6;
     }
     ctx.restore();
@@ -200,68 +202,92 @@ export class UploadCanvas {
     const by = USC.BAR_Y;
     const barLen = (x1 - x0) * f.barReveal;
 
-    const name = State.droppedFile?.name ?? "file";
-    text(ctx, `Uploading ${name}`, x0, by - 30, `500 12.5px ${FONT}`, "#A9ADB5");
+    const name = State.droppedFile?.name ?? "archivos del proyecto";
 
-    if (f.check > 0) {
-      ctx.save();
-      ctx.translate(x1 - 8, by - 30);
-      ctx.scale(f.check, f.check);
-      ctx.beginPath();
-      ctx.arc(0, 0, 8, 0, Math.PI * 2);
-      ctx.fillStyle = "#34D399";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(-3.6, 0.2);
-      ctx.lineTo(-1, 2.8);
-      ctx.lineTo(3.8, -2.6);
-      ctx.strokeStyle = "#07130E";
-      ctx.lineWidth = 2;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.stroke();
-      ctx.restore();
-    } else {
-      text(ctx, `${Math.round(f.progress * 100)} %`, x1, by - 30, `500 12.5px ${FONT}`, "#A9ADB5", "right");
-    }
+    // Cloud upload icon + title on left
+    ctx.save();
+    ctx.translate(x0, by - 26);
+    ctx.fillStyle = "#A9ADB5";
+    const cp = new Path2D(
+      "M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"
+    );
+    ctx.save();
+    ctx.scale(0.55, 0.55);
+    ctx.translate(0, -11);
+    ctx.fill(cp);
+    ctx.restore();
+    text(ctx, `Subiendo ${name}`, 18, 0, `500 12.5px ${FONT}`, "#C5C8CE");
+    ctx.restore();
 
-    // Track.
+    // Percentage + Info icon on the right
+    const pct = Math.min(100, Math.round(f.progress * 100));
+    ctx.save();
+    text(ctx, `${pct}%`, x1 - 18, by - 26, `500 12.5px ${FONT}`, "#C5C8CE", "right");
+
+    // Info circle ⓘ
+    ctx.translate(x1 - 8, by - 26);
+    ctx.strokeStyle = "rgba(255,255,255,0.45)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    text(ctx, "i", 0, 0.5, `600 8.5px ${FONT}`, "rgba(255,255,255,0.75)", "center");
+    ctx.restore();
+
+    // Track groove (slim line)
     if (barLen > 0) {
       ctx.fillStyle = "rgba(255,255,255,0.08)";
-      rr(ctx, x0, by - 3, barLen, 6, 3);
+      rr(ctx, x0, by - 2, barLen, 4, 2);
       ctx.fill();
     }
 
-    // Fill.
+    // Glowing green fill line
     const fx = lerp(x0, x1, f.progress);
     if (fx > x0 + 1) {
-      const flashGreen = `rgb(${Math.round(lerp(52, 110, f.flash))},${Math.round(
-        lerp(211, 231, f.flash),
-      )},${Math.round(lerp(153, 183, f.flash))})`;
       const g = ctx.createLinearGradient(x0, 0, fx, 0);
-      g.addColorStop(0, "#1FA87A");
-      g.addColorStop(1, flashGreen);
+      g.addColorStop(0, "#10B981");
+      g.addColorStop(1, "#34D399");
+
+      ctx.save();
+      ctx.shadowColor = "rgba(52, 211, 153, 0.65)";
+      ctx.shadowBlur = 8;
       ctx.fillStyle = g;
-      rr(ctx, x0, by - 3, fx - x0, 6, 3);
+      rr(ctx, x0, by - 2, fx - x0, 4, 2);
       ctx.fill();
+      ctx.restore();
     }
 
-    // Glow trail, its length driven by how fast the bar is moving.
-    if (f.progress > 0.01 && f.progress < 1) {
+    // White motion blur / speed tail behind Coco Blanco thumb
+    if (f.progress > 0.005 && f.progress < 0.999) {
       const v =
         (progressAt(f.t + 0.01, USC.T_PROG_START, f.progEnd) -
           progressAt(f.t, USC.T_PROG_START, f.progEnd)) / 0.01;
-      const tl = Math.max(8, Math.min(34, 8 + v * 40));
-      const g = ctx.createLinearGradient(fx - tl, 0, fx, 0);
-      g.addColorStop(0, "rgba(52,212,153,0)");
-      g.addColorStop(1, "rgba(110,231,183,0.6)");
+      const tl = Math.max(24, Math.min(65, 20 + v * 60));
+
       ctx.save();
-      ctx.filter = "blur(3px)";
-      ctx.fillStyle = g;
-      rr(ctx, fx - tl, by - 4, tl, 8, 4);
+      const tg = ctx.createLinearGradient(fx - tl, 0, fx, 0);
+      tg.addColorStop(0, "rgba(255,255,255,0)");
+      tg.addColorStop(0.35, "rgba(255,255,255,0.18)");
+      tg.addColorStop(0.7, "rgba(255,255,255,0.55)");
+      tg.addColorStop(1, "rgba(255,255,255,0.95)");
+
+      ctx.filter = "blur(3.5px)";
+      ctx.fillStyle = tg;
+      rr(ctx, fx - tl, by - 8, tl, 16, 8);
+      ctx.fill();
+
+      // Sharp core streak
+      ctx.filter = "blur(1.2px)";
+      const tgCore = ctx.createLinearGradient(fx - tl * 0.65, 0, fx, 0);
+      tgCore.addColorStop(0, "rgba(255,255,255,0)");
+      tgCore.addColorStop(0.5, "rgba(255,255,255,0.45)");
+      tgCore.addColorStop(1, "rgba(255,255,255,0.95)");
+      ctx.fillStyle = tgCore;
+      rr(ctx, fx - tl * 0.65, by - 5, tl * 0.65, 10, 5);
       ctx.fill();
       ctx.restore();
     }
+
     ctx.restore();
   }
 
@@ -272,19 +298,19 @@ export class UploadCanvas {
     ctx.globalAlpha = f.chooseAlpha;
     ctx.translate(0, (1 - f.chooseAlpha) * 4);
 
-    const name = State.droppedFile?.name ?? "file";
-    text(ctx, `${name} is ready.`, 114, 80, `600 14px ${FONT}`, "#F5F6F8");
-    text(ctx, "What do you want to do with it?", 114, 100, `400 12.5px ${FONT}`, "#9398A1");
+    const name = State.droppedFile?.name ?? "El documento";
+    text(ctx, `${name} está listo.`, 114, 80, `600 14px ${FONT}`, "#F5F6F8");
+    text(ctx, "¿Qué deseas hacer con el documento?", 114, 100, `400 12.5px ${FONT}`, "#9398A1");
 
     ctx.fillStyle = "#F5F6F8";
     rr(ctx, 114, 113, 168, 26, 13);
     ctx.fill();
-    text(ctx, "Ask a question about it", 198, 126, `500 12.5px ${FONT}`, "#0B0C0E", "center");
+    text(ctx, "Consultar con Coco", 198, 126, `500 12.5px ${FONT}`, "#0B0C0E", "center");
 
     ctx.fillStyle = "rgba(255,255,255,0.09)";
     rr(ctx, 290, 113, 120, 26, 13);
     ctx.fill();
-    text(ctx, "Cancel", 350, 126, `500 12.5px ${FONT}`, "#F1F2F4", "center");
+    text(ctx, "Cancelar", 350, 126, `500 12.5px ${FONT}`, "#F1F2F4", "center");
     ctx.restore();
   }
 

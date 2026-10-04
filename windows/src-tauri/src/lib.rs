@@ -15,6 +15,7 @@ mod tray;
 use std::process::Command;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
@@ -93,9 +94,13 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
-    // The wake strip must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
-    shared.gate.set_active(!collapsed);
+    if !collapsed {
+        platform::unblock_webview_drops(&app);
+    }
+    if !platform::CURSOR_POLL {
+        shared.gate.set_active(!collapsed);
+    }
 }
 
 /// The front end pushes the island shape; Rust decides click-through from it.
@@ -240,9 +245,10 @@ async fn chat_send(
     chat: State<'_, Chat>,
     query: String,
     context: Option<ChatContext>,
+    coco_id: Option<String>,
 ) -> Result<ChatReply, String> {
     let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    claude::send(&chat, &model, query, context, coco_id).await
 }
 
 #[tauri::command]
@@ -286,6 +292,10 @@ async fn refresh_integration(app: AppHandle, id: String) {
     integrations::poll_once(app, &id).await;
 }
 
+pub fn app_log(message: impl AsRef<str>) {
+    log::line(message);
+}
+
 /// Lets the island write to the same log as the Rust side.
 #[tauri::command]
 fn log_line(message: String) {
@@ -301,15 +311,8 @@ fn log_line(message: String) {
 /// error anywhere.
 const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
 
-/// In a dev build the pages are served by Vite, so the second window needs the
-/// absolute dev URL; a bundled build resolves it inside the app bundle.
-fn settings_page_url(app: &AppHandle) -> WebviewUrl {
-    #[cfg(dev)]
-    if let Some(mut base) = app.config().build.dev_url.clone() {
-        base.set_path("/settings.html");
-        return WebviewUrl::External(base);
-    }
-    let _ = app;
+/// Always serve settings from embedded app bundle.
+fn settings_page_url(_app: &AppHandle) -> WebviewUrl {
     WebviewUrl::App("settings.html".into())
 }
 
@@ -358,15 +361,53 @@ fn open_settings_window(app: AppHandle) {
     show_settings_window(&app);
 }
 
+#[cfg(windows)]
+pub fn wake_existing_instance() -> bool {
+    use std::fs::OpenOptions;
+    use std::io::Write;
+    use std::time::{Duration, Instant};
+
+    let pipe_path = pipe::pipe_name();
+    let deadline = Instant::now() + Duration::from_millis(300);
+    loop {
+        match OpenOptions::new().read(true).write(true).open(&pipe_path) {
+            Ok(mut file) => {
+                let msg = b"{\"hook_event_name\":\"wake\"}\n";
+                let _ = file.write_all(msg);
+                let _ = file.flush();
+                log::line("woke up existing instance via named pipe");
+                return true;
+            }
+            Err(err) => {
+                // 231 is ERROR_PIPE_BUSY
+                if err.raw_os_error() == Some(231) && Instant::now() < deadline {
+                    std::thread::sleep(Duration::from_millis(15));
+                    continue;
+                }
+                break;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(not(windows))]
+pub fn wake_existing_instance() -> bool {
+    false
+}
+
 pub fn run() {
+    std::panic::set_hook(Box::new(|info| {
+        log::line(format!("PANIC: {info}"));
+    }));
+    log::line("--- coucou_lib::run() entered ---");
     platform::prepare_environment();
+    log::line("step: loaded settings");
     let loaded = settings::load();
     let gate = Arc::new(PollGate::new());
 
-    tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
-            let _ = app.emit_to(island::WINDOW_LABEL, "tray", "open".to_string());
-        }))
+    log::line("step: building tauri app");
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .manage(Shared {
             settings: Mutex::new(loaded.clone()),
@@ -403,15 +444,22 @@ pub fn run() {
             set_paused,
         ])
         .setup(move |app| {
+            log::line("step: setup entered");
             let handle = app.handle().clone();
-            tray::build(&handle)?;
-            // Before the island: see create_settings_window.
+            if let Err(e) = tray::build(&handle) {
+                log::line(format!("tray build error: {e}"));
+            }
+            log::line("step: creating settings window");
             create_settings_window(&handle);
 
             if let Some(win) = island::window(&handle) {
+                log::line("step: island window found, configuring");
                 platform::make_non_activating(&win);
                 island::apply_geometry(&handle, &loaded.screen, false);
                 let _ = win.show();
+                platform::unblock_webview_drops(&handle);
+            } else {
+                log::line("step: island window NOT found");
             }
             gate.collapsed.store(false, Ordering::Relaxed);
             // Nothing drawn yet, so nothing takes the mouse until the page
@@ -422,12 +470,36 @@ pub fn run() {
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
 
+            let handle_for_drops = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                for delay in [500, 1500, 3000, 5000] {
+                    tokio::time::sleep(Duration::from_millis(delay)).await;
+                    let h = handle_for_drops.clone();
+                    let _ = handle_for_drops.run_on_main_thread(move || platform::unblock_webview_drops(&h));
+                }
+            });
+
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
             Ok(())
-        })
-        .run(tauri::generate_context!())
-        .expect("error while running Coucou");
+        });
+
+    log::line("step: calling app.build()");
+    let built_app = match app.build(tauri::generate_context!()) {
+        Ok(a) => a,
+        Err(e) => {
+            log::line(format!("app.build() error: {e}"));
+            panic!("app.build() error: {e}");
+        }
+    };
+    log::line("step: app built successfully, calling run()");
+    built_app.run(|_app_handle, event| {
+        if let tauri::RunEvent::ExitRequested { api, .. } = event {
+            log::line("RunEvent::ExitRequested -> prevent_exit");
+            api.prevent_exit();
+        }
+    });
+    log::line("step: built_app.run() finished and returned!");
 }

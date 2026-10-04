@@ -56,9 +56,12 @@ const task = (
   id, name, color, state: "idle", stepIndex: 0, steps: [], source, isIntegration: true,
 });
 
-/** AgentTask.integrationAgents — same ids, names and colours as macOS. */
+/** AgentTask.integrationAgents — Coco Squad & external integrations. */
 export const INTEGRATION_AGENTS: AgentTask[] = [
-  task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
+  task("coco_blanco", "Coco Blanco", "#FFFFFF", "agent"),
+  task("coco_verde", "Coco Verde", "#10B981", "agent"),
+  task("coco_rojo", "Coco Rojo", "#EF4444", "agent"),
+  task("integration_claude", "Claude Code", "#F5F6F8", "claudeCode"),
   task("integration_resend", "Resend", "#22C55E", "n8n"),
   task("integration_n8n", "n8n", "#F29B38", "n8n"),
   task("integration_vercel", "Vercel", "#7C5CFF", "n8n"),
@@ -69,7 +72,8 @@ export const INTEGRATION_AGENTS: AgentTask[] = [
 ];
 
 export const TOGGLEABLE_INTEGRATION_IDS = [
-  "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
+  "coco_verde", "coco_rojo",
+  "integration_claude", "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
   "integration_notion", "integration_calcom", "integration_stripe",
 ];
 
@@ -100,7 +104,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoCloseInterval: 15,
   absenceInterval: 180,
   activeIntegrations: [
-    "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
+    "coco_verde", "coco_rojo",
   ],
   screen: "primary",
   autostart: false,
@@ -132,7 +136,7 @@ class AppState {
   fileDragOver = false;
 
   promptContext: PromptContext | null = null;
-  droppedFile: { name: string; path: string } | null = null;
+  droppedFile: { name: string; path?: string; base64?: string; size?: number } | null = null;
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
@@ -199,32 +203,18 @@ class AppState {
     this.notify();
   }
 
-  /** loadIntegrationTasks() — VS Code always on, the rest opt-in (max 4). */
+  /** loadIntegrationTasks() — Coco Squad always available. */
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
-      const shouldLoad =
-        proto.id === "integration_claude" || this.settings.activeIntegrations.includes(proto.id);
+      const isSquad = proto.id === "coco_blanco" || proto.id === "coco_verde" || proto.id === "coco_rojo";
+      const shouldLoad = isSquad || this.settings.activeIntegrations.includes(proto.id);
       const idx = this.tasks.findIndex((t) => t.id === proto.id);
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
     }
-    // Order: integration_claude first, then agent_* pills (visible in slice(0,4)),
-    // then other integrations in declaration order.
     const order = INTEGRATION_AGENTS.map((t) => t.id);
-    this.tasks.sort((a, b) => {
-      const isAgentA = a.id.startsWith("agent_");
-      const isAgentB = b.id.startsWith("agent_");
-      // integration_claude always first
-      if (a.id === "integration_claude") return -1;
-      if (b.id === "integration_claude") return 1;
-      // agent_* before other integrations; preserve insertion order among themselves
-      if (isAgentA && !isAgentB) return -1;
-      if (isAgentB && !isAgentA) return 1;
-      if (isAgentA && isAgentB) return 0;
-      // both known integrations → declaration order
-      return order.indexOf(a.id) - order.indexOf(b.id);
-    });
-    if (!this.focusId) this.focusId = "integration_claude";
+    this.tasks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    if (!this.focusId) this.focusId = "coco_blanco";
     this.notify();
   }
 
@@ -264,7 +254,7 @@ class AppState {
   }
 
   defaultView(): IslandViewName {
-    return this.tasks.length === 0 ? "empty" : "overview";
+    return "overview";
   }
 }
 
