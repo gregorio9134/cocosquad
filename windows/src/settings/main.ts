@@ -25,186 +25,37 @@ function toggle(on: boolean, onChange: (v: boolean) => void): HTMLElement {
   return el;
 }
 
-function statusDot(ok: boolean): HTMLElement {
-  return h("i", { class: "dot", style: `background:${ok ? "#22c55e" : "#f4505e"}` });
-}
+// ── Miembros del Squad ────────────────────────────────────────────────────────
 
-// ── Miembros del Squad section ────────────────────────────────────────────────
-
-interface IntegrationDef {
-  id: string;
-  name: string;
-  role?: string;
-  color: string;
-  /** Credential Manager keys, in the order they are shown. */
-  fields: { key: string; label: string; placeholder: string; secret: boolean }[];
-}
-
-const INTEGRATIONS: IntegrationDef[] = [
-  {
-    id: "coco_verde",
-    name: "Coco Verde",
-    role: "Operaciones & Agenda",
-    color: "#10B981",
-    fields: [
-      { key: "coco-verde-endpoint", label: "Webhook / Endpoint", placeholder: "http://129.158.204.84/api/coco/ops", secret: false },
-      { key: "coco-verde-token", label: "Token / Clave API", placeholder: "sk-ops-…", secret: true },
-    ],
-  },
-  {
-    id: "coco_rojo",
-    name: "Coco Rojo",
-    role: "Deep Research & Tareas",
-    color: "#EF4444",
-    fields: [
-      { key: "coco-rojo-endpoint", label: "Endpoint de Research", placeholder: "http://129.158.204.84/api/coco/research", secret: false },
-      { key: "coco-rojo-token", label: "Token / Clave API", placeholder: "sk-res-…", secret: true },
-    ],
-  },
-  {
-    id: "integration_stripe",
-    name: "Stripe",
-    color: "#0570DE",
-    fields: [{ key: "stripe-api-key", label: "Clave secreta", placeholder: "sk_live_…", secret: true }],
-  },
-  {
-    id: "integration_github",
-    name: "GitHub",
-    color: "#F4505E",
-    fields: [{ key: "github-token", label: "Token de acceso", placeholder: "ghp_…", secret: true }],
-  },
-  {
-    id: "integration_vercel",
-    name: "Vercel",
-    color: "#7C5CFF",
-    fields: [{ key: "vercel-token", label: "Token", placeholder: "…", secret: true }],
-  },
-  {
-    id: "integration_n8n",
-    name: "n8n",
-    color: "#F29B38",
-    fields: [
-      { key: "n8n-url", label: "URL de instancia", placeholder: "https://n8n.ejemplo.com", secret: false },
-      { key: "n8n-api-key", label: "Clave API", placeholder: "…", secret: true },
-    ],
-  },
-  {
-    id: "integration_resend",
-    name: "Resend",
-    color: "#22C55E",
-    fields: [{ key: "resend-api-key", label: "Clave API", placeholder: "re_…", secret: true }],
-  },
-  {
-    id: "integration_notion",
-    name: "Notion",
-    color: "#8C8C8C",
-    fields: [{ key: "notion-api-key", label: "Token de integración", placeholder: "ntn_…", secret: true }],
-  },
-  {
-    id: "integration_calcom",
-    name: "Cal.com",
-    color: "#C9956A",
-    fields: [{ key: "calcom-api-key", label: "Clave API", placeholder: "cal_…", secret: true }],
-  },
-];
-
-const MAX_ACTIVE = 6;
-
-function squadMembersSection(present: Record<string, boolean>): HTMLElement {
-  const note = h("div", { class: "hint" });
+function squadMembersSection(): HTMLElement {
+  const members = [
+    ["Coco Blanco", "#FFFFFF", "Asistente general y productividad"],
+    ["Coco Verde", "#10B981", "Operaciones y comunicaciones"],
+    ["Coco Rojo", "#EF4444", "Investigación y tareas profundas"],
+  ];
   const grid = h("div", { class: "squad-grid" });
-
-  function updateNote() {
-    const used = settings.activeIntegrations.length;
-    note.textContent = `Selecciona hasta ${MAX_ACTIVE} accesos para mostrar junto a Coco — ${used}/${MAX_ACTIVE} en uso. Las claves se guardan de forma segura en Windows Credential Manager.`;
-  }
-
-  for (const def of INTEGRATIONS) {
-    const active = settings.activeIntegrations.includes(def.id);
-    const sw = h("button", { class: active ? "switch on" : "switch" });
-    sw.addEventListener("click", () => {
-      const on = settings.activeIntegrations.includes(def.id);
-      if (on) {
-        settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== def.id);
-      } else {
-        if (settings.activeIntegrations.length >= MAX_ACTIVE) return;
-        settings.activeIntegrations = [...settings.activeIntegrations, def.id];
-      }
-      sw.classList.toggle("on", !on);
-      updateNote();
-      void save();
-    });
-
-    const fieldsContainer = h("div", { class: "squad-member-fields" });
-    for (const field of def.fields) {
-      const isStored = present[field.key] ?? false;
-      const input = h("input", {
-        type: field.secret ? "password" : "text",
-        placeholder: isStored ? "••••••••  (guardada)" : field.placeholder,
-        autocomplete: "off",
-        spellcheck: "false",
-      }) as HTMLInputElement;
-
-      const dotEl = statusDot(isStored);
-      const saveBtn = h("button", { class: "squad-save-btn", text: "Guardar" });
-
-      saveBtn.addEventListener("click", async () => {
-        const value = input.value.trim();
-        try {
-          await Bridge.secretSet(field.key, value);
-          present[field.key] = value.length > 0;
-          input.value = "";
-          input.placeholder = value ? "••••••••  (guardada)" : field.placeholder;
-          dotEl.style.background = value ? "#22c55e" : "#f4505e";
-          saveBtn.textContent = "✓";
-          setTimeout(() => {
-            saveBtn.textContent = "Guardar";
-          }, 1500);
-        } catch {
-          dotEl.style.background = "#f5a524";
-          saveBtn.textContent = "Error";
-          setTimeout(() => {
-            saveBtn.textContent = "Guardar";
-          }, 1500);
-        }
-      });
-
-      const fieldGroup = h(
-        "div",
-        { class: "squad-field-group" },
-        h("label", { class: "squad-field-label", text: field.label }),
-        h("div", { class: "squad-field-row" }, input, saveBtn, dotEl),
-      );
-      fieldsContainer.append(fieldGroup);
-    }
-
-    const card = h(
+  for (const [name, color, role] of members) {
+    grid.append(h(
       "div",
       { class: "squad-member-card" },
       h(
         "div",
         { class: "squad-member-header" },
-        sw,
-        h("i", { class: "dot", style: `background:${def.color}` }),
+        h("i", { class: "dot", style: `background:${color}` }),
         h(
           "div",
           { style: "display:flex;flex-direction:column;gap:1px;" },
-          h("span", { class: "squad-member-name", text: def.name }),
-          def.role ? h("span", { style: "font-size:10.5px;color:#9aa1b2;line-height:1.2;", text: def.role }) : null,
+          h("span", { class: "squad-member-name", text: name }),
+          h("span", { style: "font-size:10.5px;color:#9aa1b2;line-height:1.2;", text: role }),
         ),
       ),
-      fieldsContainer,
-    );
-
-    grid.append(card);
+    ));
   }
-
-  updateNote();
   return h(
     "section",
     {},
     h("h2", {}, h("span", { text: "Miembros del Squad" })),
-    note,
+    h("div", { class: "hint", text: "Los tres Cocos se comunican con el servidor Coco Squad." }),
     grid,
   );
 }
@@ -355,31 +206,14 @@ async function main() {
     initialSettings = { ...settings };
   }
 
-  const keys = [
-    "coco-verde-endpoint",
-    "coco-verde-token",
-    "coco-rojo-endpoint",
-    "coco-rojo-token",
-    "stripe-api-key",
-    "github-token",
-    "vercel-token",
-    "n8n-url",
-    "n8n-api-key",
-    "resend-api-key",
-    "notion-api-key",
-    "calcom-api-key",
-  ];
-  const present: Record<string, boolean> = {};
-  for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
-
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Coco Squad" }), h("span", { class: "version", text: "0.1.0" })),
-    squadMembersSection(present),
+    squadMembersSection(),
     generalSection(),
     h("div", {
       class: "hint",
-      text: "Sin telemetría. Las solicitudes de red solo van a los servicios que configures tú mismo.",
+      text: "Sin telemetría. El chat se conecta al servidor Coco Squad.",
     }),
     actionsSection(),
   );

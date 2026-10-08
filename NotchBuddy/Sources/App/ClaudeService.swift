@@ -204,49 +204,97 @@ final class ClaudeService {
     // MARK: - Chat (multi-turn, natural text + web search)
 
     func chat(query: String, context: PromptContext?, state: AppState) async {
-        guard state.chatProvider == .anthropic else {
-            await chatOpenAICompatible(query: query, context: context, state: state)
-            return
-        }
-        guard let key = apiKey, !key.isEmpty else {
-            await showError("API key missing. Open settings.", state: state)
-            return
-        }
-
-        // Build user content for this turn
-        var userContent: [[String: Any]] = []
-
-        // Add file/window context on first message only
-        if conversationMessages.isEmpty, let context = context {
+        var contexto: [String: Any] = [:]
+        if state.chatHistory.count == 1, let context {
             switch context {
-            case .window(let app, let title, let url):
-                var text = "Context — App: \(app), Window: \(title)"
-                if let url = url { text += ", URL: \(url)" }
-                userContent.append(["type": "text", "text": text])
+            case .window(let appName, let title, let url):
+                contexto["app"] = appName
+                contexto["ventana"] = title
+                if let url { contexto["url"] = url }
             case .file(let name, let fileURL):
-                if let fileURL = fileURL, let block = readFileAsBlock(url: fileURL) {
-                    userContent.append(block)
+                contexto["nombre"] = name
+                if let fileURL {
+                    do {
+                        let data = try Data(contentsOf: fileURL)
+                        guard data.count <= 25 * 1024 * 1024 else {
+                            throw NSError(
+                                domain: "CocoChat",
+                                code: 1,
+                                userInfo: [NSLocalizedDescriptionKey: "El archivo supera el límite de 25 MB."]
+                            )
+                        }
+                        let path = fileURL.path
+                        contexto["path"] = path
+                        contexto["archivo"] = path
+                        contexto["archivo_base64"] = data.base64EncodedString()
+                        contexto["tamano_bytes"] = data.count
+                        if data.count < 50_000, let text = String(data: data, encoding: .utf8) {
+                            contexto["contenido_texto"] = text
+                        }
+                    } catch {
+                        await showError("No se pudo leer el archivo: \(error.localizedDescription)", state: state)
+                        return
+                    }
                 }
-                userContent.append(["type": "text", "text": "File: \(name)"])
             }
         }
-        userContent.append(["type": "text", "text": query])
 
-        conversationMessages.append(["role": "user", "content": userContent])
+        let cocoIds: Set<String> = ["coco_blanco", "coco_verde", "coco_rojo"]
+        let cocoId = state.focusId.flatMap { cocoIds.contains($0) ? $0 : nil } ?? "coco_blanco"
+        guard let url = URL(string: "http://129.158.204.84/api/coco/chat") else {
+            await showError("La dirección del servidor Coco no es válida.", state: state)
+            return
+        }
 
-        let body: [String: Any] = [
-            "model": model,
-            "max_tokens": 4096,
-            "tools": webSearchTools,
-            "system": systemPrompt,
-            "messages": conversationMessages,
-        ]
+        var request = URLRequest(url: url, timeoutInterval: 45)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: [
+                "message": query,
+                "contexto": contexto,
+                "coco_id": cocoId,
+            ])
+        } catch {
+            await showError("No se pudo preparar el mensaje para Coco: \(error.localizedDescription)", state: state)
+            return
+        }
 
         do {
-            let data = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
-            await handleChatResult(data, state: state)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let response = response as? HTTPURLResponse else {
+                throw NSError(
+                    domain: "CocoChat",
+                    code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "El servidor Coco devolvió una respuesta inválida."]
+                )
+            }
+            guard (200..<300).contains(response.statusCode) else {
+                let body = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+                let detail = body?["error"] as? String ?? body?["respuesta"] as? String
+                    ?? String(data: data, encoding: .utf8) ?? "Sin detalles."
+                throw NSError(
+                    domain: "CocoChat",
+                    code: response.statusCode,
+                    userInfo: [NSLocalizedDescriptionKey: "Servidor Coco (\(response.statusCode)): \(detail)"]
+                )
+            }
+            guard let body = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let text = (body["respuesta"] as? String) ?? (body["reply"] as? String),
+                  !text.isEmpty else {
+                throw NSError(
+                    domain: "CocoChat",
+                    code: 3,
+                    userInfo: [NSLocalizedDescriptionKey: "El servidor Coco devolvió una respuesta sin texto."]
+                )
+            }
+            await MainActor.run {
+                state.chatHistory.append(ChatMessage(role: .assistant, content: text))
+                state.stateOverride = nil
+                state.view = .prompt
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            }
         } catch {
-            conversationMessages.removeLast()
             await showError(error.localizedDescription, state: state)
         }
     }

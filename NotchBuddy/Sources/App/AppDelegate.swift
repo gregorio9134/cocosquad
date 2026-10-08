@@ -9,8 +9,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Ignore SIGPIPE — prevents crash when nb-hook closes socket before we write response
         signal(SIGPIPE, SIG_IGN)
-        // Warm up Keychain cache on main thread BEFORE any poller or view touches it
-        _ = KeychainStore.shared
         NSApp.setActivationPolicy(.accessory)
         setupMenuBarItem()
         setupIsland()
@@ -88,18 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController = IslandWindowController()
         islandController?.showWindow(nil)
         islandController?.fsm.launch()
-        HookServer.shared.start()
-        N8nPoller.shared.start()
-        VercelPoller.shared.start()
-        ResendPoller.shared.start()
-        GithubPoller.shared.start()
-        StripePoller.shared.start()
-        CalcomPoller.shared.start()
-        NotionPoller.shared.start()
         NotificationCenter.default.addObserver(self, selector: #selector(openSettings),
                                                name: .openFullSettings, object: nil)
-        #if !APPSTORE
-        _ = MusicController.shared
-        #endif
     }
 }

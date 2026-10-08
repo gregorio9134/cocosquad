@@ -1,14 +1,13 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
-mod claude;
+mod coco_client;
+mod coco_protocol;
+mod encoding;
 mod files;
-mod hooks;
-mod integrations;
 mod island;
 mod log;
 mod pipe;
 mod platform;
-mod secrets;
 mod settings;
 mod tray;
 
@@ -21,11 +20,10 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
-use claude::{Chat, ChatContext, ChatReply};
+use coco_client::Chat;
+use coco_protocol::{ChatContext, ChatReply};
 use files::DroppedFile;
-use hooks::{HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
-use pipe::Pending;
 use settings::Settings;
 
 pub struct Shared {
@@ -39,7 +37,6 @@ pub struct BootInfo {
     settings: Settings,
     screen: ScreenInfo,
     version: String,
-    hook_path: String,
     /// False where the OS has no global cursor (Wayland): the page then reports
     /// the cursor from its own mouse events.
     cursor_poll: bool,
@@ -47,15 +44,12 @@ pub struct BootInfo {
 
 #[tauri::command]
 fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
-    let mut settings = shared.settings.lock().unwrap().clone();
-    // The real state of ~/.claude/settings.json wins over whatever we stored.
-    settings.hooks_installed = hooks::status().installed;
+    let settings = shared.settings.lock().unwrap().clone();
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,
         screen,
         version: env!("CARGO_PKG_VERSION").to_string(),
-        hook_path: settings::hook_exe_path().to_string_lossy().to_string(),
         cursor_poll: platform::CURSOR_POLL,
     }
 }
@@ -176,68 +170,7 @@ fn quit_app(app: AppHandle) {
     std::process::exit(0);
 }
 
-/// Tray → Pause. Paused means paused: the pollers stop talking to the network,
-/// not just the island stopping showing things.
-#[tauri::command]
-fn set_paused(paused: bool) {
-    integrations::set_paused(paused);
-}
-
-// ── Claude Code hooks ─────────────────────────────────────────────────────────
-
-#[tauri::command]
-fn hooks_status() -> HookStatus {
-    hooks::status()
-}
-
-/// Returns the diff the user has to look at before anything is written.
-#[tauri::command]
-fn hooks_preview(install: bool) -> Result<HookPreview, String> {
-    hooks::preview(install)
-}
-
-/// Only ever called from an explicit click in the settings window.
-#[tauri::command]
-fn hooks_apply(
-    app: AppHandle,
-    shared: State<Shared>,
-    install: bool,
-    fingerprint: String,
-) -> Result<String, String> {
-    // The fingerprint comes from the preview the user actually looked at, so a
-    // settings.json that changed in between is refused rather than overwritten.
-    let backup = hooks::write(install, &fingerprint)?;
-    let updated = {
-        let mut current = shared.settings.lock().unwrap();
-        current.hooks_installed = install;
-        let _ = settings::save(&current);
-        current.clone()
-    };
-    let _ = app.emit("settings-changed", updated);
-    Ok(backup)
-}
-
-#[tauri::command]
-fn approval_decision(app: AppHandle, request_id: String, decision: String) {
-    pipe::answer(&app, &request_id, &decision);
-}
-
-/// The island has the card on screen, so the long wait for a human may begin.
-/// Until this arrives the relay only waits a few hundred milliseconds, which is
-/// what stops a paused or unresponsive island from freezing Claude Code.
-#[tauri::command]
-fn approval_ack(app: AppHandle, request_id: String) {
-    pipe::acknowledge(&app, &request_id);
-}
-
-/// Nobody can act on this request — the island is paused, or another card is
-/// already up. Claude Code falls back to asking in the terminal immediately.
-#[tauri::command]
-fn approval_decline(app: AppHandle, request_id: String) {
-    pipe::decline(&app, &request_id);
-}
-
-// ── Chat, files and secrets ───────────────────────────────────────────────────
+// ── Chat and files ────────────────────────────────────────────────────────────
 
 /// One chat turn. The API key and any file bytes stay on the Rust side.
 #[tauri::command]
@@ -249,7 +182,7 @@ async fn chat_send(
     coco_id: Option<String>,
 ) -> Result<ChatReply, String> {
     let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context, coco_id).await
+    coco_client::send(&chat, &model, query, context, coco_id).await
 }
 
 #[tauri::command]
@@ -261,36 +194,6 @@ fn chat_reset(chat: State<Chat>) {
 #[tauri::command]
 fn ingest_file(path: String) -> Result<DroppedFile, String> {
     files::ingest(&path)
-}
-
-/// The island may only ask whether a key exists — never read it.
-#[tauri::command]
-fn secret_present(key: String) -> bool {
-    secrets::present(&key)
-}
-
-#[tauri::command]
-fn secret_set(key: String, value: String) -> Result<(), String> {
-    secrets::set(&key, &value)
-}
-
-#[tauri::command]
-fn secret_clear(key: String) -> Result<(), String> {
-    secrets::clear(&key)
-}
-
-/// Opens the configured n8n instance — the URL lives in the Credential Manager.
-#[tauri::command]
-fn open_n8n() {
-    if let Some(url) = secrets::get("n8n-url") {
-        open_url(url);
-    }
-}
-
-/// Refresh buttons in the integration cards.
-#[tauri::command]
-async fn refresh_integration(app: AppHandle, id: String) {
-    integrations::poll_once(app, &id).await;
 }
 
 pub fn app_log(message: impl AsRef<str>) {
@@ -421,7 +324,6 @@ pub fn run() {
             settings: Mutex::new(loaded.clone()),
             gate: gate.clone(),
         })
-        .manage(Pending::default())
         .manage(Chat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
@@ -433,24 +335,12 @@ pub fn run() {
             open_url,
             open_in_vscode,
             quit_app,
-            hooks_status,
-            hooks_preview,
-            hooks_apply,
-            approval_decision,
-            approval_ack,
-            approval_decline,
             log_line,
             chat_send,
             chat_reset,
             ingest_file,
-            secret_present,
-            secret_set,
-            secret_clear,
-            refresh_integration,
-            open_n8n,
             open_settings_window,
             close_settings_window,
-            set_paused,
         ])
         .setup(move |app| {
             log::line("step: setup entered");
@@ -489,9 +379,7 @@ pub fn run() {
             });
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
-            hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
-            integrations::start(handle.clone());
             if std::env::args().any(|a| a == "--settings") {
                 log::line("CLI argument --settings detected: showing settings window");
                 show_settings_window(&handle);

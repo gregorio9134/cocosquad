@@ -1,0 +1,343 @@
+COCO SQUAD — COMUNICACION ENTRE NOTEBOOKS
+Actualizado: 8 de octubre de 2026
+
+PARA QUE SIRVE ESTE ARCHIVO
+
+Este archivo comparte el contexto de trabajo entre las notebooks/sesiones de
+asistencia de Gregorio. Al empezar una sesion nueva, leerlo junto con el estado
+actual del repositorio. Al terminar un bloque importante de trabajo, actualizar
+este archivo con decisiones nuevas, cambios realizados, pruebas y pendientes.
+
+No asumir que el contenido de una conversacion anterior esta disponible en otra
+notebook. El codigo y este archivo, una vez sincronizados con GitHub, son la
+referencia compartida.
+
+REPOSITORIO Y ESTADO ACTUAL
+
+- Repositorio de trabajo: https://github.com/gregorio9134/Coco-Squad
+- Es privado. El nombre en GitHub usa guion; no admite espacios.
+- Se creo como una copia de https://github.com/gregorio9134/cocosquad.
+- El repositorio original debe conservarse intacto.
+- La rama main del nuevo repositorio fue verificada en el commit
+  1977c782f079ecf362a272ed6a1729dc659f8769, igual a la copia local al crearla.
+- La base original de producto es Coucou:
+  https://github.com/Louis-CFM/coucou
+- En la copia local, origin apunta al repo gregorio9134/cocosquad,
+  upstream apunta a Louis-CFM/coucou y coco-squad apunta al nuevo repo.
+- Coucou tenia 188 commits por delante y Coco Squad cinco commits propios en el
+  momento de la comparacion. No se integro upstream todavia. Hacerlo con cuidado,
+  idealmente en una rama de integracion y probando antes de actualizar main.
+
+VISION DEL PRODUCTO
+
+Coco Squad busca ser un escuadron multiproposito de agentes de IA, conectado a
+un servidor de IA que Gregorio ya tiene implementado en Oracle Cloud. El usuario
+quiere que los Cocos puedan ayudar con muchas tareas digitales, aprender
+preferencias/uso para mejorar el servicio y comunicarse/cooperar entre ellos.
+
+DECISION DE ALCANCE: SOLO EL SQUAD DE COCO
+
+- El producto debe mostrar y usar unicamente Coco Blanco, Coco Verde y Coco
+  Rojo en la implementacion cliente actual. Coco Azul se agrego al alcance
+  funcional futuro como cuarto Coco; hasta contar con implementacion y validacion
+  de punta a punta, no debe mostrarse como capacidad disponible. No incluir
+  activas las integraciones heredadas de Coucou, conexiones a
+  editores/agentes externos ni proveedores de chat externos.
+- Las capacidades nuevas se incorporan gradualmente al Squad cuando se
+  desarrollen y se validen; no se habilitan pollers ni conexiones externas por
+  defecto.
+- La base local ya fue ajustada para mostrar solo los tres Cocos y no iniciar
+  pollers, servicios de musica ni servidores de hooks heredados.
+- Windows conserva codigo viejo de integraciones/hooks que ya no se registra
+  desde el frontend ni inicia pollers. Se preserva el pipe local solo para
+  despertar una instancia existente; los eventos de hooks externos se ignoran.
+- macOS conserva fuentes de codigo heredado sin punto de entrada activo; no
+  inicia sus pollers, hooks ni proveedor externo de chat.
+- No borrar configuraciones o hooks instalados en la computadora del usuario
+  automaticamente. El cliente deja de escucharlos/activarlos.
+
+Roles deseados:
+
+- Coco Blanco: agente principal para tareas habituales; chatbot, planificacion,
+  organizacion, ayuda con el dispositivo, adaptacion a las preferencias del
+  usuario y funciones de productividad inspiradas, entre otras, en Taby.
+- Coco Verde: gestor reactivo de redes y comunicaciones, especialmente
+  WhatsApp. Debe atender consultas entrantes; tambien puede clasificar y
+  priorizar conversaciones, resumir chats, detectar pendientes, preparar
+  borradores de respuestas/publicaciones y ayudar a revisar comentarios o
+  reseñas en redes conectadas. El usuario confirmo que estas capacidades
+  propuestas forman parte del alcance deseado de Verde.
+- Verde no envia mensajes, inicia conversaciones, responde comentarios ni
+  publica contenido sin confirmacion explicita para esa accion. No hace envios
+  masivos ni automatizaciones indiscriminadas. Las automatizaciones futuras
+  deben ser limitadas, configurables y faciles de detener; las redes se conectan
+  explicitamente y solo si hay una integracion permitida.
+- Coco Rojo: tareas de mayor demanda, investigacion profunda, analisis y
+  sintesis estilo NotebookLM, informes descargables en distintos formatos y
+  trabajos largos en segundo plano.
+
+COMPORTAMIENTO FUNCIONAL ACORDADO
+
+- Coco Blanco es el agente maestro: chat de IA (Gemini desde el servidor),
+  planificacion/productividad, busqueda y navegacion web, analisis de archivos,
+  fotos y videos, agenda, control asistido del dispositivo y coordinacion con
+  Verde y Rojo.
+- Coco Rojo es el encargado de las tareas pesadas o demoradas en segundo plano,
+  especialmente investigaciones profundas estilo NotebookLM o mas profundas y
+  la creacion de informes/archivos con sus resultados. Mientras Rojo trabaja,
+  Coco Blanco debe seguir disponible para conversar y recibir otras tareas; al
+  completar, Blanco presenta el resultado y permite abrir o descargar el
+  informe.
+- Coco Azul es el analista de datos y reportes del Squad: para cada cuenta puede
+  analizar habitos de uso de la app y datos del negocio (consultas, ventas,
+  productos e inventario) y generar reportes mensuales con recomendaciones.
+- La recoleccion de Azul sera opt-in por categoria, con controles para consultar,
+  exportar, pausar y borrar los datos. Solo se recopilan fuentes/campos
+  autorizados; no se hace telemetria oculta ni se reutilizan datos de una cuenta
+  para otra. Los reportes explican origen, periodo, cobertura, limitaciones y
+  evidencia de cada recomendacion.
+- Azul puede recomendar cambios, pero no modifica stock, precios, campanas,
+  registros ni datos de clientes sin autorizacion/confirmacion explicita. Para
+  SaaS se requiere aislamiento de datos por cuenta y controles de acceso.
+- Se recomiendan como ampliaciones de Azul: pronostico de demanda y reposicion
+  con incertidumbre explicita, rentabilidad si se aportan costos, comparativas,
+  anomalias explicables y consultas que no se convirtieron en ventas cuando sea
+  posible vincular los datos de forma autorizada. Son propuestas, no funciones
+  implementadas.
+- Blanco puede explorar y preparar acciones, pero debe pedir confirmacion
+  explicita antes de enviar, comprar, borrar, publicar o cambiar ajustes; esto
+  incluye acciones equivalentes como mensajes, invitaciones o reservas.
+- Blanco conserva el objetivo de la solicitud cuando delega y presenta el
+  resultado integrado. Verde se enfoca en operaciones/comunicaciones reactivas.
+- El trabajo de fondo de Rojo requiere progreso/estado, cancelacion y entrega
+  del informe al completar; todavia es comportamiento deseado, no una capacidad
+  ya validada en el servidor.
+- Se recomiendan memoria de preferencias controlable, tareas largas con progreso
+  y cancelacion, vista previa/deshacer, voz y estado claro de herramientas;
+  quedan como ideas para evaluar, no como capacidades ya implementadas.
+- La especificacion ampliada esta en `docs/COMPORTAMIENTO-COCOS.md`. El servidor
+  del agente no esta en este repositorio: sus instrucciones y herramientas se
+  implementaran/verificaran cuando se trabaje con ese servidor en la otra
+  notebook. El codigo cliente aqui no debe presentar estas metas como funciones
+  ya disponibles.
+
+Taby es una referencia funcional, no una dependencia ni necesariamente algo que
+se deba copiar literalmente. En su sitio presenta tareas, recordatorios,
+calendario, notas, habitos, concentracion/bloqueo de distracciones, voz,
+funcionamiento local/offline, edicion de imagenes y funciones cloud.
+Referencia: https://www.heytaby.com/
+
+ARQUITECTURA: RECOMENDACION DE TRABAJO
+
+La recomendacion discutida es compartir la mayor cantidad posible de logica y
+experiencia entre Mac, Windows, Android e iOS sin forzar una interfaz identica:
+
+1. Mantener el servidor/API como cerebro comun del escuadron, con un contrato
+   estable para agentes, mensajes, contexto, tareas largas y resultados.
+2. Reutilizar la base Tauri (TypeScript/Rust) como posible cliente compartido
+   para escritorio y, tras validar la ruta, movil. Usar adaptadores nativos
+   donde el sistema operativo lo exija.
+3. Migrar o extender la interfaz Mac gradualmente; no reescribir ni retirar de
+   golpe la app SwiftUI existente de Coucou.
+4. Implementar capacidades de punta a punta y probar los equivalentes en las
+   plataformas soportadas.
+5. Registrar diferencias de capacidades/permisos por plataforma.
+
+Esto es una direccion recomendada, no una decision de migracion ya ejecutada.
+Antes de comprometerse con una migracion amplia, conviene probar una capacidad
+real del agente en Mac y Windows y validar el esfuerzo de Tauri en las
+plataformas objetivo.
+
+ESTADO TECNICO QUE SE REVISO
+
+- NotchBuddy/: app original nativa de macOS, escrita en Swift/SwiftUI.
+- windows/: cliente de escritorio Tauri, con frontend TypeScript y backend Rust.
+- El fork incluye cambios propios de Coco Squad, incluido un cliente Windows que
+  envia el chat al servidor Coco en /api/coco/chat y puede mandar contexto de
+  archivo/ventana y coco_id.
+- Windows y macOS presentan a Coco Blanco, Coco Verde y Coco Rojo como los
+  unicos miembros seleccionables del Squad.
+- La implementacion del servidor Oracle y de los agentes no esta en este repo;
+  este repositorio contiene clientes de escritorio.
+- El chat de Windows y el chat nativo macOS usan `/api/coco/chat` con `message`,
+  `contexto` y `coco_id`. macOS ya no necesita claves de proveedores externos.
+- El servidor esta configurado en este cliente con el endpoint conocido
+  `http://129.158.204.84`; macOS agrega una excepcion ATS limitada a ese host
+  para que URLSession pueda usar el HTTP que actualmente expone el servidor.
+- La URL del cliente Rust ya no consulta una clave `coco-server-url` que no
+  estaba permitida por el almacén seguro.
+- README y varias paginas aun conservan nombre/referencias de Coucou; revisar
+  branding/documentacion mas adelante, sin mezclarlo con cambios funcionales.
+
+PRIMER PASO DE MODULARIZACION (8 DE OCTUBRE DE 2026)
+
+- Se creo la rama local refactor/coco-client-modules para aislar el trabajo del
+  main y facilitar su revision.
+- Se renombro windows/src-tauri/src/claude.rs a coco_client.rs porque el modulo
+  implementa el cliente del servidor Coco, no un fallback de Claude.
+- Se separaron en coco_protocol.rs los tipos y el armado/lectura del contrato
+  JSON del chat; coco_client.rs queda como capa de transporte y estado del chat.
+- Se extrajo la codificacion Base64 compartida a encoding.rs, utilizada por el
+  cliente Coco y por autenticacion Basic de una integracion.
+- Se agregaron pruebas unitarias para el contrato JSON de chat y para entradas
+  Base64 vacias, longitudes con padding y datos binarios.
+- Se ampliaron las pruebas del protocolo para contexto de ventana recibido
+  desde el frontend, adjuntos con Base64 provisto, campo de respuesta legacy y
+  respuesta sin texto.
+- Se actualizaron las referencias del codigo a los nuevos nombres de modulo.
+- No se cambiaron intencionalmente los flujos ni el formato de las solicitudes.
+- Luego se cambio el alcance del producto a solo Coco Squad:
+  - El estado Windows contiene solo los tres Cocos; ajustes e isla ya no ofrecen
+    integraciones Coucou ni claves externas.
+  - El backend Windows ya no compila ni inicia pollers de integraciones, y se
+    quitaron del handler Tauri los comandos para instalar hooks o aprobar
+    permisos externos. El pipe local solo conserva la señal `wake` para
+    reactivar una instancia existente; descarta los demas eventos.
+  - macOS define solo los tres Cocos en su catalogo, muestra el chat dirigido
+    al Coco seleccionado y llama al servidor Coco en lugar de Anthropic.
+  - macOS no inicia los pollers, hooks o controlador de musica de Coucou; los
+    ajustes visibles conservan solo el Squad y preferencias generales.
+  - `docs/INTEGRATIONS.md` aclara que las integraciones listadas estan
+    desactivadas para Coco Squad y se agregaran solo gradualmente.
+- Se instalaron Rust/cargo y Node/npm en directorios locales de esta Mac, fuera
+  del repositorio. Las dependencias de Windows se instalaron localmente y no se
+  agrego ni modifico ningun manifiesto o lockfile.
+- La comprobacion TypeScript (tsc --noEmit) y la compilacion Vite de produccion
+  pasaron despues de desactivar las integraciones. `swiftc -parse` paso para
+  todos los fuentes Swift modificados.
+- El parser Rust ahora rechaza respuestas del servidor sin texto en vez de
+  presentar un mensaje de exito inventado; la prueba unitaria correspondiente
+  espera ese error.
+- No se pudo completar cargo test en esta Mac: el build Tauri requiere
+  coucou-hook.exe y el crate Tauri tiene funciones de plataforma solo para
+  Windows/Linux, por lo que compilarlo para macOS arroja referencias ausentes.
+  npm run build incluye un prebuild Cargo del hook; el chequeo TypeScript y
+  Vite se ejecutaron directamente y pasaron. Hay que validar Cargo y el build
+  Tauri en Windows.
+- Rustfmt paso para los modulos nuevos/modificados del cliente Coco. El chequeo
+  de formato de todo el workspace marca diferencias preexistentes ajenas a
+  este cambio, por lo que no se reformatearon esos archivos.
+- git diff --check y la busqueda de referencias a claude/base64_for pasaron.
+  El cambio no esta subido a GitHub todavia.
+- El archivo local de contexto se creo/desarrollo en este checkout; revisar su
+  estado de Git antes de sincronizarlo con la version ya publicada en main.
+
+LISTA DE PRUEBAS PARA LA NOTEBOOK WINDOWS (PENDIENTE)
+
+Primero, cuando la rama refactor/coco-client-modules este disponible en esa
+notebook:
+
+1. Compilacion y pruebas automaticas:
+   - Desde windows/: cargo test.
+   - Desde windows/: cargo check.
+   - Desde windows/: npm run build.
+   Resultado esperado: pruebas Rust y compilaciones Rust/TypeScript terminan
+   sin errores. No ejecutar formateo sobre todo el workspace como parte de esta
+   prueba: el chequeo local detecto diferencias de formato preexistentes.
+
+2. Arranque y ventana:
+   - Abrir la app en modo desarrollo y confirmar que inicia sin errores.
+   - Confirmar que la isla aparece, se despliega/oculta y conserva sus vistas.
+   Resultado esperado: el cambio interno del cliente no altera la interfaz.
+
+3. Chat del escuadron:
+   - Enviar un mensaje simple a Coco Blanco.
+   - Enviar un mensaje seleccionando Coco Verde y otro seleccionando Coco Rojo.
+   - Confirmar respuesta, nombre/color devueltos y seleccion de Coco, si el
+     servidor devuelve esos metadatos.
+   Resultado esperado: el servidor recibe message, coco_id y contexto con el
+   formato JSON que ya esperaba; la respuesta se muestra en el chat.
+
+4. Contexto de ventana y archivo:
+   - Enviar un mensaje con contexto de ventana/app y URL.
+   - Adjuntar un archivo de texto pequeno y confirmar que nombre, path,
+     archivo_base64, tamano_bytes y contenido_texto se envian cuando aplican.
+   - Probar archivo no textual o con Base64 ya preparado desde el frontend.
+   Resultado esperado: conserva el comportamiento previo de adjuntos y contexto.
+
+5. Respuestas y errores:
+   - Confirmar una respuesta normal bajo la propiedad respuesta.
+   - Confirmar compatibilidad con reply si el servidor o una respuesta de prueba
+     usa ese campo legacy; confirmar que una respuesta sin texto se informa como
+     error y no aparece como un mensaje exitoso.
+   - Apagar/desconectar el servidor y enviar un mensaje; verificar que la app
+     muestra el error y permite volver a intentar.
+   Resultado esperado: respuesta/error visible y la interfaz no queda bloqueada.
+
+6. Regresion de integraciones:
+     - No aplica como criterio de aceptacion: no se deben activar ni probar
+       integraciones heredadas de Coucou para esta etapa.
+     - Confirmar que las pruebas de la refactorizacion se limitan al contrato del
+       chat de Coco, contexto/archivos y la codificacion Base64 que ese flujo
+       necesite.
+
+En esta Mac pasaron tsc --noEmit, la compilacion Vite de produccion,
+git diff --check y la busqueda de referencias antiguas. Las pruebas Rust y el
+build completo de npm quedan pendientes porque esta app Tauri empaqueta un hook
+especifico de Windows/Linux. Los flujos interactivos requieren probar la app
+en Windows.
+
+TABY: POSIBLES AREAS DE INSPIRACION
+
+- Gestion de tareas, subtareas y fechas.
+- Recordatorios, incluidos los recurrentes.
+- Planificacion diaria con calendario.
+- Notas consultables y modificables conversando.
+- Habitos y seguimiento.
+- Concentracion y gestion de distracciones.
+- Voz.
+- Edicion de imagenes, por ejemplo difuminar datos sensibles.
+- Integracion con agentes externos mediante MCP.
+
+Estas son funciones anunciadas por la web de Taby; no se verifico la app
+ejecutandola. Elegir con Gregorio cuales tienen prioridad y cuales encajan con
+la arquitectura/privacidad de Coco Squad.
+
+ENTORNO DE DESARROLLO Y PREVIEW
+
+- La copia local inicial se preparo en:
+  /Users/Gregorio/Desktop/coco squad
+- La maquina de desarrollo revisada tenia macOS 13.7.8, Swift 5.8.1 y solo
+  Command Line Tools; no tenia Xcode completo.
+- El proyecto macOS declara deployment target macOS 15.0. No se pudo compilar ni
+  ejecutar la app nativa en ese entorno.
+- design/prototype/notch-buddy.html y design/captures/ son un prototipo y
+  capturas de referencia de Coucou; no son la interfaz actual ejecutandose ni
+  muestran el producto final de Coco Squad.
+
+COMO RETOMAR Y MANTENER EL CONTEXTO
+
+Al iniciar:
+
+1. Leer este archivo.
+2. Revisar git status, la rama actual y los ultimos commits; no asumir que este
+   resumen describe el estado mas reciente del codigo.
+3. Verificar si hay cambios sin sincronizar en GitHub o en la otra notebook.
+4. Preguntarle a Gregorio si las prioridades o decisiones cambiaron desde la
+   ultima actualizacion de este archivo.
+
+Al cerrar una sesion:
+
+1. Actualizar la fecha y resumir solo decisiones/cambios confirmados.
+2. Anotar archivos o areas modificadas, pruebas ejecutadas y resultado.
+3. Enumerar pendientes, riesgos y la siguiente tarea recomendada.
+4. No incluir claves, tokens, contrasenas, secretos ni datos privados del
+   servidor.
+5. Sincronizar el archivo y el codigo con el repositorio Coco-Squad para que la
+   otra notebook pueda verlos. Si no se pudo hacer push, indicarlo claramente.
+6. Antes de sobrescribir una edicion hecha por la otra notebook, integrar ambos
+   cambios y preservar los dos conjuntos de avances.
+
+PROXIMA ETAPA SUGERIDA (AUN PENDIENTE)
+
+Primero llevar la rama refactor/coco-client-modules a la notebook Windows y
+completar la lista de pruebas anterior. Resolver cualquier problema antes de
+integrar el cambio. Luego elegir con Gregorio la
+primera capacidad de producto concreta y documentar el contrato de API del
+servidor Coco (sin secretos), para conectar el cliente de forma segura y
+comprobar una experiencia equivalente en Windows y Mac.
+
+Mantener los cambios en una rama de trabajo y no actualizar main ni integrar
+los 188 commits de Coucou sin revisar conflictos, construir y probar.
+
+FIN DEL CONTEXTO INICIAL

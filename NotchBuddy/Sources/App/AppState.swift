@@ -70,7 +70,7 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(openAIChatModel, forKey: "openAIChatModel") }
     }
 
-    // The always-on workspace pill (default: VS Code). Persisted.
+    // The default Coco Squad member. Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
         didSet { UserDefaults.standard.set(mainPillId, forKey: "mainPill") }
     }
@@ -272,15 +272,14 @@ final class AppState: ObservableObject {
         if let d = ud.data(forKey: "activeIntegrations"),
            let a = try? JSONDecoder().decode([String].self, from: d) { activeIntegrations = Set(a) }
         if let v = ud.string(forKey: "mainPill"), !v.isEmpty,
-           PillCatalog.available.contains(where: { $0.id == v && $0.category == .workspace && !$0.comingSoon }) {
+           PillCatalog.available.contains(where: { $0.id == v && $0.category == .agent && !$0.comingSoon }) {
             mainPillId = v
         }
 
         // Sync SoundEngine volume on launch
         SoundEngine.shared.volume = Float(soundVolume)
 
-        // Always load integration pills
-        loadIntegrationTasks()
+        loadSquadMembers()
     }
 
     // MARK: - Computed
@@ -352,31 +351,23 @@ final class AppState: ObservableObject {
         else if view == .overview && tasks.isEmpty { view = .empty }
     }
 
-    /// Load catalog pills into tasks, respecting activeIntegrations. Safe to call multiple times.
-    func loadIntegrationTasks() {
+    /// Load all Coco Squad members. Safe to call multiple times.
+    func loadSquadMembers() {
         let catalog = PillCatalog.available
-        // Sanitize: remove saved IDs not in catalog
-        let catalogIds = Set(catalog.map { $0.id })
-        activeIntegrations = activeIntegrations.filter { catalogIds.contains($0) }
-        // Validate mainPillId: must be a non-comingSoon workspace pill in the catalog
-        if !PillCatalog.available.contains(where: { $0.id == mainPillId && $0.category == .workspace && !$0.comingSoon }) {
+        activeIntegrations = []
+        if !PillCatalog.available.contains(where: { $0.id == mainPillId && $0.category == .agent && !$0.comingSoon }) {
             mainPillId = PillCatalog.defaultMainPillId
         }
-        // mainPillId must never be in activeIntegrations (migration + invariant)
-        activeIntegrations.remove(mainPillId)
         for def in catalog {
-            // mainPillId always loads; activeIntegrations load
-            let shouldLoad = def.id == mainPillId || activeIntegrations.contains(def.id)
             let loaded = tasks.contains(where: { $0.id == def.id })
-            if shouldLoad && !loaded {
+            if !loaded {
                 let task = AgentTask(id: def.id, name: def.name, color: def.color,
                                      state: .idle, steps: [], source: def.source, isIntegration: true)
                 tasks.append(task)
             }
-            if !shouldLoad && loaded {
-                tasks.removeAll { $0.id == def.id }
-            }
         }
+        let catalogIds = Set(catalog.map(\.id))
+        tasks.removeAll { !catalogIds.contains($0.id) }
         sortTasksByCatalog()
         if focusId == nil { focusId = mainPillId }
         syncMode()

@@ -5,8 +5,6 @@ import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
 import { Sound } from "./core/sound";
 import { State, type Settings } from "./core/state";
 import { Island } from "./island/island";
-import { registerHookHandlers } from "./island/hooks";
-import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
 
 window.addEventListener("error", (e) => {
   void Bridge.log(`JS_ERROR: ${e.message} at ${e.filename}:${e.lineno}`);
@@ -42,18 +40,16 @@ async function main() {
     }
     island.applySettings();
     await Bridge.log("STEP 8: applySettings done");
-    State.loadIntegrationTasks();
-    await Bridge.log("STEP 9: loadIntegrationTasks done");
+    State.loadSquadMembers();
+    await Bridge.log("STEP 9: loadSquadMembers done");
     if (boot && !boot.cursorPoll) island.followPageCursor();
 
     await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
     await Bridge.log("STEP 10: onEvent cursor registered");
 
-  /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {
     if (State.paused === on) return;
     State.paused = on;
-    void Bridge.setPaused(on);
   };
 
   await onEvent<string>("tray", (what) => {
@@ -97,17 +93,12 @@ async function main() {
   await onEvent<Settings>("settings-changed", (s) => {
     State.settings = { ...State.settings, ...s };
     island.applySettings();
-    State.loadIntegrationTasks();
-    void refreshConfigured();
+    State.loadSquadMembers();
   });
 
-  await Bridge.log("STEP 11: Registering hooks & integrations");
-  registerHookHandlers(island);
-  registerIntegrationHandlers(island);
-
-  await Bridge.log("STEP 12: Calling island.launch()");
+  await Bridge.log("STEP 11: Calling island.launch()");
   island.launch();
-  await Bridge.log("STEP 13: island.launch() completed!");
+  await Bridge.log("STEP 12: island.launch() completed!");
 
   // In a plain browser there is no wake strip behind the cursor: make the whole
   // page wake the island so the visuals can be checked with `npm run dev`.

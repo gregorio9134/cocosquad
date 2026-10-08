@@ -67,6 +67,11 @@ targets:
         LSUIElement: YES
         NSHighResolutionCapable: YES
         NSSupportsAutomaticGraphicsSwitching: YES
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            129.158.204.84:
+              NSExceptionAllowsInsecureHTTPLoads: YES
+              NSIncludesSubdomains: NO
         NSAppleEventsUsageDescription: "Pour sauter au terminal, envoyer des mails et piloter Musique."
         NSAccessibilityUsageDescription: "Pour lire le titre de la fenêtre active et l'attacher comme contexte."
     settings:
@@ -103,6 +108,11 @@ targets:
         NSSupportsAutomaticGraphicsSwitching: YES
         LSApplicationCategoryType: public.app-category.developer-tools
         ITSAppUsesNonExemptEncryption: NO
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            129.158.204.84:
+              NSExceptionAllowsInsecureHTTPLoads: YES
+              NSIncludesSubdomains: NO
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou

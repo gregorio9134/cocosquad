@@ -23,7 +23,7 @@ pub struct Settings {
 }
 
 fn default_model() -> String {
-    crate::claude::DEFAULT_MODEL.to_string()
+    crate::coco_client::DEFAULT_MODEL.to_string()
 }
 
 impl Default for Settings {
@@ -33,12 +33,7 @@ impl Default for Settings {
             sound_volume: 0.12,
             auto_close_interval: 15.0,
             absence_interval: 180.0,
-            active_integrations: vec![
-                "integration_resend".into(),
-                "integration_n8n".into(),
-                "integration_vercel".into(),
-                "integration_github".into(),
-            ],
+            active_integrations: vec!["coco_verde".into(), "coco_rojo".into()],
             screen: "primary".into(),
             autostart: false,
             hooks_installed: false,

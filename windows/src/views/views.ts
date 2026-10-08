@@ -4,7 +4,6 @@
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
-import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
@@ -123,9 +122,6 @@ export function buildHeader(actions: ViewActions): ViewHost {
 // ── Overview ──────────────────────────────────────────────────────────────────
 
 function buildOverview(actions: ViewActions): ViewHost {
-  const ticker = new Ticker();
-  const who = h("div", { class: "who" });
-  const tickerBody = h("div", { class: "card-body" }, who, ticker.el);
   const leftBody = h("div", { class: "left-body" });
   const jump = h(
     "button",
@@ -144,7 +140,6 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | null = null;
   let cardKey = "";
 
   const hooks: IntegrationCardHooks = {
@@ -170,53 +165,19 @@ function buildOverview(actions: ViewActions): ViewHost {
 
   return {
     el,
-    tick(nowMs: number) {
-      if (mode === "ticker") ticker.tick(nowMs);
-    },
+    tick() {},
     sync() {
       const task = State.focusTask;
       if (task?.id !== lastFocus) {
         lastFocus = task?.id ?? null;
         detailOpen = false;
         cardKey = "";
-        mode = null;
       }
 
-      // VS Code with a live Claude Code session keeps the ticker; every other
-      // pill shows its own card, exactly like IntegrationCardView.
-      const sessionActive =
-        task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
-
-      if (task && sessionActive) {
-        if (mode !== "ticker") {
-          clear(leftBody);
-          leftBody.append(tickerBody);
-          mode = "ticker";
-          cardKey = "";
-        }
-        clear(who);
-        who.append(
-          dot(task.color, 7),
-          h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: task.source === "claudeCode" ? "Claude Code" : "n8n" }),
-        );
-        if (task.steps.length > 1) {
-          who.append(h("span", {
-            class: "count",
-            text: `${Math.min(task.stepIndex + 1, task.steps.length)}/${task.steps.length}`,
-          }));
-        }
-        ticker.sync(task);
-      } else if (task) {
-        const info = State.integrations[task.id];
-        const key = [
-          task.id, detailOpen, task.state, task.steps.join("|"),
-          info?.loaded, info?.error, info?.configured,
-          JSON.stringify(info?.data ?? {}),
-        ].join("~");
+      if (task) {
+        const key = [task.id, detailOpen, task.state, task.steps.join("|")].join("~");
         if (key !== cardKey) {
           cardKey = key;
-          mode = "card";
           clear(leftBody);
           leftBody.append(renderIntegrationCard(task, hooks));
         }
@@ -237,7 +198,7 @@ function buildOverview(actions: ViewActions): ViewHost {
 }
 
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
-  const label = task.id === "integration_claude" ? "VS Code" : task.name;
+  const label = task.name;
   const canvas = createMiniBot(task, 24);
   const pill = h(
     "div",
@@ -427,8 +388,7 @@ function buildSettings(actions: ViewActions): ViewHost {
   const segButtons = [10, 15, 30].map((s) =>
     h("button", { onclick: () => actions.setAutoClose(s) }, `${s}s`),
   );
-  const claudeBadge = h("span", { class: "status-badge" });
-  const apiBadge = h("span", { class: "status-badge" });
+  const squadBadge = h("span", { class: "status-badge" });
 
   const rows = h(
     "div",
@@ -444,8 +404,7 @@ function buildSettings(actions: ViewActions): ViewHost {
     h(
       "div",
       { class: "settings-row", style: "gap:14px" },
-      claudeBadge,
-      apiBadge,
+      squadBadge,
       h("div", { class: "grow" }),
       h("button", {
         class: "link-btn",
@@ -468,13 +427,8 @@ function buildSettings(actions: ViewActions): ViewHost {
       volume.style.opacity = s.soundEnabled ? "1" : "0.4";
       autoLabel.textContent = `Auto-close · ${Math.round(s.autoCloseInterval)}s`;
       segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === [10, 15, 30][i]));
-      clear(claudeBadge);
-      claudeBadge.append(
-        dot(s.hooksInstalled ? "#22C55E" : "#F4505E", 6),
-        h("span", { text: "Claude Code" }),
-      );
-      clear(apiBadge);
-      apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+      clear(squadBadge);
+      squadBadge.append(dot("#10B981", 6), h("span", { text: "Coco Squad" }));
     },
   };
 }

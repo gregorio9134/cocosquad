@@ -56,28 +56,14 @@ const task = (
   id, name, color, state: "idle", stepIndex: 0, steps: [], source, isIntegration: true,
 });
 
-/** AgentTask.integrationAgents — Coco Squad & external integrations. */
-export const INTEGRATION_AGENTS: AgentTask[] = [
+/** Coco Squad members available in this build. */
+export const SQUAD_MEMBERS: AgentTask[] = [
   task("coco_blanco", "Coco Blanco", "#FFFFFF", "agent"),
   task("coco_verde", "Coco Verde", "#10B981", "agent"),
   task("coco_rojo", "Coco Rojo", "#EF4444", "agent"),
-  task("integration_claude", "Claude Code", "#F5F6F8", "claudeCode"),
-  task("integration_resend", "Resend", "#22C55E", "n8n"),
-  task("integration_n8n", "n8n", "#F29B38", "n8n"),
-  task("integration_vercel", "Vercel", "#7C5CFF", "n8n"),
-  task("integration_github", "GitHub", "#F4505E", "n8n"),
-  task("integration_notion", "Notion", "#8C8C8C", "n8n"),
-  task("integration_calcom", "Cal.com", "#C9956A", "n8n"),
-  task("integration_stripe", "Stripe", "#0570DE", "n8n"),
 ];
 
-export const TOGGLEABLE_INTEGRATION_IDS = [
-  "coco_verde", "coco_rojo",
-  "integration_claude", "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
-  "integration_notion", "integration_calcom", "integration_stripe",
-];
-
-/** What an integration poller last reported. */
+/** Dormant legacy event shape; no integration pollers are started. */
 export interface IntegrationInfo {
   data: Record<string, unknown>;
   error: string | null;
@@ -94,7 +80,6 @@ export interface Settings {
   screen: "primary" | "cursor";
   autostart: boolean;
   hooksInstalled: boolean;
-  /** Claude model used by the chat. */
   model: string;
 }
 
@@ -103,13 +88,11 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.12,
   autoCloseInterval: 15,
   absenceInterval: 180,
-  activeIntegrations: [
-    "coco_verde", "coco_rojo",
-  ],
+  activeIntegrations: ["coco_verde", "coco_rojo"],
   screen: "primary",
   autostart: false,
   hooksInstalled: false,
-  model: "claude-opus-5",
+  model: "coco-squad",
 };
 
 type Listener = () => void;
@@ -203,17 +186,14 @@ class AppState {
     this.notify();
   }
 
-  /** loadIntegrationTasks() — Coco Squad always available. */
-  loadIntegrationTasks() {
-    for (const proto of INTEGRATION_AGENTS) {
-      const isPrimary = proto.id === "coco_blanco";
-      const shouldLoad = isPrimary || this.settings.activeIntegrations.includes(proto.id);
+  loadSquadMembers() {
+    for (const proto of SQUAD_MEMBERS) {
       const idx = this.tasks.findIndex((t) => t.id === proto.id);
-      if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
-      if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
+      if (idx < 0) this.tasks.push({ ...proto, steps: [] });
     }
-    const order = INTEGRATION_AGENTS.map((t) => t.id);
+    const order = SQUAD_MEMBERS.map((t) => t.id);
     this.tasks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    this.tasks = this.tasks.filter((t) => order.includes(t.id));
     if (!this.focusId || !this.tasks.some((t) => t.id === this.focusId)) this.focusId = "coco_blanco";
     this.notify();
   }
@@ -222,35 +202,18 @@ class AppState {
     const idx = this.tasks.findIndex((t) => t.id === id);
     if (idx < 0) return;
     this.tasks.splice(idx, 1);
-    if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? "integration_claude";
+    if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? "coco_blanco";
     this.notify();
   }
 
-  /** Creates a dynamic agent_ pill on first event; no-ops if it already exists.
-   *  Inserted right after integration_claude so it appears in the visible slice(0,4). */
+  /** Kept for the dormant external hook module; the handler is not registered. */
   upsertExternalAgent(id: string, name: string, color: string) {
     if (this.tasks.some((t) => t.id === id)) return;
-    const at = this.tasks.findIndex((t) => t.id === "integration_claude") + 1;
-    this.tasks.splice(at, 0, {
-      id, name, color,
-      state: "idle", stepIndex: 0, steps: [],
+    this.tasks.push({
+      id, name, color, state: "idle", stepIndex: 0, steps: [],
       source: "agent", isIntegration: false,
     });
-    if (!this.focusId) this.focusId = id;
     this.notify();
-  }
-
-  toggleIntegration(id: string) {
-    if (id === "integration_claude") return;
-    const active = this.settings.activeIntegrations;
-    if (active.includes(id)) {
-      this.settings.activeIntegrations = active.filter((x) => x !== id);
-      if (this.focusId === id) this.focusId = "integration_claude";
-    } else {
-      if (active.length >= 4) return;
-      this.settings.activeIntegrations = [...active, id];
-    }
-    this.loadIntegrationTasks();
   }
 
   defaultView(): IslandViewName {

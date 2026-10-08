@@ -4,7 +4,7 @@ import AppKit
 
 struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
-    @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
+    @State private var apiKey: String = ""
 
     // Claude model — dynamic list fetched from the API, static fallback if unavailable
     private static let fallbackModels: [(id: String, label: String)] = [
@@ -30,39 +30,39 @@ struct SettingsView: View {
     @State private var statusMessage: String = ""
     @State private var showDiff: Bool = false
     @State private var pendingHookJSON: String = ""
-    @State private var hookNeedsUpdate: Bool = HookServer.hooksNeedUpdate()
+    @State private var hookNeedsUpdate: Bool = false
 
     #if !APPSTORE
-    @State private var geminiHooksInstalled: Bool = HookServer.geminiHooksInstalled()
+    @State private var geminiHooksInstalled: Bool = false
     @State private var showGeminiDiff: Bool = false
     @State private var pendingGeminiJSON: String = ""
     @State private var geminiPendingInstall: Bool = true
 
-    @State private var agyHooksInstalled: Bool = HookServer.agyHooksInstalled()
+    @State private var agyHooksInstalled: Bool = false
     @State private var showAgyDiff: Bool = false
     @State private var pendingAgyJSON: String = ""
     @State private var agyPendingInstall: Bool = true
 
-    @State private var codexHooksInstalled: Bool = HookServer.codexHooksInstalled()
+    @State private var codexHooksInstalled: Bool = false
     @State private var showCodexDiff: Bool = false
     @State private var pendingCodexJSON: String = ""
     @State private var codexPendingInstall: Bool = true
     #endif
 
     // Multi-provider chat keys
-    @State private var googleKey: String  = KeychainStore.shared.get("google-api-key") ?? ""
-    @State private var openAIKey: String  = KeychainStore.shared.get("openai-api-key") ?? ""
+    @State private var googleKey: String  = ""
+    @State private var openAIKey: String  = ""
 
     // Integration keys
-    @State private var resendKey: String    = KeychainStore.shared.get("resend-api-key")  ?? ""
-    @State private var resendFrom: String   = KeychainStore.shared.get("resend-from")     ?? ""
-    @State private var n8nUrl: String       = KeychainStore.shared.get("n8n-url")         ?? ""
-    @State private var n8nKey: String       = KeychainStore.shared.get("n8n-api-key")     ?? ""
-    @State private var vercelToken: String  = KeychainStore.shared.get("vercel-token")    ?? ""
-    @State private var githubToken: String  = KeychainStore.shared.get("github-token")    ?? ""
-    @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
-    @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
-    @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
+    @State private var resendKey: String    = ""
+    @State private var resendFrom: String   = ""
+    @State private var n8nUrl: String       = ""
+    @State private var n8nKey: String      = ""
+    @State private var vercelToken: String  = ""
+    @State private var githubToken: String = ""
+    @State private var stripeKey: String   = ""
+    @State private var calcomKey: String   = ""
+    @State private var notionKey: String   = ""
 
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
@@ -88,6 +88,9 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
 
+                if false {
+                // Legacy Coucou providers, editor hooks and service integrations
+                // are deliberately not exposed in Coco Squad.
                 // MARK: API
                 GroupBox("Anthropic API") {
                     VStack(alignment: .leading, spacing: 8) {
@@ -425,6 +428,8 @@ struct SettingsView: View {
                     .padding(6)
                 }
 
+                }
+
                 // MARK: Son
                 GroupBox("Sound") {
                     VStack(alignment: .leading, spacing: 10) {
@@ -464,42 +469,21 @@ struct SettingsView: View {
                 }
 
                 // MARK: Active pills
-                GroupBox("Active pills") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Choose the tools you use. Coucou only shows what you declare here.")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-
-                        Text("\(state.activeIntegrations.count)/4 slots used")
-                            .font(.system(size: 11))
-                            .foregroundColor(state.activeIntegrations.count >= 4 ? .orange : .secondary)
-
-                        Picker("Main", selection: $state.mainPillId) {
-                            ForEach(PillCatalog.available.filter { $0.category == .workspace && !$0.comingSoon }, id: \.id) { def in
-                                Text(def.name).tag(def.id)
-                            }
-                        }
-                        .onChange(of: state.mainPillId) { _, newId in
-                            state.activeIntegrations.remove(newId)  // main pill never in activeIntegrations
-                            state.loadIntegrationTasks()
-                            state.setFocus(newId)
-                        }
-
-                        // All categories — main pill shown with "Main" label instead of toggle
-                        ForEach(PillCategory.allCases, id: \.self) { cat in
-                            let catPills = PillCatalog.available.filter { $0.category == cat }
-                            if !catPills.isEmpty {
-                                Divider()
-                                Text(cat.title)
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                                ForEach(catPills, id: \.id) { def in
-                                    pillRow(def)
-                                }
-                            }
+                GroupBox("Coco Squad") {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Los tres Cocos están disponibles para conversar desde la isla.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    ForEach(PillCatalog.available, id: \.id) { def in
+                        HStack(spacing: 8) {
+                            Circle().fill(Color(hex: def.color)).frame(width: 8, height: 8)
+                            Text(def.name).font(.system(size: 12, weight: .medium))
+                            Spacer()
+                            Text(def.subtitle).font(.system(size: 11)).foregroundColor(.secondary)
                         }
                     }
-                    .padding(6)
+                }
+                .padding(6)
                 }
 
                 // MARK: Hotkey
@@ -539,25 +523,6 @@ struct SettingsView: View {
                 Spacer(minLength: 0)
             }
             .padding(20)
-        }
-        .onAppear {
-            guard fetchedModels.isEmpty,
-                  let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return }
-            Task {
-                let models = await ClaudeService.fetchModels(apiKey: key)
-                guard !models.isEmpty else { return }
-                await MainActor.run {
-                    fetchedModels = models
-                    let m = state.claudeModel
-                    if models.contains(where: { $0.id == m }) {
-                        modelChoice = m
-                        customModel = ""
-                    } else if modelChoice != Self.customModelTag {
-                        modelChoice = Self.customModelTag
-                        customModel = m
-                    }
-                }
-            }
         }
         .frame(minWidth: 420, maxWidth: .infinity, minHeight: 320, maxHeight: .infinity)
     }

@@ -57,24 +57,24 @@ function cocoSquadCard(task: AgentTask, hooks?: IntegrationCardHooks): HTMLEleme
   const isGreen = task.id === "coco_verde";
   const isRed = task.id === "coco_rojo";
 
-  let roleDesc = "Asistente General & Documentos";
-  let subText = "Chat fluido, lectura inteligente de documentos PDF, Word o PowerPoint.";
+  let roleDesc = "Asistente general";
+  let subText = "Asistente principal del Coco Squad.";
   let badgeText = "⚪ Coco Blanco · Asistente Principal";
   let action1Text = "💬 Chatear con Blanco";
-  let action2Text = "📎 Adjuntar Archivo";
+  let action2Text = "📨 Enviar mensaje";
 
   if (isGreen) {
-    roleDesc = "Operaciones, Agenda & WhatsApp";
-    subText = "Atención a clientes, verificación de comprobantes y gestión de turnos.";
+    roleDesc = "Operaciones y comunicaciones";
+    subText = "Sus capacidades se incorporarán gradualmente al Coco Squad.";
     badgeText = "🟢 Coco Verde · Operaciones";
-    action1Text = "📅 Consultar Agenda";
-    action2Text = "💬 Atender WhatsApp";
+    action1Text = "💬 Chatear con Verde";
+    action2Text = "📨 Enviar mensaje";
   } else if (isRed) {
-    roleDesc = "Deep Research & Tareas Pesadas";
-    subText = "Investigaciones científicas, monografías con citas arXiv/DOI y síntesis web.";
-    badgeText = "🔴 Coco Rojo · Deep Research";
-    action1Text = "🔬 Iniciar Investigación";
-    action2Text = "🌐 Sintetizar Web";
+    roleDesc = "Investigación y tareas profundas";
+    subText = "Sus capacidades se incorporarán gradualmente al Coco Squad.";
+    badgeText = "🔴 Coco Rojo · Investigación";
+    action1Text = "💬 Chatear con Rojo";
+    action2Text = "📨 Enviar mensaje";
   }
 
   const head = header(task.color, task.name, roleDesc);

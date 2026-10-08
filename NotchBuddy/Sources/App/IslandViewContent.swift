@@ -122,6 +122,8 @@ struct OverviewView: View {
     private func openAgentTarget(_ task: AgentTask?) {
         guard let task else { return }
         switch task.id {
+        case "coco_blanco", "coco_verde", "coco_rojo":
+            AppState.shared.view = .prompt
         case "integration_claude":
             let vscodeBundleId = "com.microsoft.VSCode"
             if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
@@ -754,7 +756,6 @@ struct PromptView: View {
     @ObservedObject var state: AppState
     @State private var text: String = ""
     @FocusState private var focused: Bool
-    @State private var showModelPicker = false
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -800,32 +801,18 @@ struct PromptView: View {
 
                 HStack(spacing: 0) {
                     Spacer()
-                    Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            showModelPicker.toggle()
-                        }
-                    } label: {
-                        HStack(spacing: 5) {
-                            Circle()
-                                .fill(Color(hex: state.chatProvider.accentHex))
-                                .frame(width: 6, height: 6)
-                            Text(state.activeChatModel)
-                                .font(.system(size: 10.5, weight: .medium))
-                                .foregroundColor(Color(hex: "#7B8089"))
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 8))
-                                .foregroundColor(Color(hex: "#5C6370"))
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.white.opacity(0.06))
-                        .clipShape(Capsule())
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(Color(hex: state.focusTask?.color ?? "#FFFFFF"))
+                            .frame(width: 6, height: 6)
+                        Text(state.focusTask?.name ?? "Coco Blanco")
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundColor(Color(hex: "#7B8089"))
                     }
-                    .buttonStyle(.plain)
-                    .popover(isPresented: $showModelPicker, arrowEdge: .bottom) {
-                        ModelPickerView(state: state, isPresented: $showModelPicker)
-                            .frame(width: 300)
-                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.06))
+                    .clipShape(Capsule())
                 }
                 .padding(.horizontal, 10)
 
@@ -856,16 +843,6 @@ struct PromptView: View {
         }
         .padding(.bottom, 10)
         .onAppear { focused = true }
-        .onChange(of: state.view) { _, view in
-            if view == .prompt {
-                state.fetchModelsIfNeeded(for: state.chatProvider)
-            }
-        }
-        .onChange(of: state.chatProvider) { _, provider in
-            if state.view == .prompt {
-                state.fetchModelsIfNeeded(for: provider)
-            }
-        }
     }
 
     private func sendMessage() {
@@ -1155,6 +1132,8 @@ struct IntegrationCardView: View {
 
     private var isConfigured: Bool {
         switch task.id {
+        case "coco_blanco", "coco_verde", "coco_rojo":
+            return true
         case "integration_claude":
             #if APPSTORE
             // Sandboxed: can't read ~/.claude directly — check install flag set by HookServer
@@ -1290,6 +1269,9 @@ struct IntegrationCardView: View {
     }
 
     private var statusLabel: String {
+        if ["coco_blanco", "coco_verde", "coco_rojo"].contains(task.id) {
+            return "Listo para chatear"
+        }
         #if !APPSTORE
         if task.id == "integration_music" {
             if appState.musicAutomationDenied { return "Automation not allowed" }
