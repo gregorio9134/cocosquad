@@ -139,6 +139,13 @@ class AppState {
     return () => this.listeners.delete(fn);
   }
 
+  /** Callback for triggering character animations from anywhere. */
+  mochiAction: ((action: "greet" | "slap" | "blink" | "squash" | "love" | "finished" | "dizzy") => void) | null = null;
+
+  triggerMochi(action: "greet" | "slap" | "blink" | "squash" | "love" | "finished" | "dizzy") {
+    this.mochiAction?.(action);
+  }
+
   /** Marks the UI dirty; the island re-renders on the next frame. */
   notify() {
     for (const fn of this.listeners) fn();

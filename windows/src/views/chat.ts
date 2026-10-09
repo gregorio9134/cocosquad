@@ -201,11 +201,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         file.base64 = undefined;
       }
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
-      State.stateOverride = null;
       if (reply.cocoId && State.focusId !== reply.cocoId) {
         State.setFocus(reply.cocoId);
       }
       Sound.play("finish");
+      State.triggerMochi("finished");
     } catch (err) {
       State.stateOverride = null;
       State.noteMessage = String(err).replace(/^Error:\s*/, "");
@@ -249,6 +249,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
             e.stopPropagation();
             State.setFocus(c.id);
             Sound.play("blip");
+            State.triggerMochi("greet");
           },
         },
         h("i", { style: `background:${c.dot}` }),

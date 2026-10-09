@@ -89,6 +89,33 @@ export class Island {
     this.wireInput();
     this.engine.onDizzy = () => this.handleDizzy();
     this.greeting.onComplete = () => this.fsm.greetComplete();
+    State.mochiAction = (action) => {
+      switch (action) {
+        case "greet":
+          this.engine.greet();
+          break;
+        case "slap":
+          this.engine.slap();
+          break;
+        case "blink":
+          this.engine.blink();
+          break;
+        case "squash":
+          this.engine.squash();
+          break;
+        case "love":
+          this.engine.triggerEmote("love");
+          break;
+        case "finished":
+          this.engine.setState("finished");
+          setTimeout(() => this.engine.setState(State.effectiveState), 1800);
+          break;
+        case "dizzy":
+          this.handleDizzy();
+          break;
+      }
+      this.ensureRunning();
+    };
     State.subscribe(() => {
       this.dirty = true;
       this.ensureRunning();
@@ -301,6 +328,11 @@ export class Island {
   }
 
   expand(view: IslandViewName) {
+    if (view === "upload") {
+      this.engine.animateMorph(1, 380);
+    } else if (State.view === "upload") {
+      this.engine.resetMorph();
+    }
     State.view = view;
     if (State.mode !== "expanded") this.setMode("expanded");
     else this.animateGeometry(false);
@@ -313,6 +345,11 @@ export class Island {
 
   setView(view: IslandViewName) {
     this.stopSequenceIfLeaving(view);
+    if (view === "upload") {
+      this.engine.animateMorph(1, 380);
+    } else if (State.view === "upload") {
+      this.engine.resetMorph();
+    }
     if (State.mode !== "expanded") {
       this.fsm.forceHome();
       State.view = view;
@@ -454,7 +491,8 @@ export class Island {
     UploadSeq.performDrop(State.uploadDuration);
     this.uploadTens = 0;
     this.uploadDone = false;
-    Sound.play("approve");
+    Sound.play("gulp");
+    this.engine.gulp();
 
     void Bridge.ingestFile(path)
       .then((file) => {
@@ -541,14 +579,15 @@ export class Island {
     }
   }
 
-  /** Island rect in window coordinates (origin top-left of the 720×320 window). */
+  /** Island rect in window coordinates (dynamically handles Tauri or browser canvas). */
   private islandRect(): { x: number; y: number; w: number; h: number } {
+    const rootW = this.root.clientWidth || window.innerWidth || PANEL_W;
     if (this.collapsed || State.mode === "hidden") {
-      return { x: 0, y: 0, w: 240, h: Math.max(16, this.height.value) };
+      return { x: (rootW - 240) / 2, y: 0, w: 240, h: Math.max(16, this.height.value) };
     }
     const w = this.width.value;
     const hh = this.height.value;
-    return { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    return { x: (rootW - w) / 2, y: 0, w, h: hh };
   }
 
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
@@ -585,6 +624,27 @@ export class Island {
     this.wakeStrip.addEventListener("mousedown", () => {
       Sound.resume();
       this.wake();
+    });
+
+    this.botCanvas.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+      Sound.resume();
+      this.resetInactivity();
+      if (State.mode !== "expanded") {
+        this.fsm.click();
+        return;
+      }
+      this.cancelBotHover();
+      this.engine.slap();
+      this.ensureRunning();
+    });
+    this.botCanvas.addEventListener("mouseenter", () => {
+      if (State.mode === "expanded") {
+        this.botHoverIn(State.mouse.x, State.mouse.y);
+      }
+    });
+    this.botCanvas.addEventListener("mouseleave", () => {
+      this.cancelBotHover();
     });
 
     this.islandEl.addEventListener("mousedown", (e) => {
@@ -697,7 +757,7 @@ export class Island {
     const rect = this.islandRect();
     const cx = rect.x + this.botCx.value;
     const cy = rect.y + this.botCy.value;
-    const radius = this.botSize.value / 2;
+    const radius = Math.max(28, this.botSize.value / 2);
     return (x - cx) ** 2 + (y - cy) ** 2 <= radius * radius;
   }
 
@@ -909,7 +969,9 @@ export class Island {
   }
 
   private lookY(): number {
-    return -Math.tanh((State.mouse.y - this.botCy.value) / 200);
+    const rect = this.islandRect();
+    const botScreenY = rect.y + this.botCy.value;
+    return -Math.tanh((State.mouse.y - botScreenY) / 200);
   }
 
   private updateCountdown(nowMs: number) {
