@@ -10,17 +10,16 @@ no modificar archivos del producto y no mezclar cambios con `main`.
 
 - Repositorio: `https://github.com/gregorio9134/Coco-Squad.git`
 - Rama que se debe usar: `refactor/coco-client-modules`
-- Commit que debe quedar activo:
-  `31765ef9eb798c6bfae2f54b5166193e532b5c42`
+- Commit que debe quedar activo: el último commit publicado en la rama `refactor/coco-client-modules`.
 - La rama está publicada en GitHub. `main` no contiene estos cambios todavía.
 
-## Instrucciones para el agente de VS Code
+## Instrucciones para el agente de VS Code / Antigravity en Windows
 
 Actúa como asistente técnico y realiza la sincronización de forma segura. El
 usuario no tiene experiencia programando, así que encárgate de los pasos
 posibles y explica cualquier ventana de autorización en palabras simples.
 
-1. Comprueba qué carpeta está abierta en VS Code y si contiene un repositorio
+1. Comprueba qué carpeta está abierta en VS Code / Antigravity y si contiene un repositorio
    Git. No ejecutes comandos de Git desde una carpeta que no sea el proyecto.
 2. Si ya hay una copia de Coco Squad:
    - Comprueba el remoto. Debe ser
@@ -33,20 +32,18 @@ posibles y explica cualquier ventana de autorización en palabras simples.
    en una carpeta nueva llamada `Coco-Squad` dentro de Documentos. Si esa
    carpeta ya existe y no sabes si contiene trabajo, inspecciónala primero y no
    la sobrescribas.
-4. Actualiza la información remota con `git fetch origin`.
+4. Actualiza la información remota con `git fetch origin` (o `git fetch coco-squad`).
 5. Cambia a `refactor/coco-client-modules`. Si no existe una rama local,
    créala siguiendo `origin/refactor/coco-client-modules`.
 6. Actualiza la rama con `git pull --ff-only origin refactor/coco-client-modules`.
    No hagas merge, rebase, reset, cherry-pick ni push.
-7. Comprueba que `git rev-parse HEAD` da exactamente:
-   `31765ef9eb798c6bfae2f54b5166193e532b5c42`.
-8. Comprueba que la carpeta de trabajo quedó limpia con `git status
-   --short --branch`.
-9. Lee `comunicacion entre notebooks.txt` y `docs/COMPORTAMIENTO-COCOS.md`.
-   Explica al usuario que la sincronización terminó y resume cómo están
-   definidos Coco Blanco, Verde, Rojo y Azul. Aclara que esas capacidades son
-   una especificación funcional y que Azul y varias funciones avanzadas aún
-   requieren implementación en el servidor.
+7. Comprueba que la carpeta de trabajo quedó limpia con `git status --short --branch`.
+8. Lee atentamente la sección **"ACTUALIZACION DE SESION: 9 DE OCTUBRE DE 2026"** al final de `comunicacion entre notebooks.txt` y `docs/COMPORTAMIENTO-COCOS.md`.
+9. Explica al usuario que la sincronización terminó y confirma:
+   - Que conoces el estado de los servidores en Oracle Cloud (Jarvis-bot y Coco-Staging).
+   - Que sabes que el cazador de 12GB v4.1 está corriendo en segundo plano sin spam en Telegram.
+   - Que el bot de trading fue eliminado.
+   - Que se mantiene la estética oficial y pura de Coucou sin modificaciones innecesarias, enfocándonos en asignar funciones a Coco Blanco, Verde y Rojo.
 
 ## Seguridad y ayuda al usuario
 

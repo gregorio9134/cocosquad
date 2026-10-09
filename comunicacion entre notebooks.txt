@@ -341,3 +341,80 @@ Mantener los cambios en una rama de trabajo y no actualizar main ni integrar
 los 188 commits de Coucou sin revisar conflictos, construir y probar.
 
 FIN DEL CONTEXTO INICIAL
+
+================================================================================
+ACTUALIZACION DE SESION: 9 DE OCTUBRE DE 2026 (AUDITORIA, SERVIDORES Y COCO SQUAD)
+================================================================================
+
+1. ESTADO DE LOS SERVIDORES EN ORACLE CLOUD (OCI)
+--------------------------------------------------------------------------------
+Se realizo una auditoria completa de la infraestructura en Oracle Cloud:
+- Servidor 1 (Produccion): 'Jarvis-bot'
+  * IP Publica: 129.158.204.84 | IP Privada: 10.0.0.89
+  * Uptime: 10+ dias continuo y estable.
+  * Servicios activos:
+    - jarvis.service: Web chat server en puerto 8080 (HTTP 200 OK).
+    - jarvis-tunnel.service: Tunel Cloudflare activo (HTTPS dinamico seguro).
+    - Redis (localhost:6379) y SQLite (conversational_memory.db).
+- Servidor 2 (Staging / Pruebas / Boveda): 'Coco-Staging'
+  * IP Publica: 150.136.59.173 | IP Privada: 10.0.0.20
+  * Servicios activos: FastAPI (uvicorn) en puerto 8080 y Redis en 6379.
+  * Ambos servidores se comunican de forma aislada por su red interna 10.0.0.x.
+
+2. BOT CAZADOR DE INSTANCIA 12 GB ALWAYS FREE (JARVIS HUNTER v4.1)
+--------------------------------------------------------------------------------
+- Politica oficial de Oracle confirmada: A partir de junio 2026, el tope gratuito
+  Always Free para instancias Ampere ARM paso de 24 GB a 2 OCPUs / 12 GB RAM / 100 GB SSD.
+- Hallazgo del 6 de Octubre: El mensaje de captura recibido en Telegram correspondio
+  a una solicitud que fue inicialmente aceptada por Oracle pero luego cancelada
+  (TERMINATED) durante el aprovisionamiento de hardware. El script anterior guardo un
+  falso positivo en 'hunter_captured_state.json' y se apagaba en bucle creyendo que ya
+  la habia capturado.
+- Nuevo Cazador v4.1 desplegado y activo en Jarvis-bot:
+  * Escaneo ultra-eficiente: ciclo cada ~50-65 segundos con jitter anti-patron.
+  * Pausa natural de 3-4s entre los 3 dominios de disponibilidad (AD-1, AD-2, AD-3).
+  * Proteccion anti-bloqueo: backoff de 120s si la API devuelve HTTP 429.
+  * Verificacion real de aprovisionamiento: no canta victoria hasta confirmar que la
+    instancia paso de PROVISIONING a RUNNING y tiene IP publica asignada.
+  * Silencio absoluto en Telegram: solo enviara mensaje cuando este 100% activa.
+
+3. BOT DE TRADING: ELIMINADO
+--------------------------------------------------------------------------------
+- Siguiendo la instruccion explicita del usuario, el bot de trading fue retirado:
+  * Servicios trading_bot.service y vector_bot.service deshabilitados y purgados.
+  * Scripts (master_trading_engine, bingx_api, trading_node, etc.) movidos a
+    .eliminados_trading/ fuera del runtime.
+  * Rutas de trading removidas de dispatcher.py en el servidor web.
+
+4. DECISION DE DISENO: REVERSION A LA ESTETICA OFICIAL DE COUCOU
+--------------------------------------------------------------------------------
+- Se descarto por completo la modificacion estetica inspirada en Grokbot/Novra.
+- Se restablecio la interfaz a la estetica original y pura de Coucou:
+  * Prototipo oficial en design/prototype/notch-buddy.html (y coucou.html local).
+  * Mochi vuelve a su forma supereliptica original y autentica (pancito de arroz).
+  * Se eliminaron las botoneras y secciones artificiales de prueba.
+- Objetivo estrategico: Mantener el diseno y animaciones oficiales de Coucou al 100%,
+  sin perder tiempo redisenando graficos, y concentrar el desarrollo unicamente en
+  darle funciones e inteligencia al equipo:
+  * Coco Blanco: Chatbot maestro, planificacion, tareas diarias, asistencia.
+  * Coco Verde: Comunicaciones, atencion y resumen de WhatsApp (reactivo).
+  * Coco Rojo: Investigacion profunda tipo NotebookLM, sintesis y reportes.
+
+5. ESTRATEGIA DE PRUEBAS MULTIPLATAFORMA (MAC & WINDOWS)
+--------------------------------------------------------------------------------
+- El 95% del producto Coucou / Coco Squad corre sobre tecnologias web estandar
+  (HTML, Canvas 2D, JavaScript, Web Audio).
+- En Mac se simula y prueba directamente en el navegador (http://localhost:8080/coucou.html
+  o apuntando a Oracle).
+- En Windows (Tauri / WebView2 o navegador) la interfaz y las funciones se comportan
+  de manera exactamente identica.
+- No se requiere compilar Swift ni Rust para probar las funciones de los agentes,
+  lo que permite avanzar con agilidad en cualquiera de las dos computadoras.
+
+6. PROXIMO PASO EN LA OTRA NOTEBOOK (WINDOWS)
+--------------------------------------------------------------------------------
+- Abrir la notebook Windows, hacer git pull / sincronizar la rama
+  'refactor/coco-client-modules'.
+- Probar la apertura del cliente o la web oficial en Windows.
+- Comenzar con la integracion funcional de Coco Blanco contra el backend de Oracle.
+
