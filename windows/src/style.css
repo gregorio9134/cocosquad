@@ -776,6 +776,12 @@ input[type="range"]::-webkit-slider-thumb {
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.35);
 }
 
+.squad-pill.active.azul {
+  border-color: rgba(59, 130, 246, 0.7);
+  color: #93c5fd;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.35);
+}
+
 .squad-pill i {
   width: 6px;
   height: 6px;

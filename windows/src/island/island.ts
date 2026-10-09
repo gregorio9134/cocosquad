@@ -121,7 +121,7 @@ export class Island {
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
         };
-        if (task.id === "coco_blanco" || task.id === "coco_verde" || task.id === "coco_rojo") {
+        if (task.id === "coco_blanco" || task.id === "coco_verde" || task.id === "coco_rojo" || task.id === "coco_azul") {
           this.setView("prompt");
         } else if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
         else if (task.id === "integration_n8n") void Bridge.openN8n();
@@ -881,6 +881,9 @@ export class Island {
       this.engine.bodyColor = null;
     } else if (focus?.id === "coco_rojo") {
       this.engine.setCocoSquadRole("red");
+      this.engine.bodyColor = null;
+    } else if (focus?.id === "coco_azul") {
+      this.engine.setCocoSquadRole("blue");
       this.engine.bodyColor = null;
     } else if (focus?.id === "coco_blanco") {
       this.engine.setCocoSquadRole("white");

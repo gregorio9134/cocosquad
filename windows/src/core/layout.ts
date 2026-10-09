@@ -150,6 +150,7 @@ export function botPosition(
 export function botGlowColor(s: BotStateName, squadId?: string): string {
   if (squadId === "coco_verde") return "#10B981";
   if (squadId === "coco_rojo") return "#EF4444";
+  if (squadId === "coco_azul") return "#3B82F6";
   if (squadId === "coco_blanco" && s === "idle") return "#FFFFFF";
   switch (s) {
     case "working":

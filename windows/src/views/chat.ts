@@ -236,6 +236,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       { id: "coco_blanco", label: "Blanco", dot: "#ffffff", cls: "blanco", title: "Coco Blanco: General & Documentos" },
       { id: "coco_verde", label: "Verde", dot: "#10b981", cls: "verde", title: "Coco Verde: Operaciones, WhatsApp & Agenda" },
       { id: "coco_rojo", label: "Rojo", dot: "#ef4444", cls: "rojo", title: "Coco Rojo: Deep Research & Tareas Pesadas" },
+      { id: "coco_azul", label: "Azul", dot: "#3b82f6", cls: "azul", title: "Coco Azul: Análisis de Datos & Reportes de Negocio" },
     ];
 
     for (const c of cocos) {
@@ -270,6 +271,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         coco_blanco: "rgba(255, 255, 255, 0.16)",
         coco_verde: "rgba(16, 185, 129, 0.38)",
         coco_rojo: "rgba(239, 68, 68, 0.38)",
+        coco_azul: "rgba(59, 130, 246, 0.38)",
       };
       cardEl.style.setProperty("--wash", washColors[activeId] || "rgba(99, 102, 241, 0.45)");
 
@@ -306,6 +308,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
           coco_blanco: "Pregúntale a Coco Blanco o adjunta un archivo…",
           coco_verde: "Consulta agenda, turnos, clientes o WhatsApp…",
           coco_rojo: "Pide un informe, investigación o analiza una URL…",
+          coco_azul: "Consulta métricas, ventas, stock o reportes de negocio…",
         };
         input.placeholder = placeholders[activeId] || "Pregúntale a Coco Blanco…";
       }

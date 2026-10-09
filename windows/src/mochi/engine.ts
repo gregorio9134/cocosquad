@@ -60,12 +60,14 @@ interface Particle {
 
 // ── Constants (MochiConst / PISTES.mochi) ─────────────────────────────────────
 
-const EYE_W = 0.20;
-const EYE_H = 0.38;
-const EYE_SP = 0.38;
-const EYE_P = -0.06;
-const INK = "rgb(10,11,14)"; // High-contrast jet black Grokbot eyes
-const MINI_INK = "rgb(10,11,14)";
+const EYE_W = 0.25;
+const EYE_H = 0.27;
+const EYE_SP = 0.37;
+const EYE_P = -0.12;
+const BASE_TOP: RGB = [0.929, 0.929, 0.937]; // #EDEDEF
+const BASE_BOTTOM: RGB = [0.769, 0.773, 0.792]; // #C4C5CA
+const INK = "rgb(26,20,18)"; // #1A1412
+const MINI_INK = "rgb(16,19,26)"; // #10131A
 
 const C = {
   idle: [0.902, 0.914, 0.933] as RGB,
@@ -166,8 +168,12 @@ export class BotEngine {
   isMini = false;
   /** Solid body colour for mini bots / integration pills (null = Mochi gradient). */
   bodyColor: RGB | null = null;
-  /** Member of the Coco Squad: white (docs/general), green (whatsapp/turnos), red (deep research) */
-  cocoSquadRole: "white" | "green" | "red" = "white";
+  /** Member of the Coco Squad: white (docs/general), green (whatsapp/turnos), red (deep research), blue (metrics/reports) */
+  cocoSquadRole: "white" | "green" | "red" | "blue" = "white";
+
+  setCocoSquadRole(role: "white" | "green" | "red" | "blue") {
+    this.cocoSquadRole = role;
+  }
 
   // Animated state (BotEngine `s`)
   yaw = 0; pitch = 0; roll = 0; tilt = 0; open = 1;
@@ -221,10 +227,6 @@ export class BotEngine {
   onDizzy: (() => void) | null = null;
 
   // ── Public API ──────────────────────────────────────────────────────────────
-
-  setCocoSquadRole(role: "white" | "green" | "red") {
-    this.cocoSquadRole = role;
-  }
 
   setState(next: BotStateName, force = false) {
     if (this.state === next && !force) return;
@@ -287,30 +289,16 @@ export class BotEngine {
     this.anim("sx", [[1.16, 70, Ease.out], [0.95, 130, Ease.out], [1, 170, Ease.inOut]]);
   }
 
-  /** Novra Grokbot swallow: snaps mouth slot shut, chews with closed happy eyes, squash & stretch bounce. */
+  /** Mailbox swallow — opens the slot, chews, then closes. */
   gulp() {
-    this.slotHTarget = 0;
-    this.isChewing = true;
-    this.blush = 0.6;
+    this.slotHTarget = 0.42;
     setTimeout(() => {
-      this.isChewing = false;
-      this.blush = 0;
-    }, 1200);
-
-    this.anim("sy", [
-      [0.76, 90, Ease.out],
-      [1.18, 140, Ease.out],
-      [0.88, 150, Ease.inOut],
-      [1.06, 160, Ease.inOut],
-      [1, 200, Ease.back],
-    ]);
-    this.anim("sx", [
-      [1.24, 90, Ease.out],
-      [0.88, 140, Ease.out],
-      [1.10, 150, Ease.inOut],
-      [0.96, 160, Ease.inOut],
-      [1, 200, Ease.back],
-    ]);
+      this.slotHTarget = 0;
+      this.isChewing = true;
+      setTimeout(() => { this.isChewing = false; }, 800);
+    }, 460);
+    this.anim("sy", [[0.78, 80, Ease.out], [1.18, 130, Ease.out], [1, 220, Ease.back]]);
+    this.anim("sx", [[1.28, 80, Ease.out], [0.92, 130, Ease.out], [1, 220, Ease.back]]);
     this.blink();
   }
 
@@ -322,8 +310,6 @@ export class BotEngine {
     this.slapTimes.push(t);
     Sound.play("slap");
     this.squash();
-    this.anim("ox", [[0.12, 60, Ease.out], [-0.08, 90, Ease.inOut], [0, 140, Ease.back]]);
-    this.anim("hands", [[1, 100, Ease.out], [0, 500, Ease.inOut]]);
     if (this.slapTimes.length >= 3) {
       this.slapTimes = [];
       this.onDizzy?.();
@@ -661,11 +647,11 @@ export class BotEngine {
    * `w`×`h` CSS pixels (the caller has already applied the DPR transform).
    */
   draw(x: CanvasRenderingContext2D, W: number, H: number) {
-    const R = W * 0.34;
-    const rx = R;
-    const ry = R;
+    const R = W * 0.3;
+    const rx = R * 1.14;
+    const ry = R * 0.88;
     const cx = W / 2 + this.ox * R;
-    const cy = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.04;
+    const cy = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06;
 
     this.drawHandsBehind(x, R, rx, ry, cx, cy);
 
@@ -675,23 +661,6 @@ export class BotEngine {
     x.scale(this.sx, this.sy);
 
     const body = this.bodyPath(rx, ry, R);
-
-    // Subtle matching outer glow
-    x.save();
-    let glowRgba = "rgba(255, 255, 255, 0.45)";
-    if (this.cocoSquadRole === "green") {
-      glowRgba = "rgba(16, 185, 129, 0.55)";
-    } else if (this.cocoSquadRole === "red") {
-      glowRgba = "rgba(239, 68, 68, 0.55)";
-    } else if (this.tint > 0.01) {
-      glowRgba = rgba(this.col, 0.55 * this.tint);
-    }
-    x.shadowColor = glowRgba;
-    x.shadowBlur = Math.round(R * 0.32);
-    x.fillStyle = "rgba(255, 255, 255, 0.04)";
-    x.fill(body);
-    x.restore();
-
     this.drawBody(x, body, R, rx, ry);
 
     const blushVal = Math.max(this.blush, this.tint * 0.5) * (1 - this.morph);
@@ -709,7 +678,7 @@ export class BotEngine {
     }
 
     this.drawEyes(x, body, R, rx, ry);
-    if (this.slotH > 0.01) this.drawMouth(x, body, R);
+    if (this.morph > 0.05) this.drawMouth(x, body, R);
 
     x.restore();
 
@@ -719,76 +688,86 @@ export class BotEngine {
     this.drawParticles(x, R, cx, cy);
   }
 
-  private bodyPath(_rx: number, _ry: number, R: number): Path2D {
+  private bodyPath(rx: number, ry: number, R: number): Path2D {
+    const n = 72;
+    const expN = 2.0 / 2.7;
+    const tw = R * 1.0;
+    const th = R * 0.94;
+    const tr = R * 0.42;
     const p = new Path2D();
-    p.arc(0, 0, R, 0, Math.PI * 2);
+    const m = this.morph;
+    for (let i = 0; i <= n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      const px0 = rx * (ca >= 0 ? Math.pow(ca, expN) : -Math.pow(-ca, expN));
+      const py0 = ry * (sa >= 0 ? Math.pow(sa, expN) : -Math.pow(-sa, expN));
+      let px = px0;
+      let py = py0;
+      if (m >= 0.005) {
+        const rr = rrPoint(ca, sa, tw, th, tr);
+        px = lerp(px0, rr.x, m);
+        py = lerp(py0, rr.y, m);
+      }
+      if (i === 0) p.moveTo(px, py);
+      else p.lineTo(px, py);
+    }
+    p.closePath();
     return p;
   }
 
   private drawBody(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
     if (this.bodyColor) {
-      // Mini bots: flat solid fill
+      // Mini bots: flat solid fill — no gradient, no reflection, no highlight
       x.fillStyle = rgba(this.bodyColor, 1);
       x.fill(body);
       return;
     }
-
-    // 1. 3D Key Diffuse Lighting (from top-left)
-    const lightX = -rx * 0.32;
-    const lightY = -ry * 0.36;
-    const g = x.createRadialGradient(lightX, lightY, R * 0.08, lightX, lightY, R * 1.75);
-
+    const g = x.createLinearGradient(rx * 0.7, -ry * 0.85, -rx * 0.8, ry * 0.9);
     if (this.cocoSquadRole === "green") {
-      // 🟢 Coco Verde: Fresh Emerald Diffuse Lighting
-      g.addColorStop(0.0, "#d1fae5");
-      g.addColorStop(0.25, "#6ee7b7");
-      g.addColorStop(0.65, "#10b981");
-      g.addColorStop(0.92, "#047857");
-      g.addColorStop(1.0, "#064e3b");
+      g.addColorStop(0, "#d1fae5");
+      g.addColorStop(1, "#10b981");
     } else if (this.cocoSquadRole === "red") {
-      // 🔴 Coco Rojo: Rich Coral / Ruby Diffuse Lighting
-      g.addColorStop(0.0, "#ffe4e6");
-      g.addColorStop(0.25, "#fca5a5");
-      g.addColorStop(0.65, "#ef4444");
-      g.addColorStop(0.92, "#b91c1c");
-      g.addColorStop(1.0, "#7f1d1d");
+      g.addColorStop(0, "#fee2e2");
+      g.addColorStop(1, "#ef4444");
+    } else if (this.cocoSquadRole === "blue") {
+      g.addColorStop(0, "#dbeafe");
+      g.addColorStop(1, "#3b82f6");
     } else {
-      // ⚪ Coco Blanco: Pure White Ceramic Pulp Lighting
-      g.addColorStop(0.0, "#ffffff");
-      g.addColorStop(0.25, "#f4f6fa");
-      g.addColorStop(0.65, "#d3d8e2");
-      g.addColorStop(0.92, "#9aa1b2");
-      g.addColorStop(1.0, "#7d8495");
+      g.addColorStop(0, rgba(BASE_TOP));
+      g.addColorStop(1, rgba(BASE_BOTTOM));
     }
     x.fillStyle = g;
     x.fill(body);
 
-    // 2. Bottom Ambient Bounce Light / State Illumination
     const effectiveTint = this.tint * (1 - this.morph);
-    const bounceGrad = x.createRadialGradient(0, ry * 0.9, R * 0.1, 0, ry * 0.9, R * 0.9);
-    if (this.cocoSquadRole === "green") {
-      bounceGrad.addColorStop(0.0, "rgba(110, 231, 183, 0.55)");
-      bounceGrad.addColorStop(1.0, "transparent");
-    } else if (this.cocoSquadRole === "red") {
-      bounceGrad.addColorStop(0.0, "rgba(252, 165, 165, 0.55)");
-      bounceGrad.addColorStop(1.0, "transparent");
-    } else if (effectiveTint > 0.01) {
-      bounceGrad.addColorStop(0.0, rgba(this.col, 0.75 * effectiveTint));
-      bounceGrad.addColorStop(1.0, "transparent");
-    } else {
-      bounceGrad.addColorStop(0.0, "rgba(220, 230, 245, 0.45)");
-      bounceGrad.addColorStop(1.0, "transparent");
+    if (effectiveTint > 0.01) {
+      const tg = x.createLinearGradient(0, ry, 0, -ry);
+      tg.addColorStop(0, rgba(this.col, 0.72 * effectiveTint));
+      tg.addColorStop(1, rgba(this.col, 0));
+      x.fillStyle = tg;
+      x.fill(body);
     }
-    x.fillStyle = bounceGrad;
+
+    const sh = x.createRadialGradient(0, 0, R * 0.15, 0, 0, R * 1.25);
+    sh.addColorStop(0, "rgba(0,0,0,0)");
+    sh.addColorStop(0.6, "rgba(0,0,0,0)");
+    sh.addColorStop(1, "rgba(0,0,0,0.2)");
+    x.fillStyle = sh;
+    x.fill(body);
+
+    const hl = x.createRadialGradient(rx * 0.34, -ry * 0.46, 0, rx * 0.34, -ry * 0.46, R * 0.42);
+    hl.addColorStop(0, "rgba(255,255,255,0.55)");
+    hl.addColorStop(1, "rgba(255,255,255,0)");
+    x.fillStyle = hl;
     x.fill(body);
   }
 
   private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
     let shape: EyeShape = this.eyeOverride ?? this.cfg.eye;
-    if (this.isChewing) {
-      shape = "happy";
-    } else if (this.slotHTarget > 0.05 || this.slotH > 0.05) {
-      shape = "cup";
+    if (this.morph > 0.5) {
+      if (this.isChewing) shape = "happy";
+      else if (this.slotHTarget > 0.05 || this.slotH > 0.1) shape = "cup";
     }
 
     x.save();
@@ -814,9 +793,6 @@ export class BotEngine {
 
       x.save();
       x.translate(ex, ey);
-      if (shape === "line" || this.state === "error") {
-        x.rotate(sd * -0.22);
-      }
       x.scale(fx, fy);
       this.drawEyeShape(x, shape, ew, eh, sd, ink);
       x.restore();
@@ -854,10 +830,10 @@ export class BotEngine {
         x.fill();
         break;
       case "happy":
-        x.lineWidth = Math.max(1.8, w * 0.28);
+        x.lineWidth = w * 0.5;
         x.lineCap = "round";
         x.beginPath();
-        x.arc(0, h * 0.1, w * 0.65, Math.PI, 0);
+        x.arc(0, h * 0.18, w * 0.82, Math.PI * 1.12, Math.PI * 1.88);
         x.stroke();
         break;
       case "closed":
@@ -932,24 +908,43 @@ export class BotEngine {
     }
   }
 
-  /** Mouth slot cut into the sphere face (Novra Grokbot digital slot). */
+  /** Mailbox slot: dark pill cut into the box face, with rim and lip highlights. */
   private drawMouth(x: CanvasRenderingContext2D, body: Path2D, R: number) {
-    if (this.slotH <= 0.01) return;
-    const hW = R * 1.05;
-    const hH = this.slotH * R * 0.5;
+    const m = this.morph;
+    const hW = R * 1.8 * m;
+    const hH = this.slotH * R * m;
     const hX = -hW / 2;
-    const hY = -R * 0.72;
+    const boxTop = -R * (0.88 + 0.06 * m);
+    const hY = boxTop + R * 0.08 * m;
 
     x.save();
     x.clip(body);
 
-    const hR = Math.min(hW / 2, hH / 2);
-    const g = x.createLinearGradient(0, hY, 0, hY + hH);
-    g.addColorStop(0, "rgb(7,8,10)");
-    g.addColorStop(1, "rgb(16,19,26)");
-    roundRectPath(x, hX, hY, hW, hH, hR);
-    x.fillStyle = g;
-    x.fill();
+    x.strokeStyle = `rgba(255,255,255,${0.55 * m})`;
+    x.lineWidth = 1;
+    x.lineCap = "round";
+    x.beginPath();
+    x.moveTo(-R * 0.9 * m, boxTop + 1);
+    x.lineTo(R * 0.9 * m, boxTop + 1);
+    x.stroke();
+
+    if (hH > 0.8) {
+      const hR = Math.min(hW / 2, hH / 2);
+      const g = x.createLinearGradient(0, hY, 0, hY + hH);
+      g.addColorStop(0, "rgb(7,8,10)");
+      g.addColorStop(1, "rgb(16,19,26)");
+      roundRectPath(x, hX, hY, hW, hH, hR);
+      x.fillStyle = g;
+      x.fill();
+      if (hH > 4) {
+        const lipR = Math.min(hR, (hW - 2) / 2);
+        x.strokeStyle = `rgba(255,255,255,${0.28 * m})`;
+        x.beginPath();
+        x.moveTo(hX + lipR, hY + hH - 0.5);
+        x.lineTo(hX + hW - lipR, hY + hH - 0.5);
+        x.stroke();
+      }
+    }
     x.restore();
   }
 
@@ -1004,28 +999,29 @@ export class BotEngine {
       x.save();
       x.translate(worldX, worldY);
       if (handRot !== 0) x.rotate(handRot);
-      const g = x.createLinearGradient(0, -heh, 0, heh);
+      const g = x.createLinearGradient(hew * 0.7, -heh * 0.85, -hew * 0.8, heh * 0.9);
       if (this.cocoSquadRole === "green") {
-        g.addColorStop(0, "#a7f3d0");
-        g.addColorStop(0.7, "#34d399");
-        g.addColorStop(1, "#047857");
+        g.addColorStop(0, "#d1fae5");
+        g.addColorStop(1, "#10b981");
       } else if (this.cocoSquadRole === "red") {
-        g.addColorStop(0, "#fecaca");
-        g.addColorStop(0.7, "#f87171");
-        g.addColorStop(1, "#b91c1c");
+        g.addColorStop(0, "#fee2e2");
+        g.addColorStop(1, "#ef4444");
+      } else if (this.cocoSquadRole === "blue") {
+        g.addColorStop(0, "#dbeafe");
+        g.addColorStop(1, "#3b82f6");
       } else if (this.bodyColor) {
         g.addColorStop(0, rgba(mix3(this.bodyColor, [1, 1, 1], 0.35)));
         g.addColorStop(1, rgba(this.bodyColor));
       } else {
-        g.addColorStop(0, "#ffffff");
-        g.addColorStop(0.7, "#dce0e8");
-        g.addColorStop(1, "#9ba2b2");
+        g.addColorStop(0, rgba(BASE_TOP));
+        g.addColorStop(1, rgba(BASE_BOTTOM));
       }
-      roundRectPath(x, -hew, -heh, hew * 2, heh * 2, Math.min(hew, heh));
+      x.beginPath();
+      x.ellipse(0, 0, hew, heh, 0, 0, Math.PI * 2);
       x.fillStyle = g;
       x.fill();
-      x.strokeStyle = "rgba(0,0,0,0.06)";
-      x.lineWidth = 0.8;
+      x.strokeStyle = "rgba(0,0,0,0.08)";
+      x.lineWidth = 1;
       x.stroke();
       x.restore();
     }
@@ -1148,4 +1144,39 @@ export class BotEngine {
       x.restore();
     }
   }
+}
+
+/** Ray → rounded-rect boundary intersection, for the mailbox morph. */
+function rrPoint(ca: number, sa: number, W: number, H: number, cr: number): { x: number; y: number } {
+  const eps = 1e-6;
+  const kx = ca >= 0 ? 1 : -1;
+  const ky = sa >= 0 ? 1 : -1;
+  const cx = kx * (W - cr);
+  const cy = ky * (H - cr);
+
+  const dot = ca * cx + sa * cy;
+  const disc = dot * dot - (cx * cx + cy * cy - cr * cr);
+  if (disc >= 0) {
+    const t = dot + Math.sqrt(disc);
+    if (t > eps) {
+      const px = ca * t;
+      const py = sa * t;
+      if (Math.abs(px) >= W - cr - eps && Math.abs(py) >= H - cr - eps) return { x: px, y: py };
+    }
+  }
+  if (Math.abs(sa) > eps) {
+    const t = (ky * H) / sa;
+    if (t > eps) {
+      const px = ca * t;
+      if (Math.abs(px) <= W - cr + eps) return { x: px, y: ky * H };
+    }
+  }
+  if (Math.abs(ca) > eps) {
+    const t = (kx * W) / ca;
+    if (t > eps) {
+      const py = sa * t;
+      if (Math.abs(py) <= H - cr + eps) return { x: kx * W, y: py };
+    }
+  }
+  return { x: kx * W, y: ky * H };
 }

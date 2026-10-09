@@ -61,6 +61,7 @@ export const SQUAD_MEMBERS: AgentTask[] = [
   task("coco_blanco", "Coco Blanco", "#FFFFFF", "agent"),
   task("coco_verde", "Coco Verde", "#10B981", "agent"),
   task("coco_rojo", "Coco Rojo", "#EF4444", "agent"),
+  task("coco_azul", "Coco Azul", "#3B82F6", "agent"),
 ];
 
 /** Dormant legacy event shape; no integration pollers are started. */
@@ -88,7 +89,7 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.12,
   autoCloseInterval: 15,
   absenceInterval: 180,
-  activeIntegrations: ["coco_verde", "coco_rojo"],
+  activeIntegrations: ["coco_verde", "coco_rojo", "coco_azul"],
   screen: "primary",
   autostart: false,
   hooksInstalled: false,

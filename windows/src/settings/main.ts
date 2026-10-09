@@ -32,6 +32,7 @@ function squadMembersSection(): HTMLElement {
     ["Coco Blanco", "#FFFFFF", "Asistente general y productividad"],
     ["Coco Verde", "#10B981", "Operaciones y comunicaciones"],
     ["Coco Rojo", "#EF4444", "Investigación y tareas profundas"],
+    ["Coco Azul", "#3B82F6", "Analista de datos y reportes de negocio"],
   ];
   const grid = h("div", { class: "squad-grid" });
   for (const [name, color, role] of members) {
@@ -55,7 +56,7 @@ function squadMembersSection(): HTMLElement {
     "section",
     {},
     h("h2", {}, h("span", { text: "Miembros del Squad" })),
-    h("div", { class: "hint", text: "Los tres Cocos se comunican con el servidor Coco Squad." }),
+    h("div", { class: "hint", text: "Los cuatro Cocos se comunican con el servidor Coco Squad." }),
     grid,
   );
 }

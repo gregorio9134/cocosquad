@@ -56,6 +56,7 @@ const OPEN_URLS: Record<string, string> = {
 function cocoSquadCard(task: AgentTask, hooks?: IntegrationCardHooks): HTMLElement {
   const isGreen = task.id === "coco_verde";
   const isRed = task.id === "coco_rojo";
+  const isBlue = task.id === "coco_azul";
 
   let roleDesc = "Asistente general";
   let subText = "Asistente principal del Coco Squad.";
@@ -65,16 +66,22 @@ function cocoSquadCard(task: AgentTask, hooks?: IntegrationCardHooks): HTMLEleme
 
   if (isGreen) {
     roleDesc = "Operaciones y comunicaciones";
-    subText = "Sus capacidades se incorporarán gradualmente al Coco Squad.";
+    subText = "Gestión de WhatsApp, agenda, turnos y comunicaciones reactivas.";
     badgeText = "🟢 Coco Verde · Operaciones";
     action1Text = "💬 Chatear con Verde";
     action2Text = "📨 Enviar mensaje";
   } else if (isRed) {
     roleDesc = "Investigación y tareas profundas";
-    subText = "Sus capacidades se incorporarán gradualmente al Coco Squad.";
+    subText = "Deep Research, síntesis de múltiples fuentes y reportes exhaustivos.";
     badgeText = "🔴 Coco Rojo · Investigación";
     action1Text = "💬 Chatear con Rojo";
     action2Text = "📨 Enviar mensaje";
+  } else if (isBlue) {
+    roleDesc = "Analista de datos y reportes";
+    subText = "Métricas de uso y negocio, ventas, stock y reportes mensuales.";
+    badgeText = "🔵 Coco Azul · Datos & Reportes";
+    action1Text = "💬 Chatear con Azul";
+    action2Text = "📊 Ver métricas";
   }
 
   const head = header(task.color, task.name, roleDesc);
@@ -468,7 +475,7 @@ export function hasIntegrationData(id: string): boolean {
 }
 
 export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHooks): HTMLElement {
-  if (task.id === "coco_blanco" || task.id === "coco_verde" || task.id === "coco_rojo") {
+  if (task.id === "coco_blanco" || task.id === "coco_verde" || task.id === "coco_rojo" || task.id === "coco_azul") {
     return cocoSquadCard(task, hooks);
   }
   if (task.id === "integration_n8n") {
