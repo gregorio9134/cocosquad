@@ -574,3 +574,29 @@ ESTADO EN COCO SQUAD:
   * http://localhost:8080/notch-buddy.html (isla y sandbox interactivo)
   * windows/dev/upload-preview.html (preview de desarrollo en loop)
 - Backend de Staging (150.136.59.173:8080) verificado y respondiendo activamente.
+
+8. UNIFICACION TOTAL DE LA SECUENCIA DE DEVORADO EN EL SANDBOX (10 OCTUBRE 2026)
+--------------------------------------------------------------------------------
+Gregorio observo una discrepancia entre:
+  a) http://localhost:8080/upload-sequence.html (animacion pura aislada de devorado).
+  b) http://localhost:8080/notch-buddy.html (sandbox interactivo).
+En el sandbox interactivo, la animacion de subida previa utilizaba la logica vieja
+de CSS mientras que la deseada y correcta es la secuencia de devorado de 15 pulsos.
+
+Acciones realizadas:
+1) Se porto e integro el motor completo de 15 pulsos (upEngine, canvas de 28 tiras,
+   resortes criticos, boca que se abre, particulas esmeralda, masticado con ojos ^ ^,
+   reduccion a esfera de 14px, recorrido de la barra de progreso, destello y tarjeta)
+   directamente dentro del sandbox interactivo.
+2) Se sincronizaron las coordenadas entre el stage escalado y el repere local de la
+   isla (640x176) mediante rectS(island).
+3) Se actualizo el flujo de arrastre manual y la demo automatica ("Relancer la démo")
+   para que al soltar cualquier archivo sobre la isla, se desencadene la secuencia
+   autentica de devorado de Louis.
+4) Se sincronizaron todos los archivos espejo:
+   - design/prototype/notch-buddy.html
+   - windows/prototype.html
+   - Copia_Seguridad_Vector_AI/backend/agente/public/notch-buddy.html
+   - Copia_Seguridad_Vector_AI/backend/agente/public/coucou.html
+Ambos enlaces en localhost:8080 ahora muestran exactamente la misma animacion de devorado.
+
