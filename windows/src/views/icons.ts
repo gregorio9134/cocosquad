@@ -44,4 +44,6 @@ export const ICONS = {
   doc: "M6.5 2.6h7l4 4v14.8h-11V2.6zm6.6 1.6v3.3h3.3l-3.3-3.3zM8.6 11h6.8v1.5H8.6V11zm0 3.4h6.8v1.5H8.6v-1.5z",
   // paperclip
   paperclip: "M16.5 6v11.5c0 2.2-1.8 4-4 4s-4-1.8-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .8-.7 1.5-1.5 1.5s-1.5-.7-1.5-1.5V6h-2v9.5a3.5 3.5 0 0 0 7 0V5a4.5 4.5 0 0 0-9 0v12.5c0 3.3 2.7 6 6 6s6-2.7 6-6V6h-2z",
+  // checklist
+  checklist: "M3 5h2v2H3V5zm4 0h14v2H7V5zm-4 6h2v2H3v-2zm4 0h14v2H7v-2zm-4 6h2v2H3v-2zm4 0h14v2H7v-2z",
 } as const;

@@ -6,7 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import type { Settings } from "./state";
+import { State, type Settings } from "./state";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -90,10 +90,50 @@ export const Bridge = {
   /** "Nobody can act on this" — Claude Code asks in the terminal right away. */
   approvalDecline: (requestId: string) => call<void>("approval_decline", { requestId }),
 
-  // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn to the Coco Squad Server. */
-  chatSend: (query: string, context: ChatContext | null, cocoId?: string | null) =>
-    callOrThrow<ChatReply>("chat_send", { query, context, cocoId: cocoId ?? null }),
+  chatSend: async (query: string, context: ChatContext | null, cocoId?: string | null): Promise<ChatReply> => {
+    if (!IS_TAURI) {
+      const activeId = cocoId || "coco_blanco";
+      try {
+        const res = await fetch("http://150.136.59.173:8080/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: query,
+            chat_id: 1,
+            tenant_id: 1,
+            coco_id: activeId,
+            contexto: context,
+            file: context && context.kind === "file" && context.base64 ? {
+              name: context.name,
+              data: context.base64,
+              mime: context.name.endsWith(".pdf") ? "application/pdf" : (context.name.endsWith(".png") || context.name.endsWith(".jpg") ? "image/jpeg" : "text/plain"),
+            } : null,
+            todos: State.todos,
+            notes: State.quickNotes,
+          }),
+        });
+        if (!res.ok) {
+          throw new Error(`Servidor devolvió status ${res.status}`);
+        }
+        const data = await res.json();
+        const text = data.reply || data.respuesta || "Sin respuesta del servidor";
+        return {
+          text,
+          cocoId: data.coco_id || activeId,
+          cocoNombre: data.coco_nombre || (activeId === "coco_verde" ? "Coco Verde" : activeId === "coco_rojo" ? "Coco Rojo" : activeId === "coco_azul" ? "Coco Azul" : "Coco Blanco"),
+          color: data.color || (activeId === "coco_verde" ? "#10b981" : activeId === "coco_rojo" ? "#ef4444" : activeId === "coco_azul" ? "#3b82f6" : "#ffffff"),
+        };
+      } catch (err) {
+        console.error("[bridge] Error conectando a staging:", err);
+        return {
+          text: `⚠️ No se pudo conectar con el servidor de Staging (150.136.59.173:8080): ${err instanceof Error ? err.message : String(err)}`,
+          cocoId: activeId,
+        };
+      }
+    }
+    return callOrThrow<ChatReply>("chat_send", { query, context, cocoId: cocoId ?? null });
+  },
   chatReset: () => call<void>("chat_reset"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),

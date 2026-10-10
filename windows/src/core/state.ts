@@ -50,6 +50,19 @@ export interface SearchResult {
   note?: string;
 }
 
+export interface TodoItem {
+  id: string;
+  text: string;
+  done: boolean;
+  createdAt: number;
+}
+
+export interface QuickNote {
+  id: string;
+  text: string;
+  createdAt: number;
+}
+
 const task = (
   id: string, name: string, color: string, source: AgentSource,
 ): AgentTask => ({
@@ -127,6 +140,75 @@ class AppState {
   pendingApproval: ApprovalInfo | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
+
+  todos: TodoItem[] = [];
+  quickNotes: QuickNote[] = [];
+
+  loadProductivityData() {
+    try {
+      if (typeof localStorage !== "undefined") {
+        const savedTodos = localStorage.getItem("coco_blanco_todos");
+        if (savedTodos) this.todos = JSON.parse(savedTodos);
+        const savedNotes = localStorage.getItem("coco_blanco_notes");
+        if (savedNotes) this.quickNotes = JSON.parse(savedNotes);
+      }
+    } catch {}
+  }
+
+  saveProductivityData() {
+    try {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("coco_blanco_todos", JSON.stringify(this.todos));
+        localStorage.setItem("coco_blanco_notes", JSON.stringify(this.quickNotes));
+      }
+    } catch {}
+  }
+
+  addTodo(text: string): TodoItem {
+    const item: TodoItem = {
+      id: "t_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      text: text.trim(),
+      done: false,
+      createdAt: Date.now(),
+    };
+    this.todos.unshift(item);
+    this.saveProductivityData();
+    this.notify();
+    return item;
+  }
+
+  toggleTodo(id: string) {
+    const t = this.todos.find((x) => x.id === id);
+    if (t) {
+      t.done = !t.done;
+      this.saveProductivityData();
+      this.notify();
+    }
+  }
+
+  removeTodo(id: string) {
+    this.todos = this.todos.filter((x) => x.id !== id);
+    this.saveProductivityData();
+    this.notify();
+  }
+
+  addNote(text: string): QuickNote {
+    const note: QuickNote = {
+      id: "n_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      text: text.trim(),
+      createdAt: Date.now(),
+    };
+    this.quickNotes.unshift(note);
+    this.saveProductivityData();
+    this.notify();
+    return note;
+  }
+
+  removeNote(id: string) {
+    this.quickNotes = this.quickNotes.filter((x) => x.id !== id);
+    this.saveProductivityData();
+    this.notify();
+  }
 
   lastActivity = performance.now();
 
@@ -230,3 +312,4 @@ class AppState {
 }
 
 export const State = new AppState();
+State.loadProductivityData();

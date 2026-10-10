@@ -146,8 +146,250 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   const send = h("button", { class: "send-btn", title: "Enviar" }, svg(ICONS.arrowUp, 11));
   const bar = h("div", { class: "chat-bar" }, fileInput, attachBtn, input, send);
 
-  const cardEl = h("div", { class: "card wash chat-card" }, h("div", { class: "chat-body" }, chipRow, log, bar));
+  const prodContainer = h("div", { class: "prod-container" });
+  const cardEl = h("div", { class: "card wash chat-card" }, h("div", { class: "chat-body" }, chipRow, prodContainer, log, bar));
   const el = h("div", { class: "view" }, cardEl);
+
+  let prodOpen = false;
+  let prodTab: "tasks" | "notes" = "tasks";
+
+  function syncProductivity() {
+    clear(prodContainer);
+    if (!prodOpen) return;
+
+    const panel = h("div", { class: "prod-panel" });
+    const pending = State.todos.filter((t) => !t.done).length;
+    const notesCount = State.quickNotes.length;
+
+    const tabT = h(
+      "button",
+      {
+        class: `prod-tab${prodTab === "tasks" ? " active" : ""}`,
+        onclick: (e: Event) => {
+          e.stopPropagation();
+          prodTab = "tasks";
+          syncProductivity();
+        },
+      },
+      svg(ICONS.checklist, 10),
+      h("span", { text: `Tareas (${pending})` }),
+    );
+
+    const tabN = h(
+      "button",
+      {
+        class: `prod-tab${prodTab === "notes" ? " active" : ""}`,
+        onclick: (e: Event) => {
+          e.stopPropagation();
+          prodTab = "notes";
+          syncProductivity();
+        },
+      },
+      svg(ICONS.doc, 10),
+      h("span", { text: `Notas (${notesCount})` }),
+    );
+
+    const closeBtn = h(
+      "button",
+      {
+        class: "prod-close-btn",
+        title: "Cerrar panel de productividad",
+        onclick: (e: Event) => {
+          e.stopPropagation();
+          prodOpen = false;
+          Sound.play("blip");
+          syncProductivity();
+          onHeightChange();
+        },
+      },
+      svg(ICONS.xmark, 8),
+    );
+
+    const header = h("div", { class: "prod-header" }, h("div", { class: "prod-tabs" }, tabT, tabN), closeBtn);
+    panel.append(header);
+
+    if (prodTab === "tasks") {
+      const inTask = h("input", {
+        class: "prod-input",
+        placeholder: "+ Nueva tarea para hoy…",
+        type: "text",
+        spellcheck: "false",
+      }) as HTMLInputElement;
+
+      const addBtn = h(
+        "button",
+        {
+          class: "prod-add-btn",
+          title: "Agregar tarea",
+          onclick: (e: Event) => {
+            e.stopPropagation();
+            const val = inTask.value.trim();
+            if (val) {
+              State.addTodo(val);
+              Sound.play("finish");
+              inTask.value = "";
+              syncProductivity();
+              onHeightChange();
+            }
+          },
+        },
+        svg(ICONS.plus, 10),
+      );
+
+      inTask.addEventListener("keydown", (e) => {
+        if ((e as KeyboardEvent).key === "Enter") {
+          e.preventDefault();
+          addBtn.click();
+        }
+        e.stopPropagation();
+      });
+
+      const addRow = h("div", { class: "prod-add-row" }, inTask, addBtn);
+      panel.append(addRow);
+
+      const list = h("div", { class: "prod-list" });
+      if (State.todos.length === 0) {
+        list.append(h("div", { class: "prod-empty", text: "No tienes tareas pendientes hoy. ¡Coco Blanco te acompaña!" }));
+      } else {
+        for (const item of State.todos) {
+          const check = h(
+            "button",
+            {
+              class: `prod-check${item.done ? " checked" : ""}`,
+              title: item.done ? "Marcar como pendiente" : "Marcar como completada",
+              onclick: (e: Event) => {
+                e.stopPropagation();
+                State.toggleTodo(item.id);
+                Sound.play(item.done ? "finish" : "blip");
+                syncProductivity();
+              },
+            },
+            item.done ? svg(ICONS.check, 9) : null,
+          );
+
+          const label = h("span", {
+            class: `prod-item-text${item.done ? " done" : ""}`,
+            text: item.text,
+            onclick: (e: Event) => {
+              e.stopPropagation();
+              check.click();
+            },
+          });
+
+          const del = h(
+            "button",
+            {
+              class: "prod-item-del",
+              title: "Eliminar tarea",
+              onclick: (e: Event) => {
+                e.stopPropagation();
+                State.removeTodo(item.id);
+                Sound.play("blip");
+                syncProductivity();
+                onHeightChange();
+              },
+            },
+            svg(ICONS.xmark, 7),
+          );
+
+          list.append(h("div", { class: "prod-item" }, check, label, del));
+        }
+      }
+      panel.append(list);
+    } else {
+      const inNote = h("input", {
+        class: "prod-input",
+        placeholder: "+ Escribir nota rápida…",
+        type: "text",
+        spellcheck: "false",
+      }) as HTMLInputElement;
+
+      const addBtn = h(
+        "button",
+        {
+          class: "prod-add-btn",
+          title: "Guardar nota",
+          onclick: (e: Event) => {
+            e.stopPropagation();
+            const val = inNote.value.trim();
+            if (val) {
+              State.addNote(val);
+              Sound.play("finish");
+              inNote.value = "";
+              syncProductivity();
+              onHeightChange();
+            }
+          },
+        },
+        svg(ICONS.plus, 10),
+      );
+
+      inNote.addEventListener("keydown", (e) => {
+        if ((e as KeyboardEvent).key === "Enter") {
+          e.preventDefault();
+          addBtn.click();
+        }
+        e.stopPropagation();
+      });
+
+      const addRow = h("div", { class: "prod-add-row" }, inNote, addBtn);
+      panel.append(addRow);
+
+      const list = h("div", { class: "prod-list" });
+      if (State.quickNotes.length === 0) {
+        list.append(h("div", { class: "prod-empty", text: "Sin notas rápidas en el escritorio." }));
+      } else {
+        for (const item of State.quickNotes) {
+          const label = h("span", { class: "prod-note-text", text: item.text });
+          const time = h("span", {
+            class: "prod-note-time",
+            text: new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          });
+          const del = h(
+            "button",
+            {
+              class: "prod-item-del",
+              title: "Eliminar nota",
+              onclick: (e: Event) => {
+                e.stopPropagation();
+                State.removeNote(item.id);
+                Sound.play("blip");
+                syncProductivity();
+                onHeightChange();
+              },
+            },
+            svg(ICONS.xmark, 7),
+          );
+
+          list.append(h("div", { class: "prod-item" }, label, time, del));
+        }
+      }
+      panel.append(list);
+    }
+
+    prodContainer.append(panel);
+  }
+
+  function renderProductivityButton(): HTMLElement {
+    const pending = State.todos.filter((t) => !t.done).length;
+    return h(
+      "button",
+      {
+        class: `prod-toggle-pill${prodOpen ? " active" : ""}`,
+        title: "Tareas y Notas de hoy (Productividad Coco Blanco)",
+        onclick: (e: Event) => {
+          e.stopPropagation();
+          prodOpen = !prodOpen;
+          Sound.play("blip");
+          syncProductivity();
+          onHeightChange();
+        },
+      },
+      svg(ICONS.checklist, 10),
+      h("span", { text: "Tareas" }),
+      pending > 0 ? h("span", { class: "prod-badge", text: String(pending) }) : null,
+    );
+  }
 
   // Clipboard paste support (e.g. pasted screenshots or copied files)
   input.addEventListener("paste", (e) => {
@@ -175,6 +417,46 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
     const userText = query || (file ? `Analiza el documento: ${file.name}` : "");
     input.value = "";
+
+    // Interceptar comandos de productividad en lenguaje natural para respuesta instantánea
+    const matchTodo = userText.match(/^(?:\/tarea|\/todo|tarea:|anotar tarea:|anotame:|recordame:|nueva tarea:)\s*(.+)/i);
+    if (matchTodo && matchTodo[1]) {
+      const taskTxt = matchTodo[1].trim();
+      State.addTodo(taskTxt);
+      State.chatHistory.push({ id: nextId++, role: "user", content: userText });
+      State.chatHistory.push({
+        id: nextId++,
+        role: "assistant",
+        content: `✅ **Tarea guardada en tu lista de hoy:**\n• ${taskTxt}\n\n*Puedes verla, marcarla o agregar más en el botón "📋 Tareas" de Coco Blanco.*`,
+      });
+      Sound.play("finish");
+      State.triggerMochi("finished");
+      syncProductivity();
+      State.notify();
+      onHeightChange();
+      input.focus();
+      return;
+    }
+
+    const matchNote = userText.match(/^(?:\/nota|nota:|guardar nota:|anotar nota:)\s*(.+)/i);
+    if (matchNote && matchNote[1]) {
+      const noteTxt = matchNote[1].trim();
+      State.addNote(noteTxt);
+      State.chatHistory.push({ id: nextId++, role: "user", content: userText });
+      State.chatHistory.push({
+        id: nextId++,
+        role: "assistant",
+        content: `📝 **Nota rápida guardada en el escritorio:**\n• ${noteTxt}`,
+      });
+      Sound.play("finish");
+      State.triggerMochi("finished");
+      syncProductivity();
+      State.notify();
+      onHeightChange();
+      input.focus();
+      return;
+    }
+
     sending = true;
     Sound.play("send");
 
@@ -276,9 +558,13 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       };
       cardEl.style.setProperty("--wash", washColors[activeId] || "rgba(99, 102, 241, 0.45)");
 
-      // Rebuild chipRow with squad selector + optional attached file chip
+      // Rebuild chipRow with squad selector + optional attached file chip + productivity button
       clear(chipRow);
       chipRow.append(renderSquadPills());
+
+      if (activeId === "coco_blanco") {
+        chipRow.append(renderProductivityButton());
+      }
 
       if (file) {
         chipRow.append(
@@ -291,6 +577,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
           }),
         );
       }
+
+      syncProductivity();
 
       const thinking = State.stateOverride === "thinking";
       const count = State.chatHistory.length + (thinking ? 0.5 : 0);

@@ -1,5 +1,5 @@
 COCO SQUAD — COMUNICACION ENTRE NOTEBOOKS
-Actualizado: 8 de octubre de 2026
+Actualizado: 10 de octubre de 2026
 
 PARA QUE SIRVE ESTE ARCHIVO
 
@@ -411,10 +411,99 @@ Se realizo una auditoria completa de la infraestructura en Oracle Cloud:
 - No se requiere compilar Swift ni Rust para probar las funciones de los agentes,
   lo que permite avanzar con agilidad en cualquiera de las dos computadoras.
 
-6. PROXIMO PASO EN LA OTRA NOTEBOOK (WINDOWS)
+6. PASOS REALIZADOS EN LA NOTEBOOK WINDOWS (9-10 DE OCTUBRE)
 --------------------------------------------------------------------------------
-- Abrir la notebook Windows, hacer git pull / sincronizar la rama
+- Se abrio la notebook Windows y se verifico el funcionamiento en la rama
   'refactor/coco-client-modules'.
-- Probar la apertura del cliente o la web oficial en Windows.
-- Comenzar con la integracion funcional de Coco Blanco contra el backend de Oracle.
+- Se comprobo la interfaz limpia de Coucou y se conecto con Staging.
+- Se implementaron las dos funciones prioritarias de Coco Blanco (ver seccion 7).
+
+
+================================================================================
+ACTUALIZACION DE SESION: 10 DE OCTUBRE DE 2026 (COCO BLANCO: TAREAS, ARCHIVOS Y STAGING)
+================================================================================
+
+1. IMPLEMENTACION DE FUNCIONES EN COCO BLANCO (AGENTE MAESTRO)
+--------------------------------------------------------------------------------
+Se implementaron y probaron con exito de punta a punta las dos capacidades clave
+acordadas para Coco Blanco en el cliente Windows / Web y en el backend de Staging:
+
+A) PRODUCTIVIDAD DIARIA & TAREAS RAPIDAS (ESTILO TABY):
+   - Panel de productividad desplegable en la barra de chat / isla flotante con
+     pestanas interactivas de 'Tareas' y 'Notas'.
+   - Persistencia local en el cliente (windows/src/core/state.ts) sincronizada en
+     localStorage (metodos addTodo, toggleTodo, removeTodo, addNote, removeNote).
+   - Checkboxes interactivos con tacha animada y feedback sonoro de completado.
+   - Comandos rapidos en lenguaje natural por chat: /tarea <texto>, anotame: <texto>,
+     /nota <texto>, todo: <texto>. Crean la tarea instantaneamente y activan la
+     animacion victoriosa de Coucou ('finished') y sonido de festejo ('finish').
+   - Inyeccion contextual automatica: el cliente envia las tareas y notas pendientes
+     en cada interaccion para que Coco Blanco tenga conciencia contextual de tu
+     backlog y te ayude a priorizar.
+
+B) ANALISIS DE ARCHIVOS POR DRAG & DROP & ADJUNTOS:
+   - Capacidad de arrastrar y soltar cualquier documento (.pdf, .txt, .csv, imagenes, etc.)
+     directamente sobre el Mochi flotante o cargarlo con el boton de clip.
+   - Activacion de la animacion de ingesta ('gulp') de Mochi al recibir el archivo.
+   - Serializacion Base64 y envio al backend de Staging (150.136.59.173:8080).
+   - Extraccion de texto y analisis contextual en el backend para resumenes,
+     extraccion de datos y preguntas/respuestas (validado con facturas y texto real).
+
+2. ESTADO DEL BACKEND EN ORACLE CLOUD (STAGING: 150.136.59.173:8080)
+--------------------------------------------------------------------------------
+- IMPORTANTE: El servidor de Produccion (129.158.204.84) se mantuvo 100% intacto.
+- Servidor de Staging (150.136.59.173):
+  * api/routers/chat.py: actualizado para recibir 'file', 'todos', 'notes' y soportar
+    los endpoints /api/chat, /api/coco y /api/coco/chat.
+  * functional_core.py: inyectadas las personalidades de Coco Blanco (asistente maestro
+    y productividad), Coco Verde, Coco Rojo y Coco Azul; conectado el procesador
+    sincrono de documentos para extraccion de texto/PDFs.
+  * Servicio FastAPI corriendo en segundo plano bajo nohup/setsid en el puerto 8080.
+  * Probado desde Windows con verificacion exitosa de respuesta de personalidad y
+    extraccion exacta de datos de documentos.
+
+3. ARQUITECTURA DE IA EVALUADA: FREEELLM API VS GEMINI PAY-AS-YOU-GO
+--------------------------------------------------------------------------------
+- Se analizo el repositorio https://github.com/tashfeenahmed/freellmapi para hacer
+  pruebas tempranas sin costo antes del lanzamiento comercial.
+- Decision de arquitectura recomendada: Centralizar la llamada al LLM en el backend
+  de Oracle (agente-staging) detras de una interfaz o variable de entorno
+  (LLM_PROVIDER=gemini | LLM_PROVIDER=freellm), de modo que cuando se pase a la API
+  oficial Pay-As-You-Go de Google no se deba modificar el cliente ni la logica del Squad,
+  solo un parametro de configuracion en el servidor.
+
+4. LISTA DEFINITIVA DE FUNCIONES DE COCO BLANCO
+--------------------------------------------------------------------------------
+- [x] Productividad Diaria & Tareas Rapidas (Estilo Taby)
+- [x] Analisis de Archivos por Drag & Drop & Adjuntos
+- [x] Identidad Visual & Animaciones Coucou Mochi Originales
+- [x] Conversacion Fluida & Asistencia General
+- [ ] Modo Enfoque / Temporizador Pomodoro de Escritorio
+- [ ] Orquestador & Delegacion Inteligente del Squad (coordinacion con Verde, Rojo, Azul)
+- [ ] Reconocimiento de Contexto en Pantalla (Screen Awareness)
+- [ ] Planificador Matutino & Resumen del Dia (/resumen)
+- [ ] Recordatorios Proactivos de Escritorio
+
+5. ARCHIVOS MODIFICADOS EN ESTA SESION
+--------------------------------------------------------------------------------
+- windows/src/core/state.ts: interfaces TodoItem, QuickNote y logica de productividad local.
+- windows/src/views/chat.ts: panel interactivo de tareas/notas, comandos /tarea y renderProductivityButton.
+- windows/src/core/bridge.ts: inclusion de contexto de tareas, notas y archivos adjuntos en chatSend.
+- windows/src/style.css: estilos glassmorphism para el panel de productividad y transiciones.
+- windows/src/views/icons.ts: icono SVG checklist para el boton del panel.
+- windows/src-tauri/src/coco_client.rs: endpoint apuntando a Staging (http://150.136.59.173:8080/api/chat).
+- comunicacion entre notebooks.txt: actualizado con todo el contexto de la sesion.
+
+6. PASOS PARA RETOMAR EN LA MAC
+--------------------------------------------------------------------------------
+1. En la Mac, situarse en el repositorio Coco-Squad:
+   git fetch origin
+   git checkout refactor/coco-client-modules
+   git pull origin refactor/coco-client-modules
+2. Para probar la interfaz y las funciones en la Mac:
+   - Se puede abrir en el navegador local o levantar el entorno web/Vite con 'npm run dev' en windows/.
+   - O bien probar contra el servidor Staging en http://150.136.59.173:8080.
+3. Proximo paso a desarrollar: Elegir entre 'Modo Enfoque / Pomodoro' o 'Delegacion Inteligente del Squad'
+   para continuar completando las funciones de Coco Blanco.
+
 

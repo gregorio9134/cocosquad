@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 
 use crate::coco_protocol::{build_chat_request, parse_chat_reply, ChatContext, ChatReply};
 
-const DEFAULT_COCO_SERVER: &str = "http://129.158.204.84";
+const DEFAULT_COCO_SERVER: &str = "http://150.136.59.173:8080";
 
 pub const DEFAULT_MODEL: &str = "coco-squad";
 
@@ -37,7 +37,7 @@ pub async fn send(
     context: Option<ChatContext>,
     coco_id: Option<String>,
 ) -> Result<ChatReply, String> {
-    let endpoint = format!("{DEFAULT_COCO_SERVER}/api/coco/chat");
+    let endpoint = format!("{DEFAULT_COCO_SERVER}/api/chat");
     let body = build_chat_request(&query, context.as_ref(), coco_id.as_deref());
 
     let client = reqwest::Client::builder()
