@@ -234,6 +234,7 @@ code{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:12px;backgroun
     <h1>Notch Buddy</h1>
     <p>Prototype visuel du compagnon de notch, à valider avant la version Swift. Tout est codé, rien n'est une vidéo.</p>
   </div>
+  <button class="demo-btn" id="btnDevour" style="background:#1FA87A;color:#fff;border:1px solid #34D399;font-weight:700;"><svg viewBox="0 0 12 12"><path d="M2 1.2v9.6L10.4 6z" fill="currentColor"/></svg><span>▶ Ver devorado de archivo (15 beats)</span></button>
   <button class="demo-btn" id="demoBtn"><svg viewBox="0 0 12 12"><path d="M2 1.2v9.6L10.4 6z" fill="currentColor"/></svg><span>Lancer la démo</span></button>
 </header>
 <p class="how"><b>À tester à la main :</b> survole le notch, clique trois fois sur le bonhomme, glisse un fichier du Finder vers le notch, attrape le bonhomme et lâche-le sur Safari. Active le son en bas.</p>
@@ -457,7 +458,8 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const NOW=()=>performance.now();
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), lerp=(a,b,t)=>a+(b-a)*t;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const E={out:t=>1-Math.pow(1-t,3),inOut:t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2,back:t=>{const c1=1.7,c3=c1+1;return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2)},lin:t=>t};
+const E={out:t=>1-Math.pow(1-t,3),in:t=>t*t*t,inOut:t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2,back:t=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2)},lin:t=>t};
+const seg=(t,a,b)=>clamp((t-a)/(b-a),0,1);
 const hexRgb=h=>{h=h.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]};
 const rgba=(c,a)=>`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`;
 const mix=(a,b,t)=>[lerp(a[0],b[0],t),lerp(a[1],b[1],t),lerp(a[2],b[2],t)];
@@ -824,14 +826,6 @@ function dragMove(p){ app.pointer=p;
   if(app.drag.type==='bot'){ const fb=$('#floatbot'); fb.style.left=p.x+'px'; fb.style.top=p.y+'px'; safari.classList.toggle('target',inR(p,rectS(safari))) }
   else { const g=$('#fileghost'); g.style.left=p.x+'px'; g.style.top=p.y+'px'; const over=inR(p,islandZone());
     if(over&&!(app.mode==='expanded'&&app.view==='upload')){ app.hover=true; expand('upload'); Snd.play('hover') }
-    if(over){
-      const ir=rectS(island);
-      const islX=clamp(p.x-ir.l,0,640);
-      const islY=clamp(p.y-ir.t,0,176);
-      upEngine.updateHover(islX,islY);
-    } else if(upEngine.active && !uSim.isDropping){
-      upEngine.stop();
-    }
     $('#drop').classList.toggle('over',over&&app.view==='upload');
     if(!over&&app.mode==='expanded'&&app.view==='upload'&&p.y>260){ app.hover=false; resetMorph(); collapse() } } }
 function dragEnd(p){ const d=app.drag; app.drag=null;
@@ -841,7 +835,7 @@ function dragEnd(p){ const d=app.drag; app.drag=null;
     setTimeout(applyLayout,380) }
   else { const g=$('#fileghost'); d.el.classList.remove('dragging');
     if(inR(p,islandZone())&&app.view==='upload'){ app.file=d.name; sync(); dropFile(p) }
-    else { upEngine.stop(); const home=rectS(d.el); g.animate([{left:p.x+'px',top:p.y+'px'},{left:(home.l+24)+'px',top:home.cy+'px'}],{duration:320,easing:'ease-out'}).onfinish=()=>g.style.display='none'; if(app.view==='upload') collapse() } } }
+    else { const home=rectS(d.el); g.animate([{left:p.x+'px',top:p.y+'px'},{left:(home.l+24)+'px',top:home.cy+'px'}],{duration:320,easing:'ease-out'}).onfinish=()=>g.style.display='none'; if(app.view==='upload') collapse() } } }
 function resetMorph(){ if(main.s.morph>.01||main.lock.morph) main.anim('morph',[[0,320,E.back]]) }
 
 /* ====================== SÉQUENCE DE DÉPÔT OFFICIELLE (15 PULSOS / 28 TIRAS) ====================== */
@@ -857,56 +851,56 @@ const UCHOOSE={x:60,y:101,d:52};
 const ULOCK_IN=60, ULOCK_OUT=90;
 const UMOUTH={ajar:.20,open:.42,max:.50};
 const UGREEN='#34D399', UGREEN_D='#1FA87A', UGREEN_L='#6EE7B7';
-const UT={drop:1.95, suckStart:2.03, suckEnd:2.33, closeEnd:2.42, chew1:2.60, chewEnd:2.88,
-          shrinkEnd:3.23, barIn:3.00, progStart:3.25, progEnd:5.05, growStart:5.30, growEnd:5.75, end:6.20};
+const UT={drop:1.95, suckStart:2.03, suckEnd:2.33, closeEnd:2.42, chew1:2.60, chew2:2.74, chewEnd:2.88,
+          shrinkEnd:3.23, barIn:3.00, progStart:3.25, progEnd:5.05, growStart:5.30, growEnd:5.75, end:7.2};
+const UPATH=[[0.00,600,262],[0.35,470,150],[0.80,330,70],[1.25,210,50],[1.65,140,36],[1.95,140,36]];
+const UDT=1/240;
 
-let uSim={active:false, t:0, bx:{v:UREST.x,vel:0}, by:{v:UREST.y,vel:0}, tilt:0, mouth:{v:0,vel:0},
-          locked:false, lockAt:-9, entered:-9, cursor:{x:UREST.x,y:36}, lastPct:0, gulp:false, ok:false,
-          isDropping:false, fileName:'brief-client.pdf'};
-
+function uCursorAt(t){ for(let i=1;i<UPATH.length;i++){ const [t0,x0,y0]=UPATH[i-1],[t1,x1,y1]=UPATH[i]; if(t<=t1){ const k=E.inOut(seg(t,t0,t1)); return {x:lerp(x0,x1,k),y:lerp(y0,y1,k)} } } const l=UPATH[UPATH.length-1]; return {x:l[1],y:l[2]} }
+function uInZone(p){ return p.x>UCARD.x-40&&p.x<UCARD.x+UCARD.w+40&&p.y<UH+26 }
 function uSpring(s,target,response,damping,dt){ const k=Math.pow(2*Math.PI/response,2), c=2*damping*Math.sqrt(k); const a=k*(target-s.v)-c*s.vel; s.vel+=a*dt; s.v+=s.vel*dt }
 function uKf(t,keys,ease=E.inOut){ if(t<=keys[0][0])return keys[0][1]; for(let i=1;i<keys.length;i++){ if(t<=keys[i][0]){ const k=seg(t,keys[i-1][0],keys[i][0]); return lerp(keys[i-1][1],keys[i][1],(keys[i][2]||ease)(k)) } } return keys[keys.length-1][1] }
 function uProgressCurve(u){ if(u<.4) return .6*E.out(u/.4); if(u<.85) return .6+.32*E.inOut((u-.4)/.45); return .92+.08*E.in((u-.85)/.15) }
 function uProgressAt(t){ return t<UT.progStart?0:uProgressCurve(seg(t,UT.progStart,UT.progEnd)) }
 
-function uStep(dt){
-  const s=uSim, t=s.t, dragging=!s.isDropping;
+function newUSim(){ return {t:0, bx:{v:UREST.x,vel:0}, by:{v:UREST.y,vel:0}, tilt:0, mouth:{v:0,vel:0}, locked:false, lockAt:-9, entered:-9, events:[], lastPct:0, fileName:'brief-client.pdf'} }
+let uS=newUSim();
+
+function uStep(s){
+  const t=s.t, c=uCursorAt(t), dragging=t<UT.drop;
+  if(dragging&&s.entered<0&&uInZone(c)){ s.entered=t; s.events.push('enter') }
   if(dragging&&s.entered>=0){
-    const dist=Math.hypot(s.cursor.x-s.bx.v,(s.cursor.y+14)-s.by.v);
-    if(!s.locked&&dist<ULOCK_IN){ s.locked=true; s.lockAt=s.t; Snd.play('pop') }
+    const dist=Math.hypot(c.x-s.bx.v,(c.y+14)-s.by.v);
+    const c2=uCursorAt(Math.max(0,t-.05)), speed=Math.hypot(c.x-c2.x,c.y-c2.y)/.05;
+    if(!s.locked&&dist<ULOCK_IN&&speed<180){ s.locked=true; s.lockAt=t; s.events.push('lock') }
     if(s.locked&&dist>ULOCK_OUT){ s.locked=false }
-    const tx=clamp(s.cursor.x,UFOLLOW.min,UFOLLOW.max), ty=UREST.y;
-    if(s.locked){ uSpring(s.bx,tx,.18,.75,dt); uSpring(s.by,ty,.18,.75,dt) } else { uSpring(s.bx,tx,.35,.70,dt); uSpring(s.by,ty,.35,.70,dt) }
+    const tx=clamp(c.x,UFOLLOW.min,UFOLLOW.max), ty=UREST.y;
+    if(s.locked){ uSpring(s.bx,tx,.18,.75,UDT); uSpring(s.by,ty,.18,.75,UDT) } else { uSpring(s.bx,tx,.35,.7,UDT); uSpring(s.by,ty,.35,.7,UDT) }
   }
-  s.tilt=lerp(s.tilt, dragging?clamp(s.bx.vel*.0015,-.18,.18):0, 1-Math.pow(.0005,dt));
-  if(!dragging&&t>=UT.suckEnd){ s.mouth.v=Math.max(0,lerp(UMOUTH.max,0,E.in(seg(t,UT.suckEnd,UT.closeEnd)))) }
-  else {
-    let mt=0; if(s.entered>=0) mt=(s.locked||!dragging)?UMOUTH.open:UMOUTH.ajar;
-    if(!dragging&&t<UT.suckEnd) mt=UMOUTH.max;
-    uSpring(s.mouth,mt,.25,.60,dt); if(s.mouth.v<0) s.mouth.v=0;
-  }
-  if(!dragging&&t>=UT.suckEnd&&!s.gulp){ s.gulp=true; Snd.play('gulp') }
-  if(!dragging&&t>UT.progStart&&t<UT.progEnd){
-    const pr=uProgressAt(t), pc=Math.floor(pr*10);
-    if(pc>s.lastPct){ s.lastPct=pc; Snd.play('tick') }
-  }
-  if(!dragging&&t>=UT.progEnd&&!s.ok){ s.ok=true; Snd.play('approve') }
+  s.tilt=lerp(s.tilt, dragging?clamp(s.bx.vel*.0015,-.18,.18):0, 1-Math.pow(.0005,UDT));
+  let mt=0; if(s.entered>=0&&t<UT.suckEnd) mt=s.locked||t>=UT.drop?UMOUTH.open:UMOUTH.ajar;
+  if(t>=UT.drop&&t<UT.suckEnd) mt=UMOUTH.max;
+  if(t>=UT.suckEnd) mt=0;
+  if(t>=UT.suckEnd) s.mouth.v=Math.max(0,lerp(UMOUTH.max,0,E.in(seg(t,UT.suckEnd,UT.closeEnd)))); else uSpring(s.mouth,mt,.25,.6,UDT);
+  if(s.mouth.v<0) s.mouth.v=0;
+  if(t>=UT.suckEnd&&!s.gulp){ s.gulp=1; s.events.push('gulp') }
+  const pr=uProgressAt(t); const pc=Math.floor(pr*10); if(t>UT.progStart&&pc>s.lastPct){ s.lastPct=pc; s.events.push('tick') }
+  if(t>=UT.progEnd&&!s.ok){ s.ok=1; s.events.push('approve') }
+  s.t+=UDT;
 }
+function uSimulateTo(t){ if(t<uS.t-1e-9) uS=newUSim(); while(uS.t<t) uStep(uS) }
 
 function uFrame(t){
-  const s=uSim, f={t,cursor:s.cursor}, entered=s.entered>=0?s.entered:1e9;
-  if(t<UT.chewEnd){ f.morph=E.back(seg(t,entered,entered+.38)) }
-  else if(t<UT.growStart){ f.morph=1-E.out(seg(t,UT.chewEnd,UT.shrinkEnd)) }
-  else { f.morph=E.back(seg(t,UT.growStart,UT.growEnd)) }
+  const s=uS, c=uCursorAt(t), f={t,cursor:c};
+  const entered=s.entered>=0?s.entered:1e9;
+  f.morph=t<UT.chewEnd? E.back(seg(t,entered,entered+.38)) : 1-E.out(seg(t,UT.chewEnd,UT.shrinkEnd));
   f.morph=clamp(f.morph,0,1.08);
-
   let x=s.bx.v, y=s.by.v, d=UD_BOX;
   if(t>=UT.chewEnd&&t<UT.progStart){ const k=E.inOut(seg(t,UT.chewEnd,UT.shrinkEnd)); x=lerp(s.bx.v,UBAR.x0,k); y=lerp(s.by.v,UBAR.y,k); d=lerp(UD_BOX,14,k) }
   if(t>=UT.progStart){ const p=uProgressAt(t); x=lerp(UBAR.x0,UBAR.x1,p); y=UBAR.y; d=14 }
-  if(t>=UT.progEnd){ x=UBAR.x1; y=UBAR.y-8*Math.sin(Math.PI*seg(t,UT.progEnd,UT.progEnd+.20)) }
+  if(t>=UT.progEnd){ x=UBAR.x1; y=UBAR.y-8*Math.sin(Math.PI*seg(t,UT.progEnd,UT.progEnd+.2)) }
   if(t>=UT.growStart){ const k=E.back(seg(t,UT.growStart,UT.growEnd)); x=lerp(UBAR.x1,UCHOOSE.x,E.inOut(seg(t,UT.growStart,UT.growEnd))); y=lerp(UBAR.y,UCHOOSE.y,E.inOut(seg(t,UT.growStart,UT.growEnd))); d=lerp(14,UCHOOSE.d,k) }
   f.x=x; f.y=y; f.d=d;
-
   let sx=1, sy=1;
   if(t>=UT.drop&&t<UT.suckStart){ const k=E.out(seg(t,UT.drop,UT.suckStart)); sy=lerp(1,.92,k); sx=lerp(1,1.06,k) }
   if(t>=UT.suckStart&&t<UT.suckEnd){ const k=E.inOut(seg(t,UT.suckStart,UT.suckEnd)); sy=lerp(.92,1.06,k); sx=lerp(1.06,.97,k) }
@@ -916,26 +910,24 @@ function uFrame(t){
   if(t>=UT.progStart&&t<UT.progEnd){ const v=(uProgressAt(t+.01)-uProgressAt(t))/.01; const st=clamp(v*.18,0,1); sx=1+.25*st; sy=1-.15*st }
   if(t>=UT.growStart&&t<UT.growEnd){ const k=seg(t,UT.growStart,UT.growEnd); sy=1+.06*Math.sin(Math.PI*k) }
   f.sx=sx; f.sy=sy; f.tilt=s.tilt;
-  f.hop=(s.lockAt>0&&!s.isDropping)?-5*Math.sin(Math.PI*seg(t,s.lockAt,s.lockAt+.15)):0;
+  f.hop=s.lockAt>0&&t<UT.drop?-5*Math.sin(Math.PI*seg(t,s.lockAt,s.lockAt+.15)):0;
   f.mouth=s.mouth.v;
-
   f.eye='pill';
   if(s.locked&&t<UT.suckEnd) f.eye='cup';
-  if(t>=UT.suckEnd&&t<UT.chewEnd+.10) f.eye='content';
-  if(t>=UT.progEnd&&t<UT.growEnd+.30) f.eye='content';
-
-  const lk=t<UT.suckEnd?{x:s.cursor.x-x,y:(s.cursor.y+10)-y}:(t<UT.progStart?{x:0,y:0}:{x:40,y:0});
-  f.lookX=clamp(lk.x/200,-1,1); f.lookY=clamp(lk.y/150,-1,1);
-  f.fileVisible=s.isDropping&&t<UT.suckEnd; f.suck=seg(t,UT.suckStart,UT.suckEnd);
-  f.zoneOver=s.entered>=0&&t<UT.chewEnd;
-  f.zoneAlpha=1-seg(t,UT.chewEnd,UT.chewEnd+.20);
-  f.textAlpha=f.zoneAlpha*((x>UTEXT.x-40&&!s.isDropping)?.25:1);
-  f.barReveal=E.out(seg(t,UT.barIn,UT.barIn+.25))*(1-seg(t,UT.growStart,UT.growStart+.20));
-  f.barAlpha=seg(t,UT.barIn+.05,UT.barIn+.25)*(1-seg(t,UT.growStart,UT.growStart+.20));
+  if(t>=UT.suckEnd&&t<UT.chewEnd+.1) f.eye='content';
+  if(t>=UT.progEnd&&t<UT.growEnd+.3) f.eye='content';
+  const look=t<UT.suckEnd?{x:c.x-x,y:(c.y+10)-y}:t<UT.progStart?{x:0,y:0}:{x:40,y:0};
+  f.lookX=clamp(look.x/200,-1,1); f.lookY=clamp(look.y/150,-1,1);
+  f.fileVisible=t<UT.suckEnd; f.suck=seg(t,UT.suckStart,UT.suckEnd);
+  f.zoneOver=s.entered>=0&&t<UT.chewEnd&&uInZone(c);
+  f.zoneAlpha=1-seg(t,UT.chewEnd,UT.chewEnd+.2);
+  f.textAlpha=f.zoneAlpha*(x>UTEXT.x-40&&t<UT.drop?.25:1);
+  f.barReveal=E.out(seg(t,UT.barIn,UT.barIn+.25))*(1-seg(t,UT.growStart,UT.growStart+.2));
+  f.barAlpha=seg(t,UT.barIn+.05,UT.barIn+.25)*(1-seg(t,UT.growStart,UT.growStart+.2));
   f.progress=uProgressAt(t);
-  f.flash=t>=UT.progEnd?Math.sin(Math.PI*seg(t,UT.progEnd,UT.progEnd+.30)):0;
+  f.flash=t>=UT.progEnd?Math.sin(Math.PI*seg(t,UT.progEnd,UT.progEnd+.3)):0;
   f.check=t>=UT.progEnd?E.back(seg(t,UT.progEnd,UT.progEnd+.25)):0;
-  f.greenWash=Math.max(f.zoneOver?.35:0, t>=UT.progEnd?.50*seg(t,UT.progEnd,UT.progEnd+.30)*(1-seg(t,UT.growEnd,UT.growEnd+.60)):0);
+  f.greenWash=Math.max(f.zoneOver?.35:0, t>=UT.progEnd?.5*seg(t,UT.progEnd,UT.progEnd+.3)*(1-seg(t,UT.growEnd,UT.growEnd+.6)):0);
   f.chooseAlpha=seg(t,UT.growStart+.15,UT.growEnd);
   return f;
 }
@@ -962,64 +954,60 @@ function uDrawDoc(ctx,cx,cy,wsc,hsc,alpha,top,hh){
   ctx.fillStyle='#3B82F6'; rr(ctx,x+w*.18,y+h*.58,w*.64,h*.16,2); ctx.fill(); ctx.restore();
 }
 
-function uDrawFile(ctx,f){
+function uDrawFile(f){
   const c=f.cursor;
-  if(f.suck<=0){ ctx.save(); ctx.globalAlpha=.92; uDrawDoc(ctx,c.x,c.y+14,1,1,1); ctx.restore(); return }
+  if(f.suck<=0){ uX.save(); uX.globalAlpha=.92; uDrawDoc(uX,c.x,c.y+14,1,1,1); uX.restore(); return }
   const p=E.in(f.suck), m=f._mouth, W0=34, H0=42;
   const topY=lerp(c.y+14-H0/2, m.y-2, E.inOut(f.suck));
   const hs=lerp(1.08,.55,E.inOut(f.suck)), Hh=H0*hs, sc=lerp(1,.55,p);
-  ctx.save(); ctx.beginPath(); ctx.rect(0,0,UW,m.y+m.h*.5); ctx.clip();
-  const q=E.out(f.suck); const N=28;
-  for(let i=0;i<N;i++){
-    const v0=i/N; const wsc=lerp(1,lerp(.92,.22*m.w/W0,Math.pow(v0,1.2)),q)*sc;
+  uX.save(); uX.beginPath(); uX.rect(0,0,UW,m.y+m.h*.5); uX.clip();
+  const q=E.out(f.suck); const N=28; for(let i=0;i<N;i++){ const v0=i/N, v1=(i+1)/N; const wsc=lerp(1,lerp(.92,.22*m.w/W0,Math.pow(v0,1.2)),q)*sc;
     const cx=lerp(c.x,m.x+m.w/2,E.out(f.suck)), yy=topY+v0*Hh, hh=Hh/N+.6; const wob=Math.sin(f.suck*Math.PI*2)*.1*(1-p);
-    ctx.save(); ctx.translate(cx,yy); ctx.rotate(wob); ctx.beginPath(); ctx.rect(-W0*wsc/2,0,W0*wsc,hh); ctx.clip(); ctx.translate(-cx,-yy);
-    uDrawDoc(ctx,cx,topY+Hh/2,wsc,hs,1,topY,Hh); ctx.restore();
-  }
-  ctx.restore();
-  for(let i=0;i<4;i++){
-    const a=i/4*Math.PI*2+.6, r0=24; const k=clamp((f.suck-i*.08)/.7,0,1); if(k<=0||k>=1)continue;
+    uX.save(); uX.translate(cx,yy); uX.rotate(wob); uX.beginPath(); uX.rect(-W0*wsc/2,0,W0*wsc,hh); uX.clip(); uX.translate(-cx,-yy);
+    uDrawDoc(uX,cx,topY+Hh/2,wsc,hs,1,topY,Hh); uX.restore() }
+  uX.restore();
+  for(let i=0;i<4;i++){ const a=i/4*Math.PI*2+.6, r0=24; const k=clamp((f.suck-i*.08)/.7,0,1); if(k<=0||k>=1)continue;
     const sx0=c.x+Math.cos(a)*r0, sy0=c.y+14+Math.sin(a)*r0, ex=m.x+m.w/2, ey=m.y+m.h*.3; const kk=Math.pow(k,.7);
-    ctx.fillStyle=`rgba(52,211,153,${1-k})`; ctx.beginPath(); ctx.arc(lerp(sx0,ex,kk),lerp(sy0,ey,kk)-Math.sin(Math.PI*k)*6,2.2*(1-k*.5),0,Math.PI*2); ctx.fill();
-  }
+    uX.fillStyle=`rgba(52,211,153,${1-k})`; uX.beginPath(); uX.arc(lerp(sx0,ex,kk),lerp(sy0,ey,kk)-Math.sin(Math.PI*k)*6,2.2*(1-k*.5),0,Math.PI*2); uX.fill() }
 }
 
-function uDrawMochi(ctx,f){
+function uDrawCursor(c,down){
+  uX.save(); uX.translate(c.x,c.y); if(down) uX.scale(.88,.88); uX.fillStyle='#fff'; uX.strokeStyle='#000'; uX.lineWidth=1.1; uX.lineJoin='round';
+  uX.beginPath(); uX.moveTo(0,0); uX.lineTo(0,16); uX.lineTo(4,12.4); uX.lineTo(7,19); uX.lineTo(9.6,17.8); uX.lineTo(6.7,11.4); uX.lineTo(11.6,11.4); uX.closePath(); uX.fill(); uX.stroke(); uX.restore();
+}
+
+function uDrawMochi(f){
   const R=f.d/2/1.04, m=f.morph;
-  ctx.save(); ctx.translate(f.x,f.y+f.hop); ctx.rotate(f.tilt); ctx.scale(f.sx,f.sy);
+  uX.save(); uX.translate(f.x,f.y+f.hop); uX.rotate(f.tilt); uX.scale(f.sx,f.sy);
   const {p,rx,ry}=uBodyPath(m,R);
-  const g=ctx.createLinearGradient(rx*.7,-ry*.9,-rx*.8,ry*.9); g.addColorStop(0,'#EDEDEF'); g.addColorStop(1,'#C4C5CA'); ctx.fillStyle=g; ctx.fill(p);
-  const sh=ctx.createRadialGradient(rx*.2,-ry*.25,R*.2,0,0,R*1.3); sh.addColorStop(0,'rgba(0,0,0,0)'); sh.addColorStop(.62,'rgba(0,0,0,0)'); sh.addColorStop(1,'rgba(0,0,0,.12)'); ctx.fillStyle=sh; ctx.fill(p);
-  if(m>.3){ ctx.save(); ctx.clip(p); ctx.strokeStyle=`rgba(255,255,255,${.6*clamp((m-.3)/.7,0,1)})`; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(-rx*.72,-ry+.9); ctx.lineTo(rx*.72,-ry+.9); ctx.stroke(); ctx.restore() }
+  const g=uX.createLinearGradient(rx*.7,-ry*.9,-rx*.8,ry*.9); g.addColorStop(0,'#EDEDEF'); g.addColorStop(1,'#C4C5CA'); uX.fillStyle=g; uX.fill(p);
+  const sh=uX.createRadialGradient(rx*.2,-ry*.25,R*.2,0,0,R*1.3); sh.addColorStop(0,'rgba(0,0,0,0)'); sh.addColorStop(.62,'rgba(0,0,0,0)'); sh.addColorStop(1,'rgba(0,0,0,.12)'); uX.fillStyle=sh; uX.fill(p);
+  if(m>.3){ uX.save(); uX.clip(p); uX.strokeStyle=`rgba(255,255,255,${.6*clamp((m-.3)/.7,0,1)})`; uX.lineWidth=1.2; uX.beginPath(); uX.moveTo(-rx*.72,-ry+.9); uX.lineTo(rx*.72,-ry+.9); uX.stroke(); uX.restore() }
   const mh=f.mouth*R*clamp(m,0,1);
-  if(mh>.3){
-    const mw=2*rx-2*.12*R, mx=-mw/2, my=-ry+.10*R;
-    ctx.save(); ctx.clip(p);
-    const ig=ctx.createLinearGradient(0,my,0,my+mh); ig.addColorStop(0,'#030304'); ig.addColorStop(1,'#101114'); ctx.fillStyle=ig; rr(ctx,mx,my,mw,mh,mh/2); ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(mx+mh/2,my+mh+.5); ctx.lineTo(mx+mw-mh/2,my+mh+.5); ctx.stroke();
-    ctx.restore(); f._mouth={x:f.x+mx*f.sx,w:mw*f.sx,y:f.y+f.hop+my*f.sy,h:mh*f.sy};
-  } else {
-    f._mouth={x:f.x-rx*.8,w:rx*1.6,y:f.y-ry+.1*R,h:0};
-  }
-  ctx.save(); ctx.clip(p); ctx.fillStyle='#0E0F12'; ctx.strokeStyle='#0E0F12';
+  if(mh>.3){ const mw=2*rx-2*.12*R, mx=-mw/2, my=-ry+.10*R;
+    uX.save(); uX.clip(p);
+    const ig=uX.createLinearGradient(0,my,0,my+mh); ig.addColorStop(0,'#030304'); ig.addColorStop(1,'#101114'); uX.fillStyle=ig; rr(uX,mx,my,mw,mh,mh/2); uX.fill();
+    uX.strokeStyle='rgba(255,255,255,.55)'; uX.lineWidth=1; uX.beginPath(); uX.moveTo(mx+mh/2,my+mh+.5); uX.lineTo(mx+mw-mh/2,my+mh+.5); uX.stroke();
+    uX.restore(); f._mouth={x:f.x+mx*f.sx,w:mw*f.sx,y:f.y+f.hop+my*f.sy,h:mh*f.sy} } else f._mouth={x:f.x-rx*.8,w:rx*1.6,y:f.y-ry+.1*R,h:0};
+  uX.save(); uX.clip(p); uX.fillStyle='#0E0F12'; uX.strokeStyle='#0E0F12';
   const mm=clamp(m,0,1), ew=R*.25, eh=R*lerp(.62,.46,mm), ey=R*lerp(.02,.30,mm), sp=R*.30;
   const lx=f.lookX*R*lerp(.34,.26,mm), ly=f.lookY*R*lerp(.16,.07,mm);
-  for(const sd of[-1,1]){ ctx.save(); ctx.translate(sd*sp+lx,ey+ly); uDrawEye(ctx,f.eye,ew,eh); ctx.restore() }
-  ctx.restore();
-  ctx.restore();
+  for(const sd of[-1,1]){ uX.save(); uX.translate(sd*sp+lx,ey+ly); uDrawEye(uX,f.eye,ew,eh); uX.restore() }
+  uX.restore();
+  uX.restore();
 }
 
 function uText(s,x,y,size,weight,color,align='left'){
   uX.font=`${weight} ${size}px -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif`;
   uX.fillStyle=color; uX.textAlign=align; uX.textBaseline='middle'; uX.fillText(s,x,y);
 }
-
 function uChip(s,x,y){
   uX.font='500 11px -apple-system,system-ui,sans-serif'; const w=uX.measureText(s).width+16;
   uX.fillStyle='rgba(255,255,255,.07)'; rr(uX,x,y-9,w,18,9); uX.fill(); uText(s,x+8,y,11,500,'#B9BDC4'); return w+6;
 }
 
 function uDraw(t,wallTime){
+  uSimulateTo(t);
   const f=uFrame(t);
   const K=2;
   uX.setTransform(K,0,0,K,0,0);
@@ -1064,7 +1052,7 @@ function uDraw(t,wallTime){
   if(f.barAlpha>0||f.barReveal>0){
     uX.save();
     uX.globalAlpha=Math.max(f.barAlpha,.001);
-    const fname=uSim.fileName||'brief-client.pdf';
+    const fname=uS.fileName||'brief-client.pdf';
     uText(`Envoi de ${fname}`,UBAR.x0,UBAR.y-30,12.5,500,'#A9ADB5');
     if(f.check>0){
       uX.save();
@@ -1123,7 +1111,7 @@ function uDraw(t,wallTime){
     uX.save();
     uX.globalAlpha=f.chooseAlpha;
     uX.translate(0,(1-f.chooseAlpha)*4);
-    const fname=uSim.fileName||'brief-client.pdf';
+    const fname=uS.fileName||'brief-client.pdf';
     uText(`${fname} est prêt.`,100,80,14,600,'#F5F6F8');
     uText('Tu veux en faire quoi ?',100,100,12.5,400,'#9398A1');
     uX.fillStyle='#F5F6F8';
@@ -1142,42 +1130,37 @@ function uDraw(t,wallTime){
     $('#upOverlay').style.display='none';
   }
 
-  // Mochi + fichier
-  uDrawMochi(uX,f);
-  if(f.fileVisible) uDrawFile(uX,f);
+  // Mochi puis fichier
+  uDrawMochi(f);
+  if(f.fileVisible) uDrawFile(f);
+  if(t<UT.drop+.12) uDrawCursor(f.cursor, t>=UT.drop);
 }
 
 let uRaf=null, uLastTime=0;
 const upEngine={
   active:false,
-  reset(fileName){
-    uSim.active=true; uSim.t=0;
-    uSim.bx={v:UREST.x,vel:0}; uSim.by={v:UREST.y,vel:0}; uSim.tilt=0; uSim.mouth={v:0,vel:0};
-    uSim.locked=false; uSim.lockAt=-9; uSim.entered=0; uSim.lastPct=0; uSim.gulp=false; uSim.ok=false;
-    uSim.isDropping=false; uSim.fileName=fileName||'brief-client.pdf';
+  t:0,
+  speed:1,
+  fileName:'brief-client.pdf',
+  play(fileName, speed=1){
+    this.fileName=fileName||'brief-client.pdf';
+    this.speed=speed;
+    this.t=0;
+    uS=newUSim();
+    uS.fileName=this.fileName;
     this.active=true;
+    expand('upload');
     ucv.style.display='block';
     botwrap.style.opacity='0';
-    if(!uRaf){ uLastTime=performance.now(); uRaf=requestAnimationFrame(upLoop) }
-  },
-  updateHover(curX,curY){
-    if(!this.active) this.reset(app.drag?app.drag.name:'brief-client.pdf');
-    uSim.cursor={x:clamp(curX,40,600),y:clamp(curY,20,160)};
-  },
-  startDrop(curX,curY,fileName){
-    if(!this.active) this.reset(fileName);
-    uSim.isDropping=true;
-    uSim.t=UT.drop;
-    uSim.cursor={x:clamp(curX,40,600),y:clamp(curY,20,160)};
-    uSim.fileName=fileName||app.file||'brief-client.pdf';
-    if(!uRaf){ uLastTime=performance.now(); uRaf=requestAnimationFrame(upLoop) }
+    uLastTime=performance.now();
+    if(!uRaf) uRaf=requestAnimationFrame(upLoop);
   },
   stop(){
-    this.active=false; uSim.active=false; uSim.isDropping=false;
+    this.active=false;
     ucv.style.display='none';
     $('#upOverlay').style.display='none';
     botwrap.style.opacity='1';
-    if(uRaf){ cancelAnimationFrame(uRaf); uRaf=null }
+    if(uRaf){ cancelAnimationFrame(uRaf); uRaf=null; }
   }
 };
 
@@ -1185,9 +1168,18 @@ function upLoop(now){
   if(!upEngine.active){ uRaf=null; return }
   const dt=Math.min(.05,(now-uLastTime)/1000);
   uLastTime=now;
-  uSim.t+=dt;
-  uStep(dt);
-  uDraw(uSim.t,now/1000);
+  upEngine.t += dt * upEngine.speed;
+
+  const evBefore = uS.events.length;
+  uDraw(upEngine.t, now/1000);
+  for(const e of uS.events.slice(evBefore)){
+    Snd.play(e);
+  }
+  if(uS.events.length > 200) uS.events.length = 0;
+
+  if(upEngine.t >= UT.end){
+    upEngine.t = UT.end;
+  }
   uRaf=requestAnimationFrame(upLoop);
 }
 
@@ -1205,10 +1197,7 @@ $('#upBtnMail').addEventListener('click',e=>{
 function dropFile(p){
   const g=$('#fileghost'); $('#drop').classList.remove('over');
   g.style.display='none';
-  const ir=rectS(island);
-  const islX=clamp(p.x-ir.l,0,640);
-  const islY=clamp(p.y-ir.t,0,176);
-  upEngine.startDrop(islX,islY,app.file);
+  upEngine.play(app.file);
 }
 
 function attach(){ safari.classList.add('attached'); app.ctx={type:'window',label:'Safari, escale.fr'}; Snd.play('attach'); renderChips(); expand('prompt'); app.pinned=true; main.emote('wink',700,true); if(!app.demo) setTimeout(()=>$('#promptIn').focus(),350) }
@@ -1229,7 +1218,7 @@ function act(a,b){
   switch(a){
     case 'go-overview': expand(defaultView()); Snd.play('blip'); break;
     case 'go-prompt': case 'ask': app.ctx=null; renderChips(); expand('prompt'); Snd.play('blip'); if(!app.demo) setTimeout(()=>$('#promptIn').focus(),300); break;
-    case 'go-upload': expand('upload'); main.anim('morph',[[1,380,E.back]]); Snd.play('blip'); break;
+    case 'go-upload': upEngine.play(); Snd.play('blip'); break;
     case 'allow': case 'always': Snd.play('approve'); afterDecision(app.focus,'working','happy'); break;
     case 'deny': Snd.play('blip'); afterDecision(app.focus,'thinking'); break;
     case 'answer': Snd.play('approve'); afterDecision(app.focus,'thinking','happy'); break;
@@ -1285,6 +1274,7 @@ for(const k in STATES){ const S=STATES[k]; const b=document.createElement('butto
 for(const k of ['love','surprised','proud','wink','yawn']){ const em=EMOTES[k]; const b=document.createElement('button'); b.className='cb'; b.innerHTML=`<i style="--c:${em.c}"></i>${em.label}`; $('#emoteBtns').appendChild(b);
   b.addEventListener('click',()=>{ ensureVisible(); main.emote(k,1900) }) }
 const SIMS=[
+  ['▶ Devorar archivo (15 pulsos Louis)','#34D399',()=>upEngine.play()],
   ['Lancer 3 tâches','#3B9EFF',()=>{ app.present=true; ['korus','sbe','brief'].forEach((id,i)=>setTimeout(()=>addTask(id,i===1?'thinking':'working'),i*260)); setTimeout(()=>{ if(app.mode==='hidden') setMode('compact'); Snd.play('work') },100) }],
   ['Demande de permission','#F5A524',()=>alertView('approval','korus','approval')],
   ['Question','#22D3EE',()=>alertView('question','sbe','question')],
@@ -1316,8 +1306,9 @@ async function runDemo(){
   alertView('approval','korus','approval'); await sleep(1500); await clickEl('[data-act=allow]'); await sleep(1500);
   alertView('question','sbe','question'); await sleep(1400); await clickEl($$('.opt')[1]); await sleep(1500);
   alertView('error','brief','error'); await sleep(1600); await clickEl('[data-act=retry]'); await sleep(1400);
-  const fe=$$('.file')[0], fr=rectS(fe); await move(fr.l+24,fr.cy,900); await clickAt(); beginFileDrag(fe); await move(620,180,600); await move(380,50,700); await sleep(600);
-  dragEnd(app.pointer); await sleep(4300);
+  const fe=$$('.file')[0], fr=rectS(fe); await move(fr.l+24,fr.cy,900); await clickAt();
+  upEngine.play(fe.dataset.name);
+  await sleep(7200);
   await clickEl('[data-act=mail]'); await sleep(700); await clickEl('#mailTo'); await typeIn($('#mailTo'),'client@exemple.fr'); await sleep(300); await clickEl('[data-act=send-mail]'); await sleep(2600);
   collapse(); await sleep(900);
   alertView('finished','korus','finished'); await sleep(3400); removeTask('korus'); collapse(); await sleep(1200);
@@ -1329,12 +1320,18 @@ async function runDemo(){
   ghost.style.display='none'; $('#demoTag').style.display='none'; app.demo=false; app.demoHold=false; btn.disabled=false; btn.querySelector('span').textContent='Relancer la démo'; app.lastMove=NOW(); $('#promptIn').value=''; $('#mailTo').value='';
 }
 $('#demoBtn').addEventListener('click',runDemo);
+$('#btnDevour').addEventListener('click',()=>{ ensureVisible(); upEngine.play() });
+$('#drop').style.cursor='pointer';
+$('#drop').title='Cliquer pour lancer la séquence de dépôt';
+$('#drop').addEventListener('click',()=>upEngine.play());
+window.addEventListener('dragover',e=>{ e.preventDefault(); if(app.mode!=='expanded'||app.view!=='upload') expand('upload') });
+window.addEventListener('drop',e=>{ e.preventDefault(); const f=e.dataTransfer&&e.dataTransfer.files[0]; upEngine.play(f?f.name:'brief-client.pdf') });
 
 /* ---------------- ÉCHELLE ---------------- */
 function fit(){ const o=$('#stageOuter'); const k=o.clientWidth/1120; $('#stage').style.transform=`scale(${k})`; o.style.height=(700*k)+'px' }
 window.addEventListener('resize',fit); fit();
 setPiste('mochi'); setSound(false); sync(); applyLayout(); requestAnimationFrame(frame);
-window.__app=app; window.__demo=runDemo; window.__main=main; window.__snd=Snd; window.__api={expand,collapse,setMode,addTask,setTask,alertView,sync,applyLayout,removeTask};
+window.__app=app; window.__demo=runDemo; window.__main=main; window.__snd=Snd; window.__upEngine=upEngine; window.__api={expand,collapse,setMode,addTask,setTask,alertView,sync,applyLayout,removeTask};
 })();
 </script>
 </body>
