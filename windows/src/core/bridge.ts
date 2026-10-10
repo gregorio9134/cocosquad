@@ -136,7 +136,13 @@ export const Bridge = {
   },
   chatReset: () => call<void>("chat_reset"),
   /** Copies a dropped file into the inbox. */
-  ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
+  ingestFile: async (path: string) => {
+    if (!IS_TAURI) {
+      const name = path.split(/[\\/]/).pop() || "file";
+      return { name, path };
+    }
+    return callOrThrow<DroppedFile>("ingest_file", { path });
+  },
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
