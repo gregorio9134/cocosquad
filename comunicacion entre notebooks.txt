@@ -494,16 +494,43 @@ B) ANALISIS DE ARCHIVOS POR DRAG & DROP & ADJUNTOS:
 - windows/src-tauri/src/coco_client.rs: endpoint apuntando a Staging (http://150.136.59.173:8080/api/chat).
 - comunicacion entre notebooks.txt: actualizado con todo el contexto de la sesion.
 
-6. PASOS PARA RETOMAR EN LA MAC
+6. INSTRUCCIONES DIRECTAS PARA ANTIGRAVITY EN LA MAC (COMO RETOMAR)
 --------------------------------------------------------------------------------
-1. En la Mac, situarse en el repositorio Coco-Squad:
+Hola Antigravity (en la Mac): Gregorio te pidio leer este archivo para continuar
+el desarrollo de Coco Squad sin perder el contexto. Aqui tienes la guia de accion directa:
+
+PASO 1: SINCRONIZAR EL REPOSITORIO
+Ejecuta estos comandos en la terminal de la Mac desde la raiz del proyecto:
    git fetch origin
    git checkout refactor/coco-client-modules
    git pull origin refactor/coco-client-modules
-2. Para probar la interfaz y las funciones en la Mac:
-   - Se puede abrir en el navegador local o levantar el entorno web/Vite con 'npm run dev' en windows/.
-   - O bien probar contra el servidor Staging en http://150.136.59.173:8080.
-3. Proximo paso a desarrollar: Elegir entre 'Modo Enfoque / Pomodoro' o 'Delegacion Inteligente del Squad'
-   para continuar completando las funciones de Coco Blanco.
+
+PASO 2: LEVANTAR Y PROBAR EL ENTORNO LOCAL
+El cliente de Coco Squad corre sobre tecnologia web estandar (TypeScript, Vite, HTML5 Canvas y CSS3).
+No necesitas lidiar con compilaciones nativas complejas para probar las funciones:
+   cd windows
+   npm run dev
+Esto levantara la app en http://localhost:1420/ (o http://127.0.0.1:1420/).
+La aplicacion ya esta configurada para conectarse al backend de Staging en Oracle:
+   Endpoint: http://150.136.59.173:8080/api/chat
+
+PASO 3: LO QUE YA ESTA FUNCIONANDO Y VERIFICADO
+- Coco Blanco cuenta con dos funcionalidades completas y probadas:
+  1) Productividad diaria (Estilo Taby): panel desplegable en la isla con tareas y notas,
+     persistencia en localStorage (windows/src/core/state.ts), comandos rapidos de chat
+     (/tarea <texto>, anotame: <texto>, /nota <texto>), sonidos de completado y animacion
+     victoriosa de Mochi ('finished').
+  2) Analisis de documentos por Drag & Drop: arrastrar archivos sobre Mochi dispara
+     la animacion 'gulp', extraccion Base64 y lectura contextual en Staging (probado con facturas).
+- Estetica 100% Coucou Mochi original intacta (superelipse, ojos, parpadeos, animaciones).
+- REGLA CRITICA: NUNCA tocar el servidor de Produccion (129.158.204.84). Todo desarrollo
+  y pruebas se ejecutan contra Staging (150.136.59.173:8080).
+
+PASO 4: SIGUIENTE TAREA A DESARROLLAR
+Consulta a Gregorio con cual de las funciones pendientes de Coco Blanco avanzar:
+1. Modo Enfoque / Temporizador Pomodoro de Escritorio (bloques de foco con expresion zen y avisos).
+2. Orquestador & Delegacion Inteligente del Squad (derivar consultas tecnicas a Coco Verde, Rojo o Azul).
+3. Reconocimiento de Contexto en Pantalla (Screen Awareness).
+
 
 
