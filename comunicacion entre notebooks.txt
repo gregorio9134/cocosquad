@@ -532,5 +532,45 @@ Consulta a Gregorio con cual de las funciones pendientes de Coco Blanco avanzar:
 2. Orquestador & Delegacion Inteligente del Squad (derivar consultas tecnicas a Coco Verde, Rojo o Azul).
 3. Reconocimiento de Contexto en Pantalla (Screen Awareness).
 
+7. AUDITORIA DE ACTUALIZACIONES UPSTREAM (LOUIS-CFM/COUCOU) — 10 OCTUBRE 2026
+--------------------------------------------------------------------------------
+Se audito el repositorio upstream oficial de Louis Raille (Louis-CFM/coucou)
+identificando tres grandes grupos de mejoras implementadas recientemente:
 
+1) Coreografia de Devorado de Archivos en 15 Pulsos (UploadSequenceEngine):
+   - ENTER_ZONE: La boca se abre ligeramente (MOUTH_AJAR = 0.20) y sigue al cursor.
+   - LOCK_IN (<60px): Mochi se ancla elasticamente bajo el cursor con un saltito de emocion.
+   - DROP (t = 1.95s): El usuario suelta el archivo.
+   - SUCTION (0.30s de succion voraz): La boca se abre al maximo (MOUTH_MAX = 0.50).
+     El documento se fragmenta en 28 tiras horizontales con embudo y temblor,
+     mientras 4 migajas esmeralda flotantes son absorbidas hacia el interior.
+   - CHEW (t = 2.60s a 2.88s): La boca se cierra hermeticamente, los ojos pasan a
+     arco feliz cerrado (^ ^ / USEyeShape.content) y Mochi mastica ritmicamente
+     con fisica de squash & stretch.
+   - SHRINK: Mochi se comprime en una esfera de 14px y salta a la barra de carga.
+   - PROGRESS: Barra con estela verde brillante y blur de movimiento rapido, con
+     ticks sonoros cada 10%.
+   - HOP / CHECK: Al 100%, destello blanco, tilde de aprobacion y salto de festejo.
+   - WALK & CHOOSE: Crece nuevamente a su superelipse de 62px, camina a la izquierda
+     y despliega la tarjeta con "Consultar con Coco" y "Cancelar".
 
+2) Sincronizacion de Animaciones a Frecuencia de Pantalla (PR #484 / 661829d):
+   - Eliminacion de throttles rigidos de 30/60 fps: ejecucion sincronizada a la
+     tasa nativa del display (60 Hz o 120 Hz ProMotion).
+   - MochiFrameClock.advance acumula "step-debt" temporal para mantener la misma
+     velocidad fisica exacta en cualquier frecuencia sin tirones ni aceleraciones.
+   - TickerShimmerText continuo derivado del resto del reloj global.
+
+3) Gestion de Adjuntos y Lectura en Memoria Activa (323d89e, 6d1ff6c):
+   - Adjuntos persistentes durante revisiones de chat sin duplicar peticiones.
+   - Restriccion de drop solo sobre la tarjeta visible.
+
+ESTADO EN COCO SQUAD:
+- windows/src/upload/sequence.ts y windows/src/upload/canvas.ts implementan el
+  algoritmo matematico completo de los 15 pulsos y 28 tiras de succion.
+- Se elimino el comentario residual de Novra Grokbot en windows/src/island/island.ts.
+- Entornos de pruebas disponibles en:
+  * http://localhost:8080/upload-sequence.html (animacion pura aislada)
+  * http://localhost:8080/notch-buddy.html (isla y sandbox interactivo)
+  * windows/dev/upload-preview.html (preview de desarrollo en loop)
+- Backend de Staging (150.136.59.173:8080) verificado y respondiendo activamente.

@@ -459,7 +459,7 @@ export class Island {
   }
 
   /**
-   * Novra Grokbot: Mascot devours the file with authentic suction animation,
+   * Coco Squad: Mascot devours the file with authentic Coucou suction animation,
    * snaps mouth shut, chews happily with ^ ^ closed eyes, and smooth progress bar.
    */
   private swallow(path: string) {
