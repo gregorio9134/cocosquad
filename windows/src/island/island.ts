@@ -463,7 +463,7 @@ export class Island {
    * Coco Squad: Mascot devours the file with authentic Coucou suction animation,
    * snaps mouth shut, chews happily with ^ ^ closed eyes, and smooth progress bar.
    */
-  private swallow(path: string) {
+  swallow(path: string) {
     if (State.view === "uploading") return;
     const name = path.split(/[\\/]/).pop() || "file";
     State.droppedFile = { name, path };
