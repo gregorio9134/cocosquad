@@ -597,6 +597,38 @@ Acciones realizadas:
    - design/prototype/notch-buddy.html
    - windows/prototype.html
    - Copia_Seguridad_Vector_AI/backend/agente/public/notch-buddy.html
-   - Copia_Seguridad_Vector_AI/backend/agente/public/coucou.html
 Ambos enlaces en localhost:8080 ahora muestran exactamente la misma animacion de devorado.
+
+9. CORRECCION DE COLISION DE CLICKS EN BOT-CANVAS Y TABS DEL HEADER (11 OCTUBRE 2026)
+--------------------------------------------------------------------------------
+Problema detectado por Gregorio en Windows:
+Al intentar hacer clic en los iconos del header (Home / Vista general, Mensaje / Chat,
+y + / Drop), el clic era interceptado por la caja transparente del botCanvas de Mochi,
+disparando accidentalmente la animacion de golpe ('slap') y mareo ('dizzy') en Mochi,
+impidiendo seleccionar las pestanas.
+
+Causa raiz tecnica:
+1) botCanvas incluia 40px de holgura vertical superior (BOT_OVERHANG = 40) para particulas
+   y emociones. Su borde superior se superponia sobre la franja de 34px del header (y = 0..34px).
+2) botCanvas tenia 'pointer-events: auto' y z-index: 10, mientras que el header estaba
+   dentro de island-clip con z-index automatico (0), bloqueando los eventos del mouse.
+3) El listener de mousedown en botCanvas ejecutaba e.stopPropagation() y engine.slap()
+   incondicionalmente sobre cualquier clic en el rectangulo, incluso en zonas transparentes.
+4) islandEl slapeaba a Mochi sin verificar si el clic provino de un boton interactivo.
+
+Solucion implementada:
+1) windows/src/style.css:
+   - #bot-canvas configurado con 'pointer-events: none', dejando pasar clics al header y vistas.
+   - #header elevado con 'position: relative; z-index: 30; pointer-events: auto;'.
+   - .tab y .header-actions button con 'cursor: pointer; pointer-events: auto; z-index: 31;'.
+2) windows/src/island/island.ts:
+   - isBotHit ahora excluye estrictamente coordenadas y <= rect.y + 42 (area del header)
+     y utiliza un radio circular ajustado a Mochi (botSize * 0.52).
+   - El listener mousedown en islandEl comprueba target.closest('button, input, #header, ...')
+     evitando cualquier bofetada accidental si se interactua con controles de la UI.
+   - Si se hace clic directamente en el cuerpo de Mochi, el slap y dizzy funcionan con normalidad.
+3) La app instalada en Windows (C:\Users\polac\AppData\Local\Coucou\coucou.exe) fue
+   recompilada en release y actualizada con exito, incorporando ademas los 4 commits
+   sincronizados desde la Mac.
+
 
