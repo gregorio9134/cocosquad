@@ -117,13 +117,9 @@ export class DesktopLink {
   /** (x, y): the pointer, island-window coordinates. */
   pickUp(x: number, y: number) {
     this.carrying = true;
-    State.mochiOnDesktop = true;
-    State.notify();
     void Bridge.desktopPickUp(x, y).then((ok) => {
       if (ok) return;
       this.carrying = false;
-      State.mochiOnDesktop = false;
-      State.notify();
     });
   }
 
@@ -149,8 +145,8 @@ export class DesktopLink {
   }
 
   private onDropped(from: "island" | "desktop", home: boolean) {
+    this.carrying = false;
     if (from === "island") {
-      this.carrying = false;
       State.mochiOnDesktop = false;
       State.notify();
     } else if (home) {
@@ -167,6 +163,9 @@ export class DesktopLink {
   }
 
   private push() {
+    const focus = State.focusTask?.id;
+    const role: "white" | "green" | "red" | "blue" =
+      focus === "coco_verde" ? "green" : focus === "coco_rojo" ? "red" : focus === "coco_azul" ? "blue" : "white";
     const snapshot: DesktopSnapshot = {
       state: State.effectiveState,
       outfit: State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit)),
@@ -174,6 +173,7 @@ export class DesktopLink {
       soundVolume: State.settings.soundVolume,
       paused: State.paused,
       dancing: false,
+      role,
     };
     const key = JSON.stringify(snapshot);
     if (key === this.pushed) return;

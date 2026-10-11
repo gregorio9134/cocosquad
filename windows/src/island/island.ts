@@ -582,7 +582,7 @@ export class Island {
       State.setFocus("coco_blanco");
       Sound.play("approve");
       this.engine.triggerEmote("happy");
-      this.setView("prompt");
+      this.expand("prompt");
       void Bridge.focusWindow(true);
     } else {
       Sound.play("blip");
@@ -782,6 +782,8 @@ export class Island {
       this.botPress = null;
       if (!this.canDragOut()) return;
       this.cancelBotHover();
+      this.engine.triggerEmote("love");
+      Sound.play("blip");
       this.desktop.pickUp(e.clientX, e.clientY);
     });
 
@@ -1038,7 +1040,7 @@ export class Island {
     const greetingActive = State.mode === "expanded" && State.view === "greeting";
     const away = State.mochiOnDesktop;
     const visible = p.opacity > 0 && !greetingActive && !this.uploadActive && !away;
-    this.botCanvas.style.opacity = visible ? "1" : "0";
+    this.botCanvas.style.opacity = visible ? (this.desktop.carrying ? "0.7" : "1") : "0";
 
     if (State.mode === "expanded" && !greetingActive && !this.uploadActive && !away) {
       const d = p.diameter;

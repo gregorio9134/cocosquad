@@ -396,6 +396,34 @@ pub fn prepare_desktop_window(win: &WebviewWindow, _mode: super::DesktopMode) ->
     true
 }
 
+pub fn show_desktop_window(win: &WebviewWindow) {
+    let Some(hwnd) = hwnd_of(win) else { return };
+    unsafe {
+        use ::windows::Win32::UI::WindowsAndMessaging::{
+            ShowWindow, SetWindowPos, SW_SHOWNOACTIVATE, HWND_TOPMOST,
+            SWP_NOMOVE, SWP_NOSIZE, SWP_NOACTIVATE, SWP_SHOWWINDOW,
+        };
+        let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+        let _ = SetWindowPos(
+            hwnd,
+            Some(HWND_TOPMOST),
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW,
+        );
+    }
+}
+
+pub fn hide_desktop_window(win: &WebviewWindow) {
+    let Some(hwnd) = hwnd_of(win) else { return };
+    unsafe {
+        use ::windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE};
+        let _ = ShowWindow(hwnd, SW_HIDE);
+    }
+}
+
 /// The cursor poll toggles WS_EX_TRANSPARENT from the body hit test instead.
 pub fn set_desktop_shape(_win: &WebviewWindow, _shape: super::MouseShape) {}
 

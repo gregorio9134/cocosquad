@@ -3,18 +3,22 @@ use serde_json::{json, Value};
 
 use crate::encoding::base64;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ChatContext {
+    #[serde(rename_all = "camelCase")]
     File {
         name: String,
         path: String,
         #[serde(default)]
         base64: Option<String>,
     },
+    #[serde(rename_all = "camelCase")]
     Window {
+        #[serde(alias = "appName", alias = "app_name")]
         app_name: String,
         title: String,
+        #[serde(default)]
         url: Option<String>,
     },
 }

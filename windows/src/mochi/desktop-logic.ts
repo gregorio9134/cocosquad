@@ -21,6 +21,7 @@ export interface DesktopSnapshot {
   paused: boolean;
   /** Music plays: he dances (the compact island's rules, core/spotify.ts). */
   dancing: boolean;
+  role?: "white" | "green" | "red" | "blue";
 }
 
 /** Events between the two windows. Rust adds `desktop-mochi-dropped`. */

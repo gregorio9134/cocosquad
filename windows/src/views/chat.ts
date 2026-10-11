@@ -474,12 +474,13 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
           base64: file.base64,
         }
       : winContext
-      ? {
+      ? ({
           kind: "window",
           appName: winContext.appName,
+          app_name: winContext.appName,
           title: winContext.title,
           url: winContext.url,
-        }
+        } as any)
       : null;
 
     try {

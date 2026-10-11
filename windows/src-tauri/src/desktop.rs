@@ -39,14 +39,6 @@ const FLIGHT_MS: u64 = 450;
 const SNAP_MS: u64 = 250;
 const TICK_MS: u64 = 16;
 
-/// Windows never hides his window: it parks it off-screen. tao shows a hidden
-/// window again with SW_SHOW, which may take the keyboard focus from whatever
-/// the user is typing in each time he flies out; a window created visible
-/// (shown without activation) and only ever moved never is. Same as the
-/// island, which is never re-shown either.
-const PARK: bool = cfg!(windows);
-const PARKED: (f64, f64) = (-32000.0, -32000.0);
-
 // ── Pure geometry ─────────────────────────────────────────────────────────────
 
 pub mod logic {
@@ -309,7 +301,7 @@ fn page_url(app: &AppHandle) -> WebviewUrl {
 }
 
 fn create_window(app: &AppHandle, _mode: DesktopMode) -> Option<WebviewWindow> {
-    let mut builder = WebviewWindowBuilder::new(app, LABEL, page_url(app))
+    let builder = WebviewWindowBuilder::new(app, LABEL, page_url(app))
         .additional_browser_args(crate::BROWSER_ARGS)
         .title("Mochi")
         .inner_size(SIZE, SIZE)
@@ -328,10 +320,7 @@ fn create_window(app: &AppHandle, _mode: DesktopMode) -> Option<WebviewWindow> {
         .closable(false)
         .disable_drag_drop_handler()
         .focusable(false)
-        .visible(PARK);
-    if PARK {
-        builder = builder.position(PARKED.0, PARKED.1);
-    }
+        .visible(false);
     let built = builder.build();
     match built {
         Ok(win) => Some(win),
@@ -448,9 +437,10 @@ fn show(app: &AppHandle, d: &Desktop, at: (f64, f64)) {
     place(app, d, at);
     d.inner.lock().unwrap().shown = true;
     if let Some(win) = window(app) {
-        if !PARK {
-            let _ = win.show();
-        }
+        #[cfg(windows)]
+        platform::show_desktop_window(&win);
+        #[cfg(not(windows))]
+        let _ = win.show();
         let _ = win.set_always_on_top(true);
     }
     refresh(app, d);
@@ -467,9 +457,10 @@ fn hide(app: &AppHandle, d: &Desktop) {
         i.asleep = false;
     }
     refresh(app, d);
-    if PARK {
-        place(app, d, PARKED);
-    } else if let Some(win) = window(app) {
+    if let Some(win) = window(app) {
+        #[cfg(windows)]
+        platform::hide_desktop_window(&win);
+        #[cfg(not(windows))]
         let _ = win.hide();
     }
     let _ = app.emit_to(LABEL, "desktop-visible", false);

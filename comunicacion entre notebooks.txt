@@ -807,3 +807,45 @@ Implementacion tecnica realizada:
        Bridge.chatSend(), el cual es procesado por coco_protocol.rs inyectando app, ventana y url
        hacia Staging.
    - Probado y verificado en la app activa en Windows.
+
+
+15. CORRECCION DE ANIMACION DE ARRASTRE Y PARIDAD TOTAL CON REPOSITORIO DE LOUIS (11 OCTUBRE 2026)
+-----------------------------------------------------------------------------------------------------
+Problemas identificados en la prueba de Gregorio:
+1. Al seleccionar a Mochi para arrastrarlo, desaparecia inmediatamente de la isla como si se borrara.
+2. La ventana fantasma no se veia flotar correctamente sobre el cursor en Windows debido al hack de
+   aparcamiento fuera de pantalla (`PARKED = (-32000, -32000)` y `!PARK { win.show() }` omitido).
+3. Error en el banner de chat al enviar mensaje con contexto:
+   "invalid args 'context' for command 'chat_send': missing field 'app_name'".
+
+Causas raices y soluciones implementadas:
+1. Deserializacion de ChatContext::Window (windows/src-tauri/src/coco_protocol.rs, windows/src/views/chat.ts):
+   - En Serde Rust, `#[serde(tag = "kind", rename_all = "camelCase")]` en el enum solo renombra el discriminador
+     de variante, pero NO los campos de una variante struct si no tiene su propio `rename_all`.
+   - Se agrego `#[serde(rename_all = "camelCase")]` y `#[serde(alias = "appName", alias = "app_name")]` a `ChatContext::Window`.
+   - En el frontend de `chat.ts` se envian tanto `appName` como `app_name` para maxima robustez.
+
+2. Visibilidad y Animacion de Mochi en la Isla (windows/src/island/desktop.ts, windows/src/island/island.ts):
+   - En `desktop.ts`: En `pickUp()` se removio `State.mochiOnDesktop = true`. Mochi NO esta en el escritorio
+     mientras se esta arrastrando.
+   - En `island.ts`: Al superar `DRAG_THRESHOLD`, se reproduce el sonido `blip` y se activa el emote `love`
+     (corazones de amor) identico al codigo de Louis en Swift (`NotchBuddy/Sources/App/IslandWindowController.swift`
+     linea 440: `NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.love)`).
+   - En `updateBotTargets()`: Mochi en la isla se mantiene visible durante el arrastre con opacidad sutil
+     del 70% (`opacity = 0.7`), volviendo al 100% al soltarse. Ya no desaparece ni se borra bruscamente.
+
+3. Ventana Fantasma de Arrastre (windows/src-tauri/src/desktop.rs, platform/windows.rs, windows/src/desktop/main.ts):
+   - Se removio por completo la constante `PARK` y las coordenadas artificiales `(-32000, -32000)`.
+   - En `platform/windows.rs` se implementaron `show_desktop_window()` con Win32 `SW_SHOWNOACTIVATE` y
+     `SWP_NOACTIVATE | SWP_SHOWWINDOW`, y `hide_desktop_window()` con `SW_HIDE`. Esto permite mostrar
+     y ocultar la ventana fantasma instantaneamente SIN robar el foco del teclado del usuario en ninguna ventana.
+   - En `desktop.rs`: `create_window` crea la ventana inicialmente con `.visible(false)`.
+   - En `desktop/main.ts`: Al hacerse visible, se agrego la animacion spring scale-in (`scale(0.55)` a `scale(1.0)`
+     con `cubic-bezier(0.34, 1.56, 0.64, 1)`), calcando la animacion de SwiftUI `GhostBotView` de Louis.
+   - Soporte para rol del squad: `DesktopSnapshot` y `DesktopMochi` ahora reciben y sincronizan el color
+     del Coco activo (blanco, verde, rojo, azul).
+
+4. Verificacion y Despliegue:
+   - Compilacion exitosa de TypeScript y Vite (`npm run build`).
+   - Compilacion release de Rust (`cargo build --release --bin coucou`) sin errores ni advertencias.
+   - Binario copiado a `AppData/Local/Coucou/coucou.exe` y reiniciado con exito.

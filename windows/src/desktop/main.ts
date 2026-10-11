@@ -106,6 +106,7 @@ class DesktopMochi {
     this.informed = true;
     Sound.setEnabled(s.soundEnabled);
     Sound.setVolume(s.soundVolume);
+    if (s.role) this.engine.setCocoSquadRole(s.role);
     if (agentActive(s.state)) this.lastAgentActive = performance.now();
     if (!this.asleep) this.engine.setState(s.state);
     this.updateSleep(performance.now());
@@ -122,12 +123,21 @@ class DesktopMochi {
       this.asleep = false;
       this.engine.setState(this.snap.state, true);
       this.engine.setOutfit(this.snap.outfit, false);
+      if (this.snap.role) this.engine.setCocoSquadRole(this.snap.role);
+      this.canvas.style.transition = "transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.16s ease-out";
+      this.canvas.style.transform = "scale(0.55)";
+      this.canvas.style.opacity = "0.7";
+      requestAnimationFrame(() => {
+        this.canvas.style.transform = "scale(1)";
+        this.canvas.style.opacity = "1";
+      });
       this.schedule();
       return;
     }
     this.cancelPoke();
     this.press = null;
     this.dragging = false;
+    this.canvas.style.transform = "";
     this.setOffset({ x: 0, y: 0 });
     if (this.timer != null) window.clearTimeout(this.timer);
     this.timer = null;
