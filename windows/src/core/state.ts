@@ -95,6 +95,7 @@ export interface Settings {
   autostart: boolean;
   hooksInstalled: boolean;
   model: string;
+  mochiOutfit: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -107,6 +108,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "coco-squad",
+  mochiOutfit: "auto",
 };
 
 type Listener = () => void;
@@ -138,6 +140,7 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  wardrobePreview: any = null;
 
   integrations: Record<string, IntegrationInfo> = {};
 

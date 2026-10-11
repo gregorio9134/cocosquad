@@ -631,4 +631,88 @@ Solucion implementada:
    recompilada en release y actualizada con exito, incorporando ademas los 4 commits
    sincronizados desde la Mac.
 
+10. CORRECCION DE PUNTITOS PERMANENTES (TYPINGDOTS) EN EL CHAT DE COCO (11 OCTUBRE 2026)
+----------------------------------------------------------------------------------------
+Problema reportado por Gregorio:
+Al terminar una respuesta de Coco en la ventana de chat, quedaban tres puntos ("• • •")
+titilando indefinidamente en pantalla, como si Coco aún estuviera pensando o le faltara
+seguir hablando.
+
+Causa raíz técnica:
+En `windows/src/views/chat.ts`, al despachar el prompt al backend se activaba:
+`State.stateOverride = "thinking";`
+Dentro del bloque `try { ... }`, al recibir exitosamente la respuesta del servidor HTTP
+de Staging, el override de estado nunca se restauraba a `null` (solo se limpiaba en el `catch`).
+Por lo tanto, en la función `sync()` de `chat.ts`:
+`const thinking = State.effectiveState === "thinking";`
+evaluaba a `true` de manera permanente y renderizaba la fila `typingDots` debajo del mensaje.
+
+Solución implementada:
+Se agregó `State.stateOverride = null;` inmediatamente tras procesar la respuesta exitosa
+en el bloque `try`, y se añadió un bloque `finally { if (State.stateOverride === "thinking") State.stateOverride = null; }`
+para garantizar que el indicador de escritura se oculte de forma limpia e inmediata.
+
+11. INTEGRACION DE FUNCIONES UPSTREAM DE LOUIS (GUARDARROPA / OUTFITS / FISICA) (11 OCTUBRE 2026)
+------------------------------------------------------------------------------------------------
+A pedido de Gregorio, se analizó el repositorio de Louis Raille (https://github.com/Louis-CFM/coucou)
+y se importaron las nuevas funcionalidades de guardarropa (Mochi Wardrobe) manteniendo
+estrictamente intactas todas las funcionalidades desarrolladas (Coco Squad personas,
+taby-style productivity panel, drag & drop document analysis y conexión a Staging).
+
+Detalles de la integración:
+1) Tipografías y Trajes (`windows/src/core/fonts.ts`, `windows/src/mochi/outfits.ts`):
+   - Motor procedural de dibujado para 6 trajes: Detective (lupa, gabardina), Bruja de Halloween
+     (sombrero de punta y hebilla), Santa Claus (gorro rojo con pompón de nieve), Año Nuevo / Fiesta
+     (sombrero de copa con cinta dorada), Chef (gorro de cocinero blanco) y Calabaza (cuerpo naranja con tallo).
+   - Iconos vectoriales para cada atuendo en la grilla de selección.
+2) Lógica de Guardarropa Estacional (`windows/src/mochi/wardrobe.ts`, `windows/src/views/wardrobe.ts`):
+   - Sistema de selección con opción "Automático" (`autoSeasonal`), que viste a Mochi según la época
+     del año (Halloween en Octubre, Santa en Diciembre, Año Nuevo en Enero, etc.).
+   - UI de guardarropa con previsualización en tiempo real al pasar el mouse por encima (`wardrobePreview`).
+   - Etiquetas y descripciones completamente adaptadas en español.
+3) Física de Partes Blandas y Dinámica de Movimiento (`windows/src/mochi/engine.ts`):
+   - Resortes de segundo orden (`physDx`, `physDy`, `physVx`, `physVy`) para la inercia de pompones,
+     puntas de gorro y corbatas al girar o cabecear Mochi.
+   - Rotación rígida de Mochi (`rigidRoll`) cuando viste un atuendo para que los sombreros giren al unísono.
+   - Compatibilidad total con los gradientes del Coco Squad (Coco Verde, Rojo, Azul y Blanco)
+     y overlay dinámico de calabaza (`pumpkinAlpha`).
+   - Soporte para saltitos y animaciones rítmicas (`applyDance`, `setDancing`).
+4) Interacción y Menú Contextual (`windows/src/island/island.ts`):
+   - Clic derecho sobre Mochi abre y cierra el guardarropa (`toggleWardrobe`).
+   - Prevención del menú contextual predeterminado del navegador sobre el área de Mochi.
+   - Ampliación del canvas con margen lateral (`BOT_SIDE = 24px`) para evitar recortes en alas de sombreros.
+   - Caché estacional con `SeasonCache` para optimizar el cómputo de fechas.
+
+12. GUIA DE PASOS PARA CONTINUAR DESDE LA MAC (PARA ANTIGRAVITY EN MACOS)
+-------------------------------------------------------------------------
+Cuando Gregorio abra este proyecto en su Mac y le pida a Antigravity continuar el trabajo,
+el asistente debe ejecutar los siguientes pasos en orden:
+
+Paso 1: Sincronizar el repositorio Git
+   Ejecutar:
+   `git pull origin refactor/coco-client-modules`
+   (o la rama activa en la que se esté trabajando).
+   Verificar que no haya conflictos y que el árbol de trabajo esté limpio (`git status`).
+
+Paso 2: Leer este archivo de comunicación
+   Revisar detenidamente las secciones 1 a 11 de `comunicacion entre notebooks.txt`.
+   Este archivo es la única fuente de verdad compartida entre los entornos.
+
+Paso 3: Alcance y Restricciones Estrictas
+   - NUNCA tocar el servidor de producción (129.158.204.84).
+   - El backend de Staging activo es: http://150.136.59.173:8080.
+   - El producto es únicamente el Coco Squad (Coco Blanco, Coco Verde, Coco Rojo y Coco Azul).
+   - No habilitar pollers de servicios heredados de Coucou (Spotify, GitHub, VS Code hooks).
+   - Todo diálogo con Gregorio debe ser en español.
+
+Paso 4: Compilación y Pruebas en macOS
+   - En la Mac, el frontend se compila con: `npm run build` dentro de la carpeta correspondiente.
+   - La app nativa de macOS utiliza Swift / Xcode (`xcodebuild` o el proyecto `.xcodeproj`).
+   - Si se agregan funciones en el frontend (`windows/src` o `shared/`), verificar que la integración
+     con el webview de macOS se mantenga coherente.
+
+Paso 5: Registrar y Actualizar este archivo al finalizar
+   Al concluir cualquier cambio en macOS, registrar la nueva sección en `comunicacion entre notebooks.txt`
+   y hacer `git push origin <rama>` antes de cambiar a la notebook de Windows.
+
 

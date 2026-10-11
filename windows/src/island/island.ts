@@ -14,6 +14,7 @@ import { State } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
+import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
@@ -21,6 +22,8 @@ import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
 
 const BOT_OVERHANG = 40;
+/** Extra canvas on each side of Mochi, for the witch hat's brim and the Santa hat's tip. */
+const BOT_SIDE = 24;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
 
@@ -59,6 +62,7 @@ export class Island {
 
   private engine = new BotEngine();
   private greeting = new Greeting();
+  private seasons = new SeasonCache();
 
   private running = false;
   private lastFrame = 0;
@@ -191,6 +195,15 @@ export class Island {
       },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
       blip: () => Sound.play("blip"),
+      chooseOutfit: (outfit) => {
+        State.settings.mochiOutfit = outfit;
+        void Bridge.saveSettings(State.settings);
+        State.notify();
+      },
+      previewOutfit: (outfit) => {
+        State.wardrobePreview = outfit;
+        State.notify();
+      },
     };
 
     this.wakeStrip = h("div", { id: "wake-strip" });
@@ -370,6 +383,15 @@ export class Island {
     this.animateGeometry(!grew);
     State.notify();
     this.ensureRunning();
+  }
+
+  /** Right-click on Mochi: wardrobe open ↔ back to the usual view. */
+  toggleWardrobe() {
+    if (State.paused || State.mode === "hidden") return;
+    // The greeting and the drop sequence draw a Mochi of their own.
+    if (State.mode === "expanded" && (State.view === "greeting" || this.uploadActive)) return;
+    if (State.mode === "expanded" && State.view === "wardrobe") this.setView(State.defaultView());
+    else this.setView("wardrobe");
   }
 
   collapse() {
@@ -635,6 +657,12 @@ export class Island {
         this.fsm.click();
         return;
       }
+      if (e.button === 2 && this.isBotHit(e.clientX, e.clientY)) {
+        e.stopPropagation();
+        this.cancelBotHover();
+        this.toggleWardrobe();
+        return;
+      }
       if (this.isBotHit(e.clientX, e.clientY)) {
         e.stopPropagation();
         this.cancelBotHover();
@@ -662,10 +690,19 @@ export class Island {
       if (target?.closest("button, input, textarea, a, #header, .tabs, .tab, .header-actions, .prod-toggle-pill, .prod-panel, .chip-row, .squad-selector, .jump")) {
         return;
       }
+      if (e.button === 2 && this.isBotHit(e.clientX, e.clientY)) {
+        this.cancelBotHover();
+        this.toggleWardrobe();
+        return;
+      }
       if (this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
         this.engine.slap();
       }
+    });
+
+    this.islandEl.addEventListener("contextmenu", (e) => {
+      if (this.isBotHit(e.clientX, e.clientY)) e.preventDefault();
     });
 
     this.islandEl.addEventListener("keydown", () => this.resetInactivity(), true);
@@ -931,15 +968,16 @@ export class Island {
     const size = this.botSize.value;
     const w = Math.max(1, Math.round(size));
     const hCss = w + BOT_OVERHANG;
+    const wCss = w + BOT_SIDE * 2;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     if (this.canvasPx !== w) {
       this.canvasPx = w;
-      this.botCanvas.width = Math.round(w * dpr);
+      this.botCanvas.width = Math.round(wCss * dpr);
       this.botCanvas.height = Math.round(hCss * dpr);
-      this.botCanvas.style.width = `${w}px`;
+      this.botCanvas.style.width = `${wCss}px`;
       this.botCanvas.style.height = `${hCss}px`;
     }
-    this.botCanvas.style.left = `${this.botCx.value - w / 2}px`;
+    this.botCanvas.style.left = `${this.botCx.value - wCss / 2}px`;
     this.botCanvas.style.top = `${this.botCy.value - BOT_OVERHANG / 2 - hCss / 2}px`;
 
     const ctx = this.botCanvas.getContext("2d");
@@ -965,10 +1003,20 @@ export class Island {
     this.engine.particleOverhang = BOT_OVERHANG;
     this.engine.lookX = this.lookX();
     this.engine.lookY = this.lookY();
+
+    const inWardrobe = State.mode === "expanded" && State.view === "wardrobe";
+    const mainFocused = State.focusId == null || State.focusId === "coco_blanco";
+    const showOutfit = mainFocused || State.mode !== "expanded" || inWardrobe;
+    const outfit = State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit));
+    this.engine.setOutfit(showOutfit ? outfit : "none", !inWardrobe);
+
     this.engine.update(dt);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, hCss);
+    ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);
+    ctx.clearRect(-BOT_SIDE, 0, wCss, hCss);
+    ctx.save();
+    this.engine.applyDance(ctx, w, hCss);
     this.engine.draw(ctx, w, hCss);
+    ctx.restore();
   }
 
   /** BotCanvasView.lookX / lookY — tanh of the distance to the bot. */
@@ -1043,6 +1091,9 @@ export class Island {
     this.contentEl.style.opacity = expanded && !greetingActive ? "1" : "0";
     this.contentEl.style.pointerEvents = expanded && !greetingActive ? "auto" : "none";
     this.greetingCanvas.style.display = greetingActive ? "block" : "none";
+
+    // A wardrobe try-on never outlives the wardrobe.
+    if (State.wardrobePreview && !(expanded && State.view === "wardrobe")) State.wardrobePreview = null;
 
     this.header.sync();
     for (const [name, view] of this.views) {

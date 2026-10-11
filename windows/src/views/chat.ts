@@ -482,6 +482,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (file && file.base64) {
         file.base64 = undefined;
       }
+      State.stateOverride = null;
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       if (reply.cocoId && State.focusId !== reply.cocoId) {
         State.setFocus(reply.cocoId);
@@ -494,6 +495,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       State.view = "note";
       Sound.play("error");
     } finally {
+      State.stateOverride = null;
       sending = false;
       State.notify();
       onHeightChange();

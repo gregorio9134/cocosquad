@@ -9,6 +9,7 @@ import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
+import { buildWardrobe } from "./wardrobe";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 
 export interface ViewActions {
@@ -26,6 +27,8 @@ export interface ViewActions {
   openSettingsWindow(): void;
   blip(): void;
   swallow?(path: string): void;
+  chooseOutfit?(outfit: any): void;
+  previewOutfit?(outfit: any): void;
 }
 
 export interface ViewHost {
@@ -462,6 +465,7 @@ export function buildViews(
   map.set("confused", buildConfused());
   map.set("note", buildNote());
   map.set("settings", buildSettings(actions));
+  map.set("wardrobe", buildWardrobe(actions));
   map.set("prompt", buildPrompt(onChatHeightChange));
   map.set("upload", buildUpload(actions));
   map.set("uploading", buildUploading());
