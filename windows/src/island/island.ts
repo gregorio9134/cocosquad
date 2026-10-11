@@ -628,16 +628,19 @@ export class Island {
     });
 
     this.botCanvas.addEventListener("mousedown", (e) => {
-      e.stopPropagation();
       Sound.resume();
       this.resetInactivity();
       if (State.mode !== "expanded") {
+        e.stopPropagation();
         this.fsm.click();
         return;
       }
-      this.cancelBotHover();
-      this.engine.slap();
-      this.ensureRunning();
+      if (this.isBotHit(e.clientX, e.clientY)) {
+        e.stopPropagation();
+        this.cancelBotHover();
+        this.engine.slap();
+        this.ensureRunning();
+      }
     });
     this.botCanvas.addEventListener("mouseenter", () => {
       if (State.mode === "expanded") {
@@ -653,6 +656,10 @@ export class Island {
       this.resetInactivity();
       if (State.mode !== "expanded") {
         this.fsm.click();
+        return;
+      }
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("button, input, textarea, a, #header, .tabs, .tab, .header-actions, .prod-toggle-pill, .prod-panel, .chip-row, .squad-selector, .jump")) {
         return;
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
@@ -756,9 +763,11 @@ export class Island {
 
   private isBotHit(x: number, y: number): boolean {
     const rect = this.islandRect();
+    // Header controls take up top 42px of island — never register a bot hit inside header
+    if (y <= rect.y + 42) return false;
     const cx = rect.x + this.botCx.value;
     const cy = rect.y + this.botCy.value;
-    const radius = Math.max(28, this.botSize.value / 2);
+    const radius = Math.max(18, this.botSize.value * 0.52);
     return (x - cx) ** 2 + (y - cy) ** 2 <= radius * radius;
   }
 

@@ -84,7 +84,7 @@ body {
 
 #bot-canvas {
   position: absolute;
-  pointer-events: auto;
+  pointer-events: none;
   cursor: pointer;
   z-index: 10;
 }
@@ -162,6 +162,9 @@ body {
   display: flex;
   align-items: center;
   margin: 0 -10px;
+  position: relative;
+  z-index: 30;
+  pointer-events: auto;
   transition: opacity 0.2s ease-in-out;
 }
 
@@ -169,6 +172,8 @@ body {
   display: flex;
   gap: 5px;
   padding-left: 14px;
+  position: relative;
+  z-index: 31;
 }
 
 .tab {
@@ -180,7 +185,8 @@ body {
   background: transparent;
   border-radius: 11px;
   color: var(--dim-2);
-  cursor: default;
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 .tab:hover {
@@ -198,6 +204,8 @@ body {
   display: flex;
   gap: 14px;
   padding-right: 16px;
+  position: relative;
+  z-index: 31;
 }
 
 .header-actions button {
@@ -206,7 +214,8 @@ body {
   color: var(--dim-2);
   display: grid;
   place-items: center;
-  cursor: default;
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 .header-actions button.on {
