@@ -31,6 +31,8 @@ async function main() {
     const island = new Island(root);
     (window as any).__island = island;
     await Bridge.log("STEP 5: Island instantiated successfully");
+    await island.desktop.init();
+    await Bridge.log("STEP 5.1: island.desktop.init() completed");
 
     await Bridge.log("STEP 6: Calling Bridge.boot()...");
     const boot = await Bridge.boot();

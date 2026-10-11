@@ -2,6 +2,7 @@
 
 mod coco_client;
 mod coco_protocol;
+mod desktop;
 mod encoding;
 mod files;
 mod island;
@@ -60,6 +61,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
+        let mut settings = settings.clone();
+        settings.desktop_mochi = current.desktop_mochi.clone();
         *current = settings.clone();
         (screen_changed, autostart_changed)
     };
@@ -213,7 +216,8 @@ fn log_line(message: String) {
 /// for the *same* arguments as the island (see `additionalBrowserArgs` in
 /// tauri.conf.json) — a mismatch makes the second window come up blank, with no
 /// error anywhere.
-const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+pub const BROWSER_ARGS: &str =
+    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required --enable-gpu-rasterization --enable-zero-copy";
 
 /// Always serve settings from embedded app bundle.
 fn settings_page_url(_app: &AppHandle) -> WebviewUrl {
@@ -341,6 +345,16 @@ pub fn run() {
             ingest_file,
             open_settings_window,
             close_settings_window,
+            desktop::desktop_mochi_info,
+            desktop::desktop_mochi_pick_up,
+            desktop::desktop_mochi_carry,
+            desktop::desktop_mochi_carry_end,
+            desktop::desktop_mochi_drag_begin,
+            desktop::desktop_mochi_drag_move,
+            desktop::desktop_mochi_drag_end,
+            desktop::desktop_mochi_fly_out,
+            desktop::desktop_mochi_fly_home,
+            desktop::desktop_mochi_set_asleep,
         ])
         .setup(move |app| {
             log::line("step: setup entered");
@@ -350,6 +364,7 @@ pub fn run() {
             }
             log::line("step: creating settings window");
             create_settings_window(&handle);
+            desktop::setup(&handle);
 
             if let Some(win) = island::window(&handle) {
                 log::line("step: island window found, configuring");

@@ -20,6 +20,27 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Mochi on the desktop: whether he lives there, and his spot. Owned by
+    /// the Rust side (desktop.rs) — what a webview sends back is ignored.
+    #[serde(default)]
+    pub desktop_mochi: DesktopMochiPref,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DesktopMochiPref {
+    /// He was on the desktop when the app quit: he flies back out at launch.
+    pub on_desktop: bool,
+    /// Top-left corner of his window where the user last left him.
+    pub spot: Option<DesktopSpot>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DesktopSpot {
+    pub x: f64,
+    pub y: f64,
+    /// What x and y are measured in (`DesktopMode::space`).
+    pub space: String,
 }
 
 fn default_model() -> String {
@@ -38,6 +59,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            desktop_mochi: DesktopMochiPref::default(),
         }
     }
 }

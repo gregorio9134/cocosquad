@@ -141,6 +141,7 @@ class AppState {
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
   wardrobePreview: any = null;
+  mochiOnDesktop = false;
 
   integrations: Record<string, IntegrationInfo> = {};
 

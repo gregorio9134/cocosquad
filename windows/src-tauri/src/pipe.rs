@@ -143,7 +143,7 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         Some(i) => &buf[..i],
         None => &buf[..],
     };
-    let Ok(mut payload) = serde_json::from_slice::<Value>(line) else { return };
+    let Ok(payload) = serde_json::from_slice::<Value>(line) else { return };
     if !payload.is_object() {
         return;
     }

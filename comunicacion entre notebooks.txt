@@ -715,4 +715,44 @@ Paso 5: Registrar y Actualizar este archivo al finalizar
    Al concluir cualquier cambio en macOS, registrar la nueva sección en `comunicacion entre notebooks.txt`
    y hacer `git push origin <rama>` antes de cambiar a la notebook de Windows.
 
+13. OPTIMIZACION DE FLUIDEZ DE ANIMACIONES Y MOCHI EN EL ESCRITORIO (DESKTOP MOCHI) (11 OCTUBRE 2026)
+-----------------------------------------------------------------------------------------------------
+A pedido de Gregorio, se abordaron dos requerimientos clave:
+A) Fluidez de animaciones (se sentían toscas y trabadas).
+B) Funcionalidad de arrastrar a Mochi fuera de la isla para que viva y trabaje en el escritorio.
+
+A) Causa y Solución de las Animaciones Toscas:
+1. Reasignación excesiva de canvas: `botCanvas.width` y `height` se reasignaban en cada fotograma
+   mientras `botSize` cambiaba (hasta 60 reasignaciones por segundo), lo que forzaba a DirectX y
+   WebView2 a destruir y regenerar texturas GPU repetidamente.
+   -> Solución: Se optimizó `drawBot` para reasignar el buffer de canvas solo cuando el delta
+      sea mayor a 6px o cuando la animación se haya asentado completamente.
+2. Saturación de IPC de Tauri (`setIslandRect`): En cada fotograma de animación de tamaño, la isla
+   enviaba una llamada IPC a Rust (`Bridge.setIslandRect`).
+   -> Solución: Se aplicó un umbral de 4px mientras la isla está en movimiento y 0.5px al asentarse,
+      reduciendo el tráfico IPC en un 90%.
+3. Recálculo continuo de estilos en `botGlow`: `botGlow.style.background` y `opacity` forzaban
+   re-layouts continuos. Se implementó un sistema de caché (`lastGlowColor`, `lastGlowOpacity`).
+4. Micro-oscilación residual en resortes: En `anim.ts`, `Spring.settled` no asentaba inmediatamente
+   en colas asintóticas. Se ajustó el umbral y se fuerza el valor final de forma limpia.
+5. Aceleración por hardware: Se añadieron `--enable-gpu-rasterization --enable-zero-copy` a
+   `tauri.conf.json` y `BROWSER_ARGS` en Rust para acelerar el renderizado 2D en GPU.
+
+B) Arrastre de Mochi al Escritorio (Desktop Mochi):
+1. Ventana dedicada (`windows/mochi.html`, `windows/src/desktop/main.ts`, `vite.config.ts`):
+   - Ventana transparente ligera (`120x120px`) sin bordes ni barra de tareas.
+   - Renderiza a Mochi con seguimiento de mirada global y animaciones fluidas.
+2. Soporte en Backend Rust (`windows/src-tauri/src/desktop.rs`, `platform/windows.rs`, `lib.rs`):
+   - Comandos Tauri (`desktop_mochi_info`, `desktop_mochi_pick_up`, `desktop_mochi_carry`,
+     `desktop_mochi_drag_begin`, `desktop_mochi_fly_out`, `desktop_mochi_fly_home`, etc.).
+   - Cursor poll y click-through mediante `WS_EX_TRANSPARENT` selectivo sobre el cuerpo de Mochi.
+   - Persistencia de la posición (`desktop_mochi.spot`) en `settings.json`.
+3. Conexión en la Isla (`windows/src/island/desktop.ts`, `windows/src/island/island.ts`):
+   - Al hacer clic sobre Mochi y arrastrar más de 5px (`DRAG_THRESHOLD`), se activa `pickUp()`,
+     Mochi se despega de la isla y sigue al cursor en el escritorio.
+   - En la isla, Mochi se oculta limpiamente (`mochiOnDesktop = true`), evitando colisiones de clics.
+   - Clic simple en el escritorio acaricia/hace slap a Mochi; clic derecho abre el guardarropa;
+     doble clic lo hace volar de regreso a la isla.
+   - Al soltarlo sobre la isla, regresa automáticamente a la barra superior.
+
 

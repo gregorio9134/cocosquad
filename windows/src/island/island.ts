@@ -19,6 +19,8 @@ import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
+import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
+import { DesktopLink } from "./desktop";
 import { IslandStateMachine } from "./fsm";
 
 const BOT_OVERHANG = 40;
@@ -84,10 +86,19 @@ export class Island {
 
   private confusedRecovery: number | null = null;
   private prevViewBeforeConfused: IslandViewName = "overview";
+  readonly desktop: DesktopLink;
+  private botPress: { x: number; y: number } | null = null;
+  private lastGlowColor = "";
+  private lastGlowOpacity = "";
   private lastSyncedView: IslandViewName | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
+    this.desktop = new DesktopLink({
+      reveal: () => this.reveal(),
+      wardrobeFromDesktop: () => this.wardrobeFromDesktop(),
+      dizzyFromDesktop: () => this.handleDizzy(),
+    });
     this.build();
     this.wireFsm();
     this.wireInput();
@@ -271,6 +282,7 @@ export class Island {
   private wireFsm() {
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.onTransition = (from, to) => {
+      if (from === "coucou" && to !== "coucou") this.desktop.launch();
       switch (to) {
         case "hidden":
           this.setMode("hidden");
@@ -392,6 +404,34 @@ export class Island {
     if (State.mode === "expanded" && (State.view === "greeting" || this.uploadActive)) return;
     if (State.mode === "expanded" && State.view === "wardrobe") this.setView(State.defaultView());
     else this.setView("wardrobe");
+  }
+
+  wardrobeFromDesktop() {
+    this.wardrobeAnywhere();
+  }
+
+  wardrobeAnywhere() {
+    void Bridge.focusWindow(true);
+    if (State.mode === "expanded" && State.view === "wardrobe") {
+      this.setView(this.prevViewBeforeConfused || "overview");
+    } else {
+      this.alert("wardrobe");
+    }
+  }
+
+  canLeaveIsland(): boolean {
+    return this.desktop.supported;
+  }
+
+  flyOutOrHome() {
+    const busy = State.mode === "expanded" && (State.view === "greeting" || this.uploadActive);
+    if (busy && !State.mochiOnDesktop) return;
+    this.desktop.flyOutOrHome();
+  }
+
+  private canDragOut(): boolean {
+    if (State.mode === "hidden" || !this.desktop.canPickUp()) return false;
+    return !(State.mode === "expanded" && (State.view === "greeting" || this.uploadActive));
   }
 
   collapse() {
@@ -596,7 +636,9 @@ export class Island {
 
     const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
     const p = this.pushedRect;
-    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
+    const animating = this.width.animating || this.height.animating || this.radius.animating;
+    const threshold = animating ? 4.0 : 0.5;
+    if (Math.abs(p.x - rect.x) > threshold || Math.abs(p.w - rect.w) > threshold || Math.abs(p.h - rect.h) > threshold) {
       this.pushedRect = rect;
       void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h);
     }
@@ -652,6 +694,9 @@ export class Island {
     this.botCanvas.addEventListener("mousedown", (e) => {
       Sound.resume();
       this.resetInactivity();
+      if (e.button === 0 && this.isBotHit(e.clientX, e.clientY)) {
+        this.botPress = { x: e.clientX, y: e.clientY };
+      }
       if (State.mode !== "expanded") {
         e.stopPropagation();
         this.fsm.click();
@@ -682,6 +727,9 @@ export class Island {
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
       this.resetInactivity();
+      if (e.button === 0 && this.isBotHit(e.clientX, e.clientY)) {
+        this.botPress = { x: e.clientX, y: e.clientY };
+      }
       if (State.mode !== "expanded") {
         this.fsm.click();
         return;
@@ -699,6 +747,30 @@ export class Island {
         this.cancelBotHover();
         this.engine.slap();
       }
+    });
+
+    // Dragging Mochi out of the island puts him on the desktop.
+    window.addEventListener("mousemove", (e) => {
+      if (this.desktop.carrying) {
+        this.desktop.carry(e.clientX, e.clientY);
+        return;
+      }
+      const press = this.botPress;
+      if (!press) return;
+      if (!(e.buttons & 1)) {
+        this.botPress = null;
+        return;
+      }
+      if (Math.hypot(e.clientX - press.x, e.clientY - press.y) <= DRAG_THRESHOLD) return;
+      this.botPress = null;
+      if (!this.canDragOut()) return;
+      this.cancelBotHover();
+      this.desktop.pickUp(e.clientX, e.clientY);
+    });
+
+    window.addEventListener("mouseup", (e) => {
+      this.botPress = null;
+      if (this.desktop.carrying) this.desktop.carryEnd(e.clientX, e.clientY);
     });
 
     this.islandEl.addEventListener("contextmenu", (e) => {
@@ -799,6 +871,7 @@ export class Island {
   }
 
   private isBotHit(x: number, y: number): boolean {
+    if (State.mochiOnDesktop) return false;
     const rect = this.islandRect();
     // Header controls take up top 42px of island — never register a bot hit inside header
     if (y <= rect.y + 42) return false;
@@ -946,19 +1019,27 @@ export class Island {
     this.botSize.target = p.diameter / 0.6;
 
     const greetingActive = State.mode === "expanded" && State.view === "greeting";
-    const visible = p.opacity > 0 && !greetingActive && !this.uploadActive;
+    const away = State.mochiOnDesktop;
+    const visible = p.opacity > 0 && !greetingActive && !this.uploadActive && !away;
     this.botCanvas.style.opacity = visible ? "1" : "0";
 
-    if (State.mode === "expanded" && !greetingActive && !this.uploadActive) {
+    if (State.mode === "expanded" && !greetingActive && !this.uploadActive && !away) {
       const d = p.diameter;
       const color = botGlowColor(State.effectiveState, State.focusTask?.id);
+      const opacity = String(botGlowOpacity(State.effectiveState));
       this.botGlow.style.display = "block";
       this.botGlow.style.width = `${d * 2.2}px`;
       this.botGlow.style.height = `${d * 2.2}px`;
       this.botGlow.style.left = `${this.botCx.value - d * 1.1}px`;
       this.botGlow.style.top = `${this.botCy.value - d * 1.1}px`;
-      this.botGlow.style.background = `radial-gradient(circle, ${color} 0%, transparent 62%)`;
-      this.botGlow.style.opacity = String(botGlowOpacity(State.effectiveState));
+      if (this.lastGlowColor !== color) {
+        this.lastGlowColor = color;
+        this.botGlow.style.background = `radial-gradient(circle, ${color} 0%, transparent 62%)`;
+      }
+      if (this.lastGlowOpacity !== opacity) {
+        this.lastGlowOpacity = opacity;
+        this.botGlow.style.opacity = opacity;
+      }
     } else {
       this.botGlow.style.display = "none";
     }
@@ -970,13 +1051,15 @@ export class Island {
     const hCss = w + BOT_OVERHANG;
     const wCss = w + BOT_SIDE * 2;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    if (this.canvasPx !== w) {
+    const delta = Math.abs(this.canvasPx - w);
+    const needResize = this.canvasPx === 0 || (this.botSize.settled ? delta > 0 : delta >= 6);
+    if (needResize) {
       this.canvasPx = w;
       this.botCanvas.width = Math.round(wCss * dpr);
       this.botCanvas.height = Math.round(hCss * dpr);
-      this.botCanvas.style.width = `${wCss}px`;
-      this.botCanvas.style.height = `${hCss}px`;
     }
+    this.botCanvas.style.width = `${wCss}px`;
+    this.botCanvas.style.height = `${hCss}px`;
     this.botCanvas.style.left = `${this.botCx.value - wCss / 2}px`;
     this.botCanvas.style.top = `${this.botCy.value - BOT_OVERHANG / 2 - hCss / 2}px`;
 
@@ -1012,7 +1095,9 @@ export class Island {
 
     this.engine.update(dt);
     ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);
-    ctx.clearRect(-BOT_SIDE, 0, wCss, hCss);
+    const bufW = this.botCanvas.width / dpr;
+    const bufH = this.botCanvas.height / dpr;
+    ctx.clearRect(-BOT_SIDE, 0, bufW, bufH);
     ctx.save();
     this.engine.applyDance(ctx, w, hCss);
     this.engine.draw(ctx, w, hCss);
