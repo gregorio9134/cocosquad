@@ -7,7 +7,7 @@ use std::process::Command;
 use tauri::{AppHandle, Manager, WebviewWindow};
 
 use ::windows::core::{implement, BOOL, PWSTR};
-use ::windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT, POINTL};
+use ::windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT, POINTL, RECT};
 use ::windows::Win32::Security::Authorization::ConvertSidToStringSidW;
 use ::windows::Win32::Security::{GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
 use ::windows::Win32::System::Com::{IDataObject, FORMATETC, TYMED_HGLOBAL, DVASPECT_CONTENT};
@@ -17,12 +17,16 @@ use ::windows::Win32::System::Ole::{
 };
 use ::windows::Win32::System::SystemInformation::GetLocalTime;
 use ::windows::Win32::System::SystemServices::MODIFIERKEYS_FLAGS;
-use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+use ::windows::Win32::System::Threading::{
+    GetCurrentProcess, OpenProcess, OpenProcessToken, QueryFullProcessImageNameW,
+    PROCESS_NAME_FORMAT, PROCESS_QUERY_LIMITED_INFORMATION,
+};
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
 use ::windows::Win32::UI::Shell::{DragQueryFileW, DragFinish, HDROP};
 use ::windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, GetClassNameW, GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW,
-    GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+    EnumChildWindows, EnumWindows, GetClassNameW, GetCursorPos, GetWindowLongPtrW,
+    GetWindowRect, GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible,
+    SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
 };
 use tauri::Emitter;
 
@@ -404,4 +408,191 @@ pub fn set_layer_overlay(_win: &WebviewWindow, _on: bool) {}
 /// Layer-shell only (Linux): the logical size of the display the island is on.
 pub fn layer_display(_island: &WebviewWindow, _mochi: &WebviewWindow) -> Option<(f64, f64)> {
     None
+}
+
+// ── Drag-Attach Window Context Capture ────────────────────────────────────────
+
+fn parse_window_info(exe: &str, raw_title: &str) -> (String, String, Option<String>) {
+    let app_name = match exe {
+        "code.exe" => "Visual Studio Code",
+        "chrome.exe" => "Google Chrome",
+        "msedge.exe" => "Microsoft Edge",
+        "firefox.exe" => "Mozilla Firefox",
+        "brave.exe" => "Brave",
+        "notepad.exe" => "Bloc de notas",
+        "explorer.exe" => "Explorador de archivos",
+        "winword.exe" => "Microsoft Word",
+        "excel.exe" => "Microsoft Excel",
+        "powerpnt.exe" => "Microsoft PowerPoint",
+        "slack.exe" => "Slack",
+        "discord.exe" => "Discord",
+        "windowsterminal.exe" => "Windows Terminal",
+        "cmd.exe" => "Símbolo del sistema",
+        "powershell.exe" | "pwsh.exe" => "PowerShell",
+        "acrobat.exe" | "acrord32.exe" => "Adobe Acrobat",
+        "spotify.exe" => "Spotify",
+        other => {
+            let base = other.strip_suffix(".exe").unwrap_or(other);
+            if base.is_empty() {
+                "Aplicación"
+            } else {
+                base
+            }
+        }
+    }.to_string();
+
+    let mut clean_title = raw_title.trim().to_string();
+    let suffixes = [
+        " - Visual Studio Code",
+        " - Google Chrome",
+        " - Microsoft Edge",
+        " - Mozilla Firefox",
+        " — Mozilla Firefox",
+        " - Brave",
+        " - Bloc de notas",
+        " - Notepad",
+        " - Word",
+        " - Excel",
+        " - PowerPoint",
+    ];
+    for suf in suffixes {
+        if clean_title.ends_with(suf) {
+            clean_title = clean_title[..clean_title.len() - suf.len()].trim().to_string();
+            break;
+        }
+    }
+    if clean_title.is_empty() {
+        clean_title = raw_title.trim().to_string();
+    }
+
+    let url = if ["chrome.exe", "msedge.exe", "firefox.exe", "brave.exe"].contains(&exe) {
+        if clean_title.starts_with("http://") || clean_title.starts_with("https://") {
+            Some(clean_title.clone())
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    (app_name, clean_title, url)
+}
+
+struct WindowEnumState {
+    point: POINT,
+    our_pid: u32,
+    result: Option<super::WindowCapture>,
+}
+
+unsafe extern "system" fn capture_window_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    let state = &mut *(lparam.0 as *mut WindowEnumState);
+
+    if !IsWindowVisible(hwnd).as_bool() {
+        return BOOL(1);
+    }
+    if IsIconic(hwnd).as_bool() {
+        return BOOL(1);
+    }
+
+    let mut rect = RECT::default();
+    if GetWindowRect(hwnd, &mut rect).is_err() {
+        return BOOL(1);
+    }
+
+    let w = rect.right - rect.left;
+    let h = rect.bottom - rect.top;
+    if w < 50 || h < 50 {
+        return BOOL(1);
+    }
+
+    if state.point.x < rect.left
+        || state.point.x >= rect.right
+        || state.point.y < rect.top
+        || state.point.y >= rect.bottom
+    {
+        return BOOL(1);
+    }
+
+    let mut pid: u32 = 0;
+    GetWindowThreadProcessId(hwnd, Some(&mut pid));
+    if pid == 0 || pid == state.our_pid {
+        return BOOL(1);
+    }
+
+    let mut class_buf = [0u16; 256];
+    let clen = GetClassNameW(hwnd, &mut class_buf);
+    let class_name = if clen > 0 {
+        String::from_utf16_lossy(&class_buf[..clen as usize])
+    } else {
+        String::new()
+    };
+
+    if class_name == "Shell_TrayWnd"
+        || class_name == "Shell_SecondaryTrayWnd"
+        || class_name == "Progman"
+        || class_name == "WorkerW"
+    {
+        return BOOL(1);
+    }
+
+    let mut title_buf = [0u16; 512];
+    let tlen = GetWindowTextW(hwnd, &mut title_buf);
+    let title = if tlen > 0 {
+        String::from_utf16_lossy(&title_buf[..tlen as usize]).trim().to_string()
+    } else {
+        String::new()
+    };
+
+    if title.is_empty() {
+        return BOOL(1);
+    }
+
+    let mut exe_name = String::new();
+    if let Ok(handle) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) {
+        let mut path_buf = [0u16; 1024];
+        let mut size = path_buf.len() as u32;
+        if QueryFullProcessImageNameW(
+            handle,
+            PROCESS_NAME_FORMAT(0),
+            PWSTR(path_buf.as_mut_ptr()),
+            &mut size,
+        )
+        .is_ok()
+        {
+            let full_path = String::from_utf16_lossy(&path_buf[..size as usize]);
+            if let Some(file_name) = std::path::Path::new(&full_path).file_name().and_then(|f| f.to_str()) {
+                exe_name = file_name.to_lowercase();
+            }
+        }
+        let _ = CloseHandle(handle);
+    }
+
+    let (app_name, clean_title, url) = parse_window_info(&exe_name, &title);
+    state.result = Some(super::WindowCapture {
+        app_name,
+        title: clean_title,
+        url,
+    });
+
+    BOOL(0) // Stop enumeration on first top-level window match
+}
+
+pub fn capture_window_at(x: f64, y: f64) -> Option<super::WindowCapture> {
+    let mut state = WindowEnumState {
+        point: POINT {
+            x: x.round() as i32,
+            y: y.round() as i32,
+        },
+        our_pid: std::process::id(),
+        result: None,
+    };
+
+    unsafe {
+        let _ = EnumWindows(
+            Some(capture_window_proc),
+            LPARAM(&mut state as *mut _ as isize),
+        );
+    }
+
+    state.result
 }

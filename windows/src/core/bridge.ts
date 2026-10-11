@@ -175,6 +175,9 @@ export const Bridge = {
   desktopFlyHome: (forget: boolean) => call<boolean>("desktop_mochi_fly_home", { forget }),
   /** Asleep, the cursor poll stops. */
   desktopSetAsleep: (asleep: boolean) => call<void>("desktop_mochi_set_asleep", { asleep }),
+  /** Captures window context at screen physical point (Win32). */
+  captureWindowAt: (x: number, y: number) =>
+    call<{ appName: string; title: string; url?: string } | null>("capture_window_at", { x, y }),
 };
 
 /** How the desktop Mochi's window works here (platform::DesktopMode). */

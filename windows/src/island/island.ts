@@ -98,6 +98,7 @@ export class Island {
       reveal: () => this.reveal(),
       wardrobeFromDesktop: () => this.wardrobeFromDesktop(),
       dizzyFromDesktop: () => this.handleDizzy(),
+      attachWindow: (ctx) => this.handleAttachWindow(ctx),
     });
     this.build();
     this.wireFsm();
@@ -571,6 +572,22 @@ export class Island {
         window.setTimeout(() => this.setView(State.defaultView()), 2400);
       });
 
+    this.ensureRunning();
+  }
+
+  handleAttachWindow(ctx: { appName: string; title: string; url?: string } | null) {
+    State.mochiOnDesktop = false;
+    if (ctx) {
+      State.promptContext = { kind: "window", appName: ctx.appName, title: ctx.title, url: ctx.url };
+      State.setFocus("coco_blanco");
+      Sound.play("approve");
+      this.engine.triggerEmote("happy");
+      this.setView("prompt");
+      void Bridge.focusWindow(true);
+    } else {
+      Sound.play("blip");
+    }
+    State.notify();
     this.ensureRunning();
   }
 

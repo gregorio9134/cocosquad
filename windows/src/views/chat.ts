@@ -465,12 +465,20 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     State.notify();
     onHeightChange();
 
+    const winContext = State.promptContext && State.promptContext.kind === "window" ? State.promptContext : null;
     const context: ChatContext | null = file
       ? {
           kind: "file",
           name: file.name,
           path: file.path || file.name,
           base64: file.base64,
+        }
+      : winContext
+      ? {
+          kind: "window",
+          appName: winContext.appName,
+          title: winContext.title,
+          url: winContext.url,
         }
       : null;
 
@@ -580,6 +588,20 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         );
       }
 
+      const winCtx = State.promptContext && State.promptContext.kind === "window" ? State.promptContext : null;
+      if (winCtx) {
+        const label = winCtx.title ? `${winCtx.appName}: ${winCtx.title}` : winCtx.appName;
+        const displayLabel = label.length > 38 ? label.slice(0, 35) + "…" : label;
+        chipRow.append(
+          fileChip(`Trabajando en: ${displayLabel}`, () => {
+            State.promptContext = null;
+            Sound.play("blip");
+            State.notify();
+            onHeightChange();
+          }),
+        );
+      }
+
       syncProductivity();
 
       const thinking = State.stateOverride === "thinking";
@@ -594,6 +616,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
       if (file) {
         input.placeholder = `Pregúntale a Coco Blanco sobre "${file.name}"…`;
+      } else if (winCtx) {
+        input.placeholder = `Pregúntale a Coco Blanco sobre ${winCtx.appName}…`;
       } else {
         const placeholders: Record<string, string> = {
           coco_blanco: "Pregúntale a Coco Blanco o adjunta un archivo…",

@@ -276,6 +276,11 @@ fn close_settings_window(app: AppHandle) {
     }
 }
 
+#[tauri::command]
+fn capture_window_at(x: f64, y: f64) -> Option<platform::WindowCapture> {
+    platform::capture_window_at(x, y)
+}
+
 #[cfg(windows)]
 pub fn wake_existing_instance() -> bool {
     use std::fs::OpenOptions;
@@ -343,6 +348,7 @@ pub fn run() {
             chat_send,
             chat_reset,
             ingest_file,
+            capture_window_at,
             open_settings_window,
             close_settings_window,
             desktop::desktop_mochi_info,

@@ -23,6 +23,8 @@ export interface DesktopHost {
   wardrobeFromDesktop(): void;
   /** Three pokes on the desktop Mochi. */
   dizzyFromDesktop(): void;
+  /** Dragged Mochi dropped on a window: attach context to chat. */
+  attachWindow(ctx: { appName: string; title: string; url?: string } | null): void;
 }
 
 export class DesktopLink {
@@ -75,6 +77,12 @@ export class DesktopLink {
     await onEvent<null>(DESKTOP_EVENTS.home, () => void this.controller.flyHome());
     await onEvent<null>(DESKTOP_EVENTS.wardrobe, () => this.host.wardrobeFromDesktop());
     await onEvent<null>(DESKTOP_EVENTS.dizzy, () => this.host.dizzyFromDesktop());
+    await onEvent<{ appName: string; title: string; url?: string } | null>("mochi-drag-attach", (ctx) => {
+      this.carrying = false;
+      State.mochiOnDesktop = false;
+      State.notify();
+      this.host.attachWindow(ctx);
+    });
     // The window's page (re)loaded: it knows nothing yet.
     await onEvent<null>(DESKTOP_EVENTS.ready, () => {
       this.pushed = "";
@@ -143,13 +151,8 @@ export class DesktopLink {
   private onDropped(from: "island" | "desktop", home: boolean) {
     if (from === "island") {
       this.carrying = false;
-      if (home) {
-        // Dropped back on the island: he is simply there again.
-        State.mochiOnDesktop = false;
-        State.notify();
-      } else {
-        this.controller.installed();
-      }
+      State.mochiOnDesktop = false;
+      State.notify();
     } else if (home) {
       void this.controller.flyHome();
     }

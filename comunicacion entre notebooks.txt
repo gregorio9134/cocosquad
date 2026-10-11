@@ -756,3 +756,54 @@ B) Arrastre de Mochi al Escritorio (Desktop Mochi):
    - Al soltarlo sobre la isla, regresa automáticamente a la barra superior.
 
 
+
+14. DRAG-ATTACH CONTEXT: ARRASTRAR A MOCHI FUERA DE LA ISLA PARA LEER Y TRABAJAR EN VENTANAS ABIERTAS (11 OCTUBRE 2026)
+-----------------------------------------------------------------------------------------------------
+Aclaracion de diseno clave de Gregorio:
+Gregorio aclaro que al "arrastrar al mochi fuera de la isla para trabajar en lo que tenga abierto",
+la intencion es la iconica funcion de Drag-Attach de NotchBuddy:
+Al tomar a Mochi de la isla y arrastrarlo hacia una ventana (VS Code, Chrome, Word, Explorador de archivos,
+un PDF, etc.) y soltarlo alli, Mochi NO debe quedar abandonado como mascota de fondo de pantalla ni desaparecer
+de la isla. Al contrario:
+- Lee/entiende la ventana donde se lo solto (aplicacion, titulo del documento/pestana, y URL si es navegador).
+- Vuelve de inmediato a la isla sano y salvo.
+- Hace la animacion de felicidad (emote 'happy') y reproduce el sonido 'approve'.
+- Abre/expande la vista de chat ('prompt') con Coco Blanco enfocado.
+- Muestra una etiqueta/badge encima del input: "Trabajando en: [Aplicacion]: [Titulo]".
+- El placeholder del input se adapta a "Preguntale a Coco Blanco sobre [Aplicacion]...".
+- Al enviar la consulta, se envia el contexto de ventana ({ kind: "window", appName, title, url }) al
+  servidor de Staging para que Coco Blanco asista conociendo exactamente el archivo/ventana en que trabaja Gregorio.
+
+Implementacion tecnica realizada:
+1. Backend Rust - Captura Win32 (windows/src-tauri/src/platform/windows.rs, mod.rs, lib.rs):
+   - Implementado capture_window_at(x, y) -> Option<WindowCapture>.
+   - Utiliza EnumWindows en orden Z, descartando procesos de Coucou (nuestros propios HWNDs), ventanas
+     minimizadas (IsIconic), ventanas ocultas o de sistema (barra de tareas, Program Manager, WorkerW).
+   - Consulta el proceso con OpenProcess y QueryFullProcessImageNameW, mapeando nombres ejecutables
+     a nombres amigables ("Visual Studio Code", "Google Chrome", "Microsoft Edge", "Explorador de archivos",
+     "Bloc de notas", "Microsoft Word", etc.).
+   - Limpia sufijos de ventana (ej: " - Visual Studio Code", " - Google Chrome") para aislar el titulo del documento.
+   - Extrae URL si se detecta en navegadores.
+   - Registrado comando Tauri capture_window_at en lib.rs.
+
+2. Gestion de Soltado en Rust (windows/src-tauri/src/desktop.rs):
+   - En finish_drop(), si from == Source::Island y se suelta fuera de la isla (!home):
+     * Se oculta la ventana flotante del avatar de arrastre (hide(app, d)).
+     * Se invoca platform::capture_window_at(center.x, center.y).
+     * Se emite el evento "mochi-drag-attach" a la isla con el WindowCapture.
+     * Se emite "desktop-mochi-dropped" con home: true para que la isla nunca desactive a Mochi ni
+       guarde on_desktop: true en las preferencias.
+   - Se corrigio settings.json asegurando desktopMochi.onDesktop: false.
+
+3. Frontend Isla y Chat (windows/src/island/desktop.ts, island.ts, chat.ts):
+   - En DesktopLink: escucha "mochi-drag-attach" y reasigna State.mochiOnDesktop = false.
+   - En Island.handleAttachWindow():
+     * Si se capturo contexto: asigna State.promptContext = { kind: "window", appName, title, url },
+       enfoca coco_blanco, reproduce sonido "approve", anima emote "happy", cambia vista a "prompt"
+       y solicita foco de teclado a la isla con Bridge.focusWindow(true).
+   - En Chat:
+     * Renderiza chip visual con boton para desvincular: "Trabajando en: [Aplicacion]: [Titulo]".
+     * En submit(): envia el objeto de contexto { kind: "window", appName, title, url } a traves de
+       Bridge.chatSend(), el cual es procesado por coco_protocol.rs inyectando app, ventana y url
+       hacia Staging.
+   - Probado y verificado en la app activa en Windows.

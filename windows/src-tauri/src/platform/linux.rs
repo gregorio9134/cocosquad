@@ -302,6 +302,10 @@ fn apply_input_region(gw: &impl IsA<gtk::Widget>, rect: Region) {
 
 pub fn force_foreground(_win: &WebviewWindow) {}
 
+pub fn capture_window_at(_x: f64, _y: f64) -> Option<super::WindowCapture> {
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

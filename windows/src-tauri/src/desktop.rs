@@ -601,7 +601,7 @@ async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source
     {
         let mut i = d.inner.lock().unwrap();
         i.carry = None;
-        i.landed = !home;
+        i.landed = !home && from != Source::Island;
     }
     if home {
         if from == Source::Island {
@@ -611,6 +611,14 @@ async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source
             // The island page flies him home (and forgets the spot).
             refresh(app, d);
         }
+        let _ = app.emit_to(island::WINDOW_LABEL, "desktop-mochi-dropped", Dropped { from, home: true });
+    } else if from == Source::Island {
+        // Dragged Mochi out of the island onto an app or desktop!
+        hide(app, d);
+        let captured = platform::capture_window_at(center.0, center.1);
+        crate::log::line(format!("Mochi drag-attach at ({}, {}): {:?}", center.0, center.1, captured));
+        let _ = app.emit_to(island::WINDOW_LABEL, "mochi-drag-attach", &captured);
+        let _ = app.emit_to(island::WINDOW_LABEL, "desktop-mochi-dropped", Dropped { from, home: true });
     } else {
         let spot = logic::settle(pos, &displays(app, d), SIZE, MARGIN);
         refresh(app, d);
@@ -618,8 +626,8 @@ async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source
             fly(app, d, spot, SNAP_MS, logic::ease_out_back).await;
         }
         remember_spot(app, d, spot, true);
+        let _ = app.emit_to(island::WINDOW_LABEL, "desktop-mochi-dropped", Dropped { from, home });
     }
-    let _ = app.emit_to(island::WINDOW_LABEL, "desktop-mochi-dropped", Dropped { from, home });
 }
 
 // ── Poll (Windows) ────────────────────────────────────────────────────────────
