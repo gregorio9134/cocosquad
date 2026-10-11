@@ -24,7 +24,7 @@ export interface DesktopHost {
   /** Three pokes on the desktop Mochi. */
   dizzyFromDesktop(): void;
   /** Dragged Mochi dropped on a window: attach context to chat. */
-  attachWindow(ctx: { appName: string; title: string; url?: string } | null): void;
+  attachWindow(ctx: { appName: string; title: string; url?: string; path?: string; summary?: string; items?: string[] } | null): void;
 }
 
 export class DesktopLink {
@@ -77,7 +77,7 @@ export class DesktopLink {
     await onEvent<null>(DESKTOP_EVENTS.home, () => void this.controller.flyHome());
     await onEvent<null>(DESKTOP_EVENTS.wardrobe, () => this.host.wardrobeFromDesktop());
     await onEvent<null>(DESKTOP_EVENTS.dizzy, () => this.host.dizzyFromDesktop());
-    await onEvent<{ appName: string; title: string; url?: string } | null>("mochi-drag-attach", (ctx) => {
+    await onEvent<{ appName: string; title: string; url?: string; path?: string; summary?: string; items?: string[] } | null>("mochi-drag-attach", (ctx) => {
       this.carrying = false;
       State.mochiOnDesktop = false;
       State.notify();
@@ -117,9 +117,13 @@ export class DesktopLink {
   /** (x, y): the pointer, island-window coordinates. */
   pickUp(x: number, y: number) {
     this.carrying = true;
+    State.mochiOnDesktop = true;
+    State.notify();
     void Bridge.desktopPickUp(x, y).then((ok) => {
       if (ok) return;
       this.carrying = false;
+      State.mochiOnDesktop = false;
+      State.notify();
     });
   }
 

@@ -480,6 +480,9 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
           app_name: winContext.appName,
           title: winContext.title,
           url: winContext.url,
+          path: winContext.path,
+          summary: winContext.summary,
+          items: winContext.items,
         } as any)
       : null;
 
@@ -591,7 +594,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
       const winCtx = State.promptContext && State.promptContext.kind === "window" ? State.promptContext : null;
       if (winCtx) {
-        const label = winCtx.title ? `${winCtx.appName}: ${winCtx.title}` : winCtx.appName;
+        const label = winCtx.items && winCtx.items.length > 0
+          ? `📂 ${winCtx.title || winCtx.appName} (${winCtx.items.length} archivos)`
+          : winCtx.title
+          ? `${winCtx.appName}: ${winCtx.title}`
+          : winCtx.appName;
         const displayLabel = label.length > 38 ? label.slice(0, 35) + "…" : label;
         chipRow.append(
           fileChip(`Trabajando en: ${displayLabel}`, () => {

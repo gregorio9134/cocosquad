@@ -424,6 +424,24 @@ pub fn hide_desktop_window(win: &WebviewWindow) {
     }
 }
 
+pub fn move_desktop_window(win: &WebviewWindow, x: f64, y: f64) {
+    let Some(hwnd) = hwnd_of(win) else { return };
+    unsafe {
+        use ::windows::Win32::UI::WindowsAndMessaging::{
+            SetWindowPos, HWND_TOPMOST, SWP_NOSIZE, SWP_NOACTIVATE, SWP_SHOWWINDOW,
+        };
+        let _ = SetWindowPos(
+            hwnd,
+            Some(HWND_TOPMOST),
+            x.round() as i32,
+            y.round() as i32,
+            0,
+            0,
+            SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW,
+        );
+    }
+}
+
 /// The cursor poll toggles WS_EX_TRANSPARENT from the body hit test instead.
 pub fn set_desktop_shape(_win: &WebviewWindow, _shape: super::MouseShape) {}
 
@@ -596,13 +614,76 @@ unsafe extern "system" fn capture_window_proc(hwnd: HWND, lparam: LPARAM) -> BOO
     }
 
     let (app_name, clean_title, url) = parse_window_info(&exe_name, &title);
+
+    let mut path: Option<String> = None;
+    let mut items: Option<Vec<String>> = None;
+    let mut summary: Option<String> = None;
+
+    if exe_name == "explorer.exe" {
+        if let Some((p, its)) = inspect_explorer_window(&clean_title) {
+            summary = Some(format!(
+                "Carpeta '{}' con {} archivo(s): {}",
+                clean_title,
+                its.len(),
+                its.join(", ")
+            ));
+            path = Some(p);
+            items = Some(its);
+        } else {
+            summary = Some(format!("Explorador de archivos: {}", clean_title));
+        }
+    } else if ["chrome.exe", "msedge.exe", "firefox.exe", "brave.exe"].contains(&exe_name.as_str()) {
+        if let Some(ref u) = url {
+            summary = Some(format!("Página web '{}' en {} ({})", clean_title, app_name, u));
+        } else {
+            summary = Some(format!("Pestaña '{}' en {}", clean_title, app_name));
+        }
+    } else {
+        summary = Some(format!("Ventana activa de {} ('{}')", app_name, clean_title));
+    }
+
     state.result = Some(super::WindowCapture {
         app_name,
         title: clean_title,
         url,
+        path,
+        summary,
+        items,
     });
 
     BOOL(0) // Stop enumeration on first top-level window match
+}
+
+fn inspect_explorer_window(title: &str) -> Option<(String, Vec<String>)> {
+    let clean = title.replace('\'', "''");
+    let script = format!(
+        r#"$s = New-Object -ComObject Shell.Application; $w = $s.Windows() | Where-Object {{ $_.LocationName -like '*{clean}*' }} | Select-Object -First 1; if (!$w) {{ $w = $s.Windows() | Select-Object -First 1 }}; if ($w) {{ $p = $w.Document.Folder.Self.Path; $items = @($w.Document.Folder.Items() | Select-Object -First 30 | ForEach-Object {{ $_.Name }}); Write-Output $p; Write-Output ($items -join ':::') }}"#
+    );
+    let out = Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .ok()?;
+    if out.status.success() {
+        let text = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        let mut lines = text.lines();
+        let path = lines.next()?.trim().to_string();
+        if path.is_empty() {
+            return None;
+        }
+        let items_str = lines.next().unwrap_or("").trim();
+        let items: Vec<String> = if items_str.is_empty() {
+            Vec::new()
+        } else {
+            items_str
+                .split(":::")
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        };
+        return Some((path, items));
+    }
+    None
 }
 
 pub fn capture_window_at(x: f64, y: f64) -> Option<super::WindowCapture> {

@@ -424,6 +424,9 @@ fn place(app: &AppHandle, d: &Desktop, pos: (f64, f64)) {
     let Some(win) = window(app) else { return };
     match d.mode {
         DesktopMode::Poll | DesktopMode::Window => {
+            #[cfg(windows)]
+            platform::move_desktop_window(&win, pos.0, pos.1);
+            #[cfg(not(windows))]
             let _ = win.set_position(PhysicalPosition::new(pos.0.round() as i32, pos.1.round() as i32));
         }
         DesktopMode::Layer => {
@@ -437,10 +440,10 @@ fn show(app: &AppHandle, d: &Desktop, at: (f64, f64)) {
     place(app, d, at);
     d.inner.lock().unwrap().shown = true;
     if let Some(win) = window(app) {
+        let _ = win.show();
+        let _ = win.unminimize();
         #[cfg(windows)]
         platform::show_desktop_window(&win);
-        #[cfg(not(windows))]
-        let _ = win.show();
         let _ = win.set_always_on_top(true);
     }
     refresh(app, d);

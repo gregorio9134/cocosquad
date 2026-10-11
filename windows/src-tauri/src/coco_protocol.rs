@@ -20,6 +20,12 @@ pub enum ChatContext {
         title: String,
         #[serde(default)]
         url: Option<String>,
+        #[serde(default)]
+        path: Option<String>,
+        #[serde(default)]
+        summary: Option<String>,
+        #[serde(default)]
+        items: Option<Vec<String>>,
     },
 }
 
@@ -72,11 +78,23 @@ pub(crate) fn build_chat_request(
                 app_name,
                 title,
                 url,
+                path,
+                summary,
+                items,
             } => {
                 contexto.insert("app".to_string(), json!(app_name));
                 contexto.insert("ventana".to_string(), json!(title));
                 if let Some(url) = url {
                     contexto.insert("url".to_string(), json!(url));
+                }
+                if let Some(path) = path {
+                    contexto.insert("ruta".to_string(), json!(path));
+                }
+                if let Some(summary) = summary {
+                    contexto.insert("resumen_contenido".to_string(), json!(summary));
+                }
+                if let Some(items) = items {
+                    contexto.insert("archivos_elementos".to_string(), json!(items));
                 }
             }
         }

@@ -35,7 +35,7 @@ export interface ChatMessage {
 }
 
 export type PromptContext =
-  | { kind: "window"; appName: string; title: string; url?: string }
+  | { kind: "window"; appName: string; title: string; url?: string; path?: string; summary?: string; items?: string[] }
   | { kind: "file"; name: string; path?: string };
 
 export interface ResultItem {

@@ -124,13 +124,9 @@ class DesktopMochi {
       this.engine.setState(this.snap.state, true);
       this.engine.setOutfit(this.snap.outfit, false);
       if (this.snap.role) this.engine.setCocoSquadRole(this.snap.role);
-      this.canvas.style.transition = "transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.16s ease-out";
-      this.canvas.style.transform = "scale(0.55)";
-      this.canvas.style.opacity = "0.7";
-      requestAnimationFrame(() => {
-        this.canvas.style.transform = "scale(1)";
-        this.canvas.style.opacity = "1";
-      });
+      this.canvas.style.transform = "none";
+      this.canvas.style.opacity = "1";
+      this.draw(0.016, performance.now());
       this.schedule();
       return;
     }

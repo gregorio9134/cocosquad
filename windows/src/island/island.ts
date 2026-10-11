@@ -344,7 +344,10 @@ export class Island {
   }
 
   private stopSequenceIfLeaving(view: IslandViewName) {
-    if (UploadSeq.isActive && !UPLOAD_VIEWS.has(view)) UploadSeq.deactivate();
+    if (UploadSeq.isActive && !UPLOAD_VIEWS.has(view)) {
+      UploadSeq.deactivate();
+      this.engine.resetMorph();
+    }
   }
 
   resetInactivity() {
@@ -357,7 +360,7 @@ export class Island {
   expand(view: IslandViewName) {
     if (view === "upload") {
       this.engine.animateMorph(1, 380);
-    } else if (State.view === "upload") {
+    } else {
       this.engine.resetMorph();
     }
     State.view = view;
@@ -374,7 +377,7 @@ export class Island {
     this.stopSequenceIfLeaving(view);
     if (view === "upload") {
       this.engine.animateMorph(1, 380);
-    } else if (State.view === "upload") {
+    } else {
       this.engine.resetMorph();
     }
     if (State.mode !== "expanded") {
@@ -575,19 +578,44 @@ export class Island {
     this.ensureRunning();
   }
 
-  handleAttachWindow(ctx: { appName: string; title: string; url?: string } | null) {
+  handleAttachWindow(ctx: { appName: string; title: string; url?: string; path?: string; summary?: string; items?: string[] } | null) {
     State.mochiOnDesktop = false;
     if (ctx) {
-      State.promptContext = { kind: "window", appName: ctx.appName, title: ctx.title, url: ctx.url };
+      State.promptContext = {
+        kind: "window",
+        appName: ctx.appName,
+        title: ctx.title,
+        url: ctx.url,
+        path: ctx.path,
+        summary: ctx.summary,
+        items: ctx.items,
+      };
       State.setFocus("coco_blanco");
       Sound.play("approve");
       this.engine.triggerEmote("happy");
       this.expand("prompt");
       void Bridge.focusWindow(true);
+
+      const locationText = ctx.path ? `la carpeta **${ctx.title || ctx.appName}** (\`${ctx.path}\`)` : `**${ctx.appName}** (*${ctx.title}*)`;
+      let detailsText = "";
+      if (ctx.items && ctx.items.length > 0) {
+        const preview = ctx.items.slice(0, 8).map((f) => `• ${f}`).join("\n");
+        const more = ctx.items.length > 8 ? `\n• ... y ${ctx.items.length - 8} archivo(s) más.` : "";
+        detailsText = `\n\n📂 **Contenido detectado (${ctx.items.length} archivos):**\n${preview}${more}`;
+      } else if (ctx.summary) {
+        detailsText = `\n\n📌 **Detalles:** ${ctx.summary}`;
+      }
+
+      State.chatHistory.push({
+        id: Date.now(),
+        role: "assistant",
+        content: `Me soltaste en ${locationText}.${detailsText}\n\n¿Qué deseas consultar o hacer con esto?`,
+      });
+      State.notify();
     } else {
       Sound.play("blip");
+      State.notify();
     }
-    State.notify();
     this.ensureRunning();
   }
 
@@ -611,6 +639,7 @@ export class Island {
     }
     // After bar completes and mascot celebrates, show choose card
     if (since >= PRE_PROGRESS + dur + 0.8 && State.view === "uploading") {
+      this.engine.resetMorph();
       this.setView("choose");
     }
   }

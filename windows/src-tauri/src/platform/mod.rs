@@ -32,6 +32,12 @@ pub struct WindowCapture {
     pub title: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub items: Option<Vec<String>>,
 }
 
 /// The user's home directory, where `.claude/settings.json` lives.

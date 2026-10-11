@@ -849,3 +849,53 @@ Causas raices y soluciones implementadas:
    - Compilacion exitosa de TypeScript y Vite (`npm run build`).
    - Compilacion release de Rust (`cargo build --release --bin coucou`) sin errores ni advertencias.
    - Binario copiado a `AppData/Local/Coucou/coucou.exe` y reiniciado con exito.
+
+
+16. INSPECCION PROFUNDA DE VENTANAS/CARPETAS Y FIX DE FORMA CUADRADA DE MOCHI (11 OCTUBRE 2026)
+-----------------------------------------------------------------------------------------------------
+Requerimientos solicitados por Gregorio:
+1. Arrastrar a Mochi por toda la pantalla y, al soltarlo en algun lado, poder saber donde se lo solto,
+   que hay y la informacion que contiene eso donde se lo solto.
+2. Al darle un archivo para que lo devore y hacer clic en "Consultar con Coco Blanco", Mochi se mantenia
+   con la forma cuadrada (morph del cofre/boca de subida) y no volvia al Mochi redondeado original.
+
+Soluciones tecnicas implementadas:
+1. Correccion del Mochi cuadrado (windows/src/island/island.ts):
+   - Causa raiz: `island.ts` solo ejecutaba `this.engine.resetMorph()` si `State.view === "upload"`.
+     Al terminar la barra de subida, la vista cambiaba a `"choose"` ("El documento esta listo"),
+     por lo que al hacer clic en "Consultar con Coco Blanco" hacia `"prompt"`, `resetMorph()` nunca
+     se invocaba y `morph` quedaba fijado en 1.
+   - Solucion: En `expand()`, `setView()`, `stopSequenceIfLeaving()` y `stepSequence()`, cada vez
+     que se cambia a cualquier vista diferente de `"upload"`, se ejecuta inmediatamente
+     `this.engine.resetMorph()`, garantizando que Mochi vuelva de inmediato a su forma redonda original.
+
+2. Inspeccion Profunda de Contenido al Soltar a Mochi (windows/src-tauri/src/platform/windows.rs, mod.rs, coco_protocol.rs):
+   - Se extendio `WindowCapture` y `ChatContext::Window` con campos `path: Option<String>`,
+     `summary: Option<String>`, e `items: Option<Vec<String>>`.
+   - Si Mochi es soltado sobre el Explorador de archivos (`explorer.exe`), `inspect_explorer_window()`
+     consulta la Shell de Windows para extraer:
+     * La ruta absoluta exacta de la carpeta (ej: `C:\Users\polac\OneDrive\Escritorio\Capturas de pantalla`).
+     * La lista de archivos y subcarpetas que contiene.
+     * Un resumen formateado con la cantidad y nombres de archivos.
+   - Para navegadores o editores, extrae el documento activo, URL o pestana abierta.
+   - Toda esta informacion se emite en el evento `mochi-drag-attach` y se inyecta en el payload
+     de chat enviado a Staging en `coco_protocol.rs` (`ruta`, `resumen_contenido`, `archivos_elementos`).
+
+3. Notificacion Inmediata en el Chat (windows/src/island/island.ts, windows/src/views/chat.ts):
+   - En `Island.handleAttachWindow()`, al soltar a Mochi sobre una ventana o carpeta, Coco Blanco
+     agrega de forma automatica e instantanea un mensaje de bienvenida en el historial de chat:
+     "Me soltaste en [Nombre de carpeta/app] en [Ruta].
+      Contenido detectado (X archivos):
+      • archivo1.ext
+      • archivo2.ext...
+      ¿Que deseas consultar o hacer con esto?"
+   - El chip superior muestra la cantidad de archivos detectados (`📂 [Carpeta] (X archivos)`).
+   - De esta manera, Gregorio sabe de inmediato y con total claridad DÓNDE lo solto, QUÉ hay y
+     la INFORMACION que contiene lo que solto.
+
+4. Fluidez y Visibilidad del Arrastre (windows/src-tauri/src/desktop.rs, platform/windows.rs, desktop/main.ts):
+   - Se agrego llamada obligatoria a `win.show()` y `win.unminimize()` en Tauri antes de `show_desktop_window()`,
+     asegurando que el controlador de WebView2 active el renderizado en pantalla sin quedar oculto.
+   - Se implemento `move_desktop_window()` con Win32 `SetWindowPos(SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW)`,
+     logrando un movimiento nativo ultrarrapido en microsegundos mientras se arrastra a Mochi.
+   - Al soltarlo, la ventana flotante se oculta y Mochi reaparece en la isla con su animacion de celebracion.
