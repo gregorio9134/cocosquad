@@ -87,13 +87,7 @@ class DesktopMochi {
     });
     await onEvent<Point>(DESKTOP_EVENTS.cursor, (p) => this.notePointer(p));
     await onEvent<boolean>(DESKTOP_EVENTS.visible, (on) => this.setVisible(on));
-    await onEvent<string>(DESKTOP_EVENTS.flight, (kind) => {
-      // He fades in on the way out of the island (alphaValue 0 → 1 on macOS).
-      if (kind !== "out") return;
-      this.canvas.style.transition = "none";
-      this.canvas.style.opacity = "0";
-      void this.canvas.offsetWidth;
-      this.canvas.style.transition = "";
+    await onEvent<string>(DESKTOP_EVENTS.flight, () => {
       this.canvas.style.opacity = "1";
     });
     await emitToWindow(ISLAND, DESKTOP_EVENTS.ready);

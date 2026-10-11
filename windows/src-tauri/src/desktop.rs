@@ -477,8 +477,9 @@ fn refresh(app: &AppHandle, d: &Desktop) {
         // Poll mode: Some(flag) is decided here; None leaves it to the poll.
         let ignore = if !i.shown || (!i.landed && i.carry.is_none()) {
             Some(true)
-        } else if let Some(c) = i.carry {
-            Some(c.from == Source::Island)
+        } else if i.carry.is_some() {
+            // While carried, never ignore cursor events (avoids WS_EX_TRANSPARENT DWM glitches)
+            Some(false)
         } else if i.asleep {
             // Asleep, nothing polls: the whole little window takes the mouse
             // and acts as his own wake area — the first move over it wakes
@@ -595,7 +596,7 @@ async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source
     {
         let mut i = d.inner.lock().unwrap();
         i.carry = None;
-        i.landed = !home && from != Source::Island;
+        i.landed = !home;
     }
     if home {
         if from == Source::Island {
@@ -608,11 +609,12 @@ async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source
         let _ = app.emit_to(island::WINDOW_LABEL, "desktop-mochi-dropped", Dropped { from, home: true });
     } else if from == Source::Island {
         // Dragged Mochi out of the island onto an app or desktop!
-        hide(app, d);
+        // Keep him visible on the desktop at the drop position while inspecting.
+        refresh(app, d);
         let captured = platform::capture_window_at(center.0, center.1);
         crate::log::line(format!("Mochi drag-attach at ({}, {}): {:?}", center.0, center.1, captured));
         let _ = app.emit_to(island::WINDOW_LABEL, "mochi-drag-attach", &captured);
-        let _ = app.emit_to(island::WINDOW_LABEL, "desktop-mochi-dropped", Dropped { from, home: true });
+        let _ = app.emit_to(island::WINDOW_LABEL, "desktop-mochi-dropped", Dropped { from, home: false });
     } else {
         let spot = logic::settle(pos, &displays(app, d), SIZE, MARGIN);
         refresh(app, d);
@@ -695,7 +697,7 @@ pub fn desktop_mochi_info(app: AppHandle, desktop: State<Arc<Desktop>>) -> Deskt
 #[tauri::command]
 pub async fn desktop_mochi_pick_up(app: AppHandle, x: f64, y: f64) -> bool {
     let d = app.state::<Arc<Desktop>>().inner().clone();
-    if d.mode == DesktopMode::Off || window(&app).is_none() || d.inner.lock().unwrap().shown {
+    if d.mode == DesktopMode::Off || window(&app).is_none() {
         return false;
     }
     refresh_layer_display(&app, &d);

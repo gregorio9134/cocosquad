@@ -79,8 +79,6 @@ export class DesktopLink {
     await onEvent<null>(DESKTOP_EVENTS.dizzy, () => this.host.dizzyFromDesktop());
     await onEvent<{ appName: string; title: string; url?: string; path?: string; summary?: string; items?: string[] } | null>("mochi-drag-attach", (ctx) => {
       this.carrying = false;
-      State.mochiOnDesktop = false;
-      State.notify();
       this.host.attachWindow(ctx);
     });
     // The window's page (re)loaded: it knows nothing yet.
@@ -150,11 +148,12 @@ export class DesktopLink {
 
   private onDropped(from: "island" | "desktop", home: boolean) {
     this.carrying = false;
-    if (from === "island") {
+    if (home) {
       State.mochiOnDesktop = false;
       State.notify();
-    } else if (home) {
-      void this.controller.flyHome();
+      if (from !== "island") {
+        void this.controller.flyHome();
+      }
     }
   }
 

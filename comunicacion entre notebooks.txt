@@ -899,3 +899,30 @@ Soluciones tecnicas implementadas:
    - Se implemento `move_desktop_window()` con Win32 `SetWindowPos(SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW)`,
      logrando un movimiento nativo ultrarrapido en microsegundos mientras se arrastra a Mochi.
    - Al soltarlo, la ventana flotante se oculta y Mochi reaparece en la isla con su animacion de celebracion.
+
+
+17. ARRASTRE PERSISTENTE, 100% OPACO Y CICLO DE REVISION EN DESTINO (11 OCTUBRE 2026)
+-------------------------------------------------------------------------------------
+Requerimiento de Gregorio:
+- Mochi no debe desaparecer ni volverse transparente durante el arrastre (debe ser 100% visible y opaco dentro y fuera de la isla).
+- Al soltarlo sobre un destino compatible, Mochi debe permanecer visible en esa posicion exacta mientras accede y revisa el contenido.
+- Solo cuando termine la revision y entregue el resultado en el chat, debe regresar volando a su posicion original en la isla/notch y recuperar su estado normal.
+- Si el destino no es compatible o la revision falla, debe informar el error y regresar a la isla sin quedar invisible ni trabado.
+
+Causas raices identificadas y resueltas:
+1. Transparencia artificial y desaparicion en frontend:
+   - En `windows/src/island/island.ts`, `botCanvas.style.opacity` usaba `(this.desktop.carrying ? "0.7" : "1")`, aplicando un 70% de opacidad forzada durante el arrastre. Corregido a "1" permanente.
+   - En `windows/mochi.html`, `#mochi` tenia `transition: opacity 0.45s ease-in-out` y en `main.ts` se hacia un fade a "0" al volar, tardando casi medio segundo en mostrarse. Se configuro `opacity: 1 !important; transition: none !important;` en CSS y se retiro el fade a 0.
+2. Interferencia de DWM en Rust (`windows/src-tauri/src/desktop.rs`):
+   - En `refresh()`, cuando se arrastraba a Mochi desde la isla (`c.from == Source::Island`), se invocaba `win.set_ignore_cursor_events(true)`, lo que anadia `WS_EX_TRANSPARENT` al HWND. En Windows con WebView2 y DirectComposition, `WS_EX_TRANSPARENT` provocaba que DWM no compusiera los fotogramas del webview, haciendolo invisible o transparente. Corregido asignando `ignore = Some(false)` mientras `carry.is_some()`.
+3. Retorno prematuro al soltar (`finish_drop` en `desktop.rs` y `desktop.ts`):
+   - `finish_drop` llamaba de inmediato a `hide(app, d)` al soltar desde `Source::Island` y reseteaba `State.mochiOnDesktop = false`, haciendo desaparecer a Mochi de la pantalla al instante. Corregido: se preserva `landed = true`, Mochi se queda en el escritorio y no se oculta.
+4. Ciclo completo de inspeccion y retorno controlado (`windows/src/island/island.ts`):
+   - Destino compatible (Explorador con carpeta, editores, navegadores):
+     * Mochi permanece en el destino mostrando animacion de busqueda/inspeccion (`searching`, sonido `tick`).
+     * Realiza el escaneo del contenido y a los 1200ms publica el informe detallado en el chat de Coco Blanco.
+     * Solo tras publicar el resultado, invoca `Bridge.desktopFlyHome(true)` para volar de vuelta a la isla/notch y reanudar su estado normal.
+   - Destino no compatible (escritorio vacio o sin ventana valida):
+     * Mochi permanece visible mostrando desconcierto (`sweat`, sonido `warn`).
+     * Informa al usuario en el chat ("No se detecto ninguna ventana o carpeta compatible...").
+     * Tras 1500ms regresa volando a la isla/notch de forma segura, sin bloquearse ni desaparecer.

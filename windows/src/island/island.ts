@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, emitToWindow } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -19,7 +19,7 @@ import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
-import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
+import { DRAG_THRESHOLD, DESKTOP_EVENTS } from "../mochi/desktop-logic";
 import { DesktopLink } from "./desktop";
 import { IslandStateMachine } from "./fsm";
 
@@ -579,8 +579,18 @@ export class Island {
   }
 
   handleAttachWindow(ctx: { appName: string; title: string; url?: string; path?: string; summary?: string; items?: string[] } | null) {
-    State.mochiOnDesktop = false;
-    if (ctx) {
+    const isCompatible = Boolean(
+      ctx &&
+      ctx.appName &&
+      ctx.appName.toLowerCase() !== "textinputhost" &&
+      (ctx.path || (ctx.title && ctx.title.trim().length > 0))
+    );
+
+    if (isCompatible && ctx) {
+      // 1. Mochi on the desktop enters inspection state at the drop site
+      void emitToWindow("mochi", DESKTOP_EVENTS.emote, { emote: "searching", duration: 3.0 });
+      Sound.play("tick");
+
       State.promptContext = {
         kind: "window",
         appName: ctx.appName,
@@ -591,12 +601,10 @@ export class Island {
         items: ctx.items,
       };
       State.setFocus("coco_blanco");
-      Sound.play("approve");
-      this.engine.triggerEmote("happy");
-      this.expand("prompt");
-      void Bridge.focusWindow(true);
 
-      const locationText = ctx.path ? `la carpeta **${ctx.title || ctx.appName}** (\`${ctx.path}\`)` : `**${ctx.appName}** (*${ctx.title}*)`;
+      const locationText = ctx.path
+        ? `la carpeta **${ctx.title || ctx.appName}** (\`${ctx.path}\`)`
+        : `**${ctx.appName}** (*${ctx.title}*)`;
       let detailsText = "";
       if (ctx.items && ctx.items.length > 0) {
         const preview = ctx.items.slice(0, 8).map((f) => `• ${f}`).join("\n");
@@ -606,15 +614,53 @@ export class Island {
         detailsText = `\n\n📌 **Detalles:** ${ctx.summary}`;
       }
 
+      // 2. Mochi remains visible on the desktop at the drop destination while accessing and reviewing content
+      window.setTimeout(() => {
+        // 3. Inspection complete: deliver result in chat
+        Sound.play("approve");
+        State.chatHistory.push({
+          id: Date.now(),
+          role: "assistant",
+          content: `Me soltaste en ${locationText}.${detailsText}\n\n¿Qué deseas consultar o hacer con esto?`,
+        });
+        this.expand("prompt");
+        void Bridge.focusWindow(true);
+        State.notify();
+
+        // 4. Return Mochi back to his original notch/island position once analysis is delivered
+        void Bridge.desktopFlyHome(true).then(() => {
+          State.mochiOnDesktop = false;
+          this.engine.triggerEmote("happy");
+          State.notify();
+        }).catch(() => {
+          State.mochiOnDesktop = false;
+          State.notify();
+        });
+      }, 1200);
+
+    } else {
+      // Incompatible destination: inform user, show confusion, then return safely without getting stuck
+      void emitToWindow("mochi", DESKTOP_EVENTS.emote, { emote: "sweat", duration: 2.0 });
+      Sound.play("warn");
+
+      this.expand("prompt");
       State.chatHistory.push({
         id: Date.now(),
         role: "assistant",
-        content: `Me soltaste en ${locationText}.${detailsText}\n\n¿Qué deseas consultar o hacer con esto?`,
+        content: `⚠️ No se detectó ninguna ventana, carpeta o aplicación compatible en este destino.\n\nPor favor, arrástrame sobre el **Explorador de archivos**, un editor de código, navegador o una ventana de aplicación.`,
       });
       State.notify();
-    } else {
-      Sound.play("blip");
-      State.notify();
+
+      window.setTimeout(() => {
+        void Bridge.desktopFlyHome(true).then(() => {
+          State.mochiOnDesktop = false;
+          this.engine.setState("idle");
+          State.notify();
+        }).catch(() => {
+          State.mochiOnDesktop = false;
+          State.notify();
+        });
+      }, 1500);
     }
     this.ensureRunning();
   }
@@ -1069,7 +1115,7 @@ export class Island {
     const greetingActive = State.mode === "expanded" && State.view === "greeting";
     const away = State.mochiOnDesktop;
     const visible = p.opacity > 0 && !greetingActive && !this.uploadActive && !away;
-    this.botCanvas.style.opacity = visible ? (this.desktop.carrying ? "0.7" : "1") : "0";
+    this.botCanvas.style.opacity = visible ? "1" : "0";
 
     if (State.mode === "expanded" && !greetingActive && !this.uploadActive && !away) {
       const d = p.diameter;
