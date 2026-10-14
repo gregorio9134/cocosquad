@@ -215,6 +215,79 @@ html, body {
   overflow: hidden;
   flex: 1;
   min-height: 0;
+  position: relative;
+}
+
+/* ── Empty State View (Welcome screen) ───────────────────────────────────────── */
+.chat-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+  min-height: 0;
+  user-select: none;
+  animation: fadeInEmpty 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInEmpty {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.empty-state-glow {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, var(--coco-glow) 0%, transparent 68%);
+  opacity: 0.28;
+  filter: blur(52px);
+  pointer-events: none;
+  z-index: 0;
+  transition: all 0.4s ease;
+}
+
+.empty-state-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: 320px;
+}
+
+.empty-state-title {
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  background: linear-gradient(180deg, #FFFFFF 20%, #94A3B8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.empty-state-subtitle {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  letter-spacing: -0.1px;
+  margin: 0;
+  line-height: 1.4;
+  transition: color 0.3s ease;
 }
 
 .chat-history {
@@ -347,11 +420,12 @@ html, body {
 .suggestions-bar {
   display: flex;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 8px 14px 10px 14px;
   overflow-x: auto;
   white-space: nowrap;
   flex-shrink: 0;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 .suggestions-bar::-webkit-scrollbar { display: none; }
 
@@ -359,17 +433,22 @@ html, body {
   background: var(--surface-card);
   border: 1px solid var(--border-color);
   color: var(--text-sub);
-  font-size: 11.5px;
-  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 13px;
   border-radius: 20px;
   cursor: pointer;
   flex-shrink: 0;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 .suggestion-chip:active {
   background: var(--surface-elevated);
   color: var(--text-main);
   transform: scale(0.96);
+  border-color: var(--coco-accent);
 }
 
 /* Chat Input Bar */

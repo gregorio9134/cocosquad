@@ -74,14 +74,7 @@ class AndroidApp {
   private ctx!: CanvasRenderingContext2D;
   private animId: number = 0;
 
-  private messages: ChatMessage[] = [
-    {
-      id: 1,
-      role: "assistant",
-      content:
-        "¡Hola Gregorio! 🥥 Soy **Coco Blanco**. Tu escuadrón de IA ya está activo en tu Android:\n\n- **Coco Blanco**: Asistencia general y organización\n- **Coco Verde**: WhatsApp y turnos\n- **Coco Rojo**: Investigación profunda\n- **Coco Azul**: Métricas y hábitos\n\n¿En qué trabajamos hoy?",
-    },
-  ];
+  private messages: ChatMessage[] = [];
   private isThinking = false;
   private attachedFile: { name: string; base64: string } | null = null;
 
@@ -143,7 +136,17 @@ class AndroidApp {
           <!-- Chat Page -->
           <div class="view-page active" id="page-chat">
             <div class="chat-page">
-              <div class="chat-history" id="chat-history"></div>
+              <!-- Empty State View (Welcome screen) -->
+              <div class="chat-empty-state" id="chat-empty-state">
+                <div class="empty-state-glow"></div>
+                <div class="empty-state-content">
+                  <h1 class="empty-state-title">¿Qué hacemos hoy?</h1>
+                  <p class="empty-state-subtitle" id="empty-state-agent-hint">${this.activeMember.name} está listo para ayudarte</p>
+                </div>
+              </div>
+
+              <!-- Chat Message History -->
+              <div class="chat-history" id="chat-history" style="display: none;"></div>
 
               <div class="suggestions-bar">
                 <button class="suggestion-chip" data-prompt="¿Quién sos y qué funciones tenés?">💡 ¿Quién sos?</button>
@@ -307,6 +310,10 @@ class AndroidApp {
     if (roleEl) roleEl.textContent = `${m.role} · En línea`;
     if (pulseEl) pulseEl.style.backgroundColor = m.color;
 
+    // Update Empty State subtitle if visible
+    const emptyHint = document.getElementById("empty-state-agent-hint");
+    if (emptyHint) emptyHint.textContent = `${m.name} está listo para ayudarte`;
+
     // Update Mascot in mini canvas
     this.engine.setCocoSquadRole(m.squadRole);
     this.engine.triggerEmote("wink");
@@ -316,9 +323,19 @@ class AndroidApp {
   }
 
   private renderChatMessages() {
+    const emptyState = document.getElementById("chat-empty-state");
     const container = document.getElementById("chat-history");
     if (!container) return;
 
+    if (this.messages.length === 0) {
+      if (emptyState) emptyState.style.display = "flex";
+      container.style.display = "none";
+      container.innerHTML = "";
+      return;
+    }
+
+    if (emptyState) emptyState.style.display = "none";
+    container.style.display = "flex";
     container.innerHTML = "";
     this.messages.forEach((msg) => {
       const row = document.createElement("div");
