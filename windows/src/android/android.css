@@ -681,7 +681,7 @@ html, body {
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-shrink: 0;
   z-index: 30;
   position: relative;
@@ -689,10 +689,11 @@ html, body {
 
 .chat-input-field {
   flex: 1;
+  min-width: 0;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 22px;
-  padding: 10px 16px;
+  padding: 11px 18px;
   color: var(--text-main);
   font-family: inherit;
   font-size: 14px;

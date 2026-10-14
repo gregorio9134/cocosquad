@@ -321,7 +321,6 @@ class AndroidApp {
 
               <div class="chat-input-bar">
                 <button class="btn-icon-round btn-tools-trigger" id="btn-tools-plus" title="Herramientas y atajos">+</button>
-                <button class="btn-icon-round" id="btn-attach" title="Adjuntar archivo">📎</button>
                 <input type="text" class="chat-input-field" id="chat-input" placeholder="Preguntale a Coco..." />
                 <button class="btn-send-round" id="btn-send" title="Enviar">➤</button>
               </div>
@@ -974,7 +973,7 @@ class AndroidApp {
         }
       }
       if (this.isDevourSheetOpen) {
-        if (!target.closest("#devour-sheet-card") && !target.closest("#btn-attach") && !target.closest('[data-tab="devour"]')) {
+        if (!target.closest("#devour-sheet-card") && !target.closest('[data-tab="devour"]')) {
           this.closeDevourSheet();
         }
       }
@@ -986,11 +985,6 @@ class AndroidApp {
         if (this.isDevourSheetOpen) this.closeDevourSheet();
         if (this.isToolsMenuOpen) this.closeToolsMenu();
       }
-    });
-
-    // Attach button in chat input bar
-    document.getElementById("btn-attach")?.addEventListener("click", () => {
-      this.openDevourSheet();
     });
 
     // Devour Bottom Sheet event handlers
