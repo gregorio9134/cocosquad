@@ -122,8 +122,8 @@ html, body {
 }
 
 .avatar-wrapper {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   background: transparent;
   border: none;
   box-shadow: none;
@@ -137,13 +137,28 @@ html, body {
   transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+.avatar-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, var(--coco-glow) 0%, transparent 72%);
+  filter: blur(10px);
+  opacity: 0.95;
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.4s ease, opacity 0.4s ease;
+}
+
 .avatar-wrapper:active {
   transform: scale(0.90);
 }
 
 #mascot-mini-canvas {
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
+  position: relative;
+  z-index: 1;
   pointer-events: none;
 }
 
@@ -187,8 +202,8 @@ html, body {
 }
 
 .squad-mochi-chip {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   background: transparent;
   border: none;
   display: flex;
@@ -198,14 +213,16 @@ html, body {
   padding: 0;
   border-radius: 50%;
   position: relative;
-  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  opacity: 0.82;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease;
   overflow: visible;
   outline: none;
   -webkit-tap-highlight-color: transparent;
 }
 
 .squad-mochi-chip:hover {
-  transform: scale(1.12);
+  opacity: 1;
+  transform: scale(1.15);
 }
 
 .squad-mochi-chip:active {
@@ -213,8 +230,8 @@ html, body {
 }
 
 .squad-mochi-canvas {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   pointer-events: none;
 }
 

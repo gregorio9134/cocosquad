@@ -190,6 +190,7 @@ interface MiniMochiChip {
   w: number;
   h: number;
   dpr: number;
+  nextActionTime: number;
 }
 
 class AndroidApp {
@@ -200,10 +201,23 @@ class AndroidApp {
   private ctx!: CanvasRenderingContext2D;
   private animId: number = 0;
   private isToolsMenuOpen: boolean = false;
-  private nextIdleActionTime: number = performance.now() + 4500;
+  private nextIdleActionTime: number = performance.now() + 3000;
   private miniMochis: MiniMochiChip[] = [];
 
-  private messages: ChatMessage[] = [];
+  private chatHistories: Record<string, ChatMessage[]> = {
+    coco_blanco: [],
+    coco_verde: [],
+    coco_rojo: [],
+    coco_azul: [],
+  };
+
+  private get messages(): ChatMessage[] {
+    if (!this.chatHistories[this.activeMember.id]) {
+      this.chatHistories[this.activeMember.id] = [];
+    }
+    return this.chatHistories[this.activeMember.id];
+  }
+
   private isThinking = false;
   private attachedFile: { name: string; base64: string } | null = null;
 
@@ -220,9 +234,19 @@ class AndroidApp {
       if (t) this.todos = JSON.parse(t);
       const n = localStorage.getItem("coco_mobile_notes");
       if (n) this.notes = JSON.parse(n);
+      const chats = localStorage.getItem("coco_mobile_chat_histories");
+      if (chats) {
+        this.chatHistories = JSON.parse(chats);
+      }
     } catch {
       this.todos = [];
       this.notes = [];
+      this.chatHistories = {
+        coco_blanco: [],
+        coco_verde: [],
+        coco_rojo: [],
+        coco_azul: [],
+      };
     }
   }
 
@@ -230,6 +254,7 @@ class AndroidApp {
     try {
       localStorage.setItem("coco_mobile_todos", JSON.stringify(this.todos));
       localStorage.setItem("coco_mobile_notes", JSON.stringify(this.notes));
+      localStorage.setItem("coco_mobile_chat_histories", JSON.stringify(this.chatHistories));
       State.todos = this.todos;
       State.quickNotes = this.notes;
     } catch {}
@@ -385,8 +410,8 @@ class AndroidApp {
     }
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = 40;
-    const h = 40;
+    const w = 44;
+    const h = 44;
     this.mascotCanvas.width = Math.round(w * dpr);
     this.mascotCanvas.height = Math.round(h * dpr);
     this.mascotCanvas.style.width = `${w}px`;
@@ -400,10 +425,12 @@ class AndroidApp {
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
 
-      // Random idle actions every 4-7 seconds (wink, bounce, lookAround)
+      // Frequent spontaneous playful animations every 3-6 seconds for protagonist Mochi
       if (now > this.nextIdleActionTime) {
-        this.triggerRandomIdleEvent();
-        this.nextIdleActionTime = now + 4000 + Math.random() * 3000;
+        if (!this.engine.isUserTracking) {
+          this.triggerPlayfulAction(this.engine, false);
+        }
+        this.nextIdleActionTime = now + 3000 + Math.random() * 3000;
       }
 
       this.engine.update(dt);
@@ -412,8 +439,15 @@ class AndroidApp {
       this.ctx.clearRect(0, 0, w, h);
       this.engine.draw(this.ctx, w, h);
 
-      // Render the mini Mochis in top squad selector with independent blinks, breathing & tilts
+      // Render the mini Mochis in top squad selector with independent blinks, breathing & micro-actions
       for (const mini of this.miniMochis) {
+        if (now > mini.nextActionTime) {
+          if (mini.engine.state === "idle") {
+            this.triggerPlayfulAction(mini.engine, true);
+          }
+          mini.nextActionTime = now + 3500 + Math.random() * 3500;
+        }
+
         mini.engine.update(dt);
         mini.ctx.setTransform(mini.dpr, 0, 0, mini.dpr, 0, 0);
         mini.ctx.clearRect(0, 0, mini.w, mini.h);
@@ -426,44 +460,93 @@ class AndroidApp {
     this.animId = requestAnimationFrame(loop);
   }
 
-  private triggerRandomIdleEvent() {
-    if (this.engine.state !== "idle" || this.engine.isUserTracking) return;
+  private triggerPlayfulAction(engine: BotEngine, isMini = false) {
+    if (engine.state !== "idle" && !isMini) return;
 
-    const action = Math.floor(Math.random() * 3);
-    if (action === 0) {
-      // 1. Wink
-      this.engine.triggerEmote("wink", 1.2);
-      Sound.play("blip");
-    } else if (action === 1) {
-      // 2. Micro-bounce
-      this.engine.anim("oy", [
-        [-0.15, 120, Ease.out],
-        [0.03, 160, Ease.inOut],
-        [0, 140, Ease.back],
-      ]);
-      this.engine.anim("sy", [
-        [1.16, 120, Ease.out],
-        [0.92, 160, Ease.inOut],
-        [1, 140, Ease.back],
-      ]);
-      this.engine.anim("sx", [
-        [0.92, 120, Ease.out],
-        [1.06, 160, Ease.inOut],
-        [1, 140, Ease.back],
-      ]);
-    } else {
-      // 3. Lateral lookAround
-      const dir = Math.random() < 0.5 ? 1 : -1;
-      this.engine.anim("yaw", [
-        [0.62 * dir, 220, Ease.inOut],
-        [-0.42 * dir, 460, Ease.inOut],
-        [0, 260, Ease.out],
-      ]);
-      this.engine.anim("tilt", [
-        [0.08 * dir, 220, Ease.out],
-        [-0.06 * dir, 460, Ease.inOut],
-        [0, 260, Ease.out],
-      ]);
+    const action = Math.floor(Math.random() * 4);
+    const mult = isMini ? 0.7 : 1.0;
+
+    switch (action) {
+      case 0: {
+        // 1. Guiñar los ojos (wink) + micro-tilt
+        engine.triggerEmote("wink", isMini ? 0.9 : 1.2);
+        engine.anim("tilt", [
+          [0.12 * mult, 140, Ease.out],
+          [0.12 * mult, isMini ? 500 : 700, Ease.lin],
+          [0, 180, Ease.inOut],
+        ]);
+        if (!isMini) Sound.play("blip");
+        break;
+      }
+      case 1: {
+        // 2. Saludar con un rebote alegre (bounce)
+        engine.eyeOverride = "happy";
+        engine.eyeOverrideUntil = (performance.now() / 1000) + (isMini ? 0.7 : 0.9);
+        engine.anim("oy", [
+          [-0.26 * mult, 130, Ease.out],
+          [0.05 * mult, 150, Ease.inOut],
+          [-0.10 * mult, 110, Ease.out],
+          [0, 130, Ease.back],
+        ]);
+        engine.anim("sy", [
+          [1.22 * mult, 130, Ease.out],
+          [0.88, 150, Ease.inOut],
+          [1.08, 110, Ease.out],
+          [1, 130, Ease.back],
+        ]);
+        engine.anim("sx", [
+          [0.86, 130, Ease.out],
+          [1.12, 150, Ease.inOut],
+          [0.94, 110, Ease.out],
+          [1, 130, Ease.back],
+        ]);
+        if (!isMini) Sound.play("blip");
+        break;
+      }
+      case 2: {
+        // 3. Vuelta rápida / giro elástico 360° (spin/flip)
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        engine.anim("oy", [
+          [-0.22 * mult, 160, Ease.out],
+          [0, 220, Ease.back],
+        ]);
+        engine.anim("tilt", [
+          [Math.PI * 2 * dir, 380, Ease.inOut],
+          [0, 1, Ease.lin],
+        ]);
+        engine.anim("sy", [
+          [1.16, 140, Ease.out],
+          [0.90, 160, Ease.inOut],
+          [1, 120, Ease.back],
+        ]);
+        break;
+      }
+      case 3:
+      default: {
+        // 4. Inclinación de curiosidad de lado con mirada atenta (curiosity tilt)
+        const side = Math.random() < 0.5 ? 1 : -1;
+        engine.anim("tilt", [
+          [0.24 * side * mult, 180, Ease.out],
+          [0.24 * side * mult, isMini ? 600 : 850, Ease.lin],
+          [0, 220, Ease.inOut],
+        ]);
+        engine.anim("yaw", [
+          [0.55 * side * mult, 200, Ease.out],
+          [0.55 * side * mult, isMini ? 600 : 850, Ease.lin],
+          [0, 220, Ease.inOut],
+        ]);
+        engine.anim("pitch", [
+          [-0.18 * mult, 180, Ease.out],
+          [-0.18 * mult, isMini ? 600 : 850, Ease.lin],
+          [0, 220, Ease.inOut],
+        ]);
+        engine.anim("es", [
+          [1.24, 160, Ease.out],
+          [1.24, isMini ? 650 : 900, Ease.lin],
+          [1, 200, Ease.inOut],
+        ]);
+        break;
+      }
     }
   }
 
@@ -477,10 +560,10 @@ class AndroidApp {
     // Only display members OTHER than the active one (dynamic swap filter)
     const available = SQUAD.filter((m) => m.id !== this.activeMember.id);
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = 36;
-    const h = 36;
+    const w = 30;
+    const h = 30;
 
-    available.forEach((m) => {
+    available.forEach((m, idx) => {
       const btn = document.createElement("button");
       btn.className = "squad-mochi-chip";
       btn.title = `Cambiar a ${m.name} (${m.role})`;
@@ -511,6 +594,7 @@ class AndroidApp {
         w,
         h,
         dpr,
+        nextActionTime: performance.now() + 2000 + Math.random() * 2500 + idx * 1200,
       });
 
       btn.addEventListener("click", () => {
@@ -545,9 +629,12 @@ class AndroidApp {
     const emptyHint = document.getElementById("empty-state-agent-hint");
     if (emptyHint) emptyHint.textContent = `${m.name} está listo para ayudarte`;
 
-    // Update Mascot in mini canvas
+    // Render Chat Messages for this specific Coco (isolated conversation thread)
+    this.renderChatMessages();
+
+    // Update Mascot in mini canvas with playful greeting
     this.engine.setCocoSquadRole(m.squadRole);
-    this.engine.triggerEmote("wink");
+    this.triggerPlayfulAction(this.engine, false);
     Sound.play("blip");
 
     if (navigator.vibrate) navigator.vibrate(12);
@@ -898,6 +985,7 @@ class AndroidApp {
       role: "user",
       content: text,
     });
+    this.saveStorage();
     this.isThinking = true;
     this.renderChatMessages();
 
@@ -939,6 +1027,7 @@ class AndroidApp {
         role: "assistant",
         content: reply,
       });
+      this.saveStorage();
 
       this.engine.setState("finished");
       this.engine.triggerEmote("happy");
@@ -949,6 +1038,7 @@ class AndroidApp {
         role: "assistant",
         content: `⚠️ No pude conectar con el servidor Oracle de Staging (150.136.59.173:8080):\n\n\`${err?.message || String(err)}\`\n\n*Asegurate de que el servidor esté activo o verificá la conexión.*`,
       });
+      this.saveStorage();
       this.engine.setState("error");
       Sound.play("error");
     } finally {
