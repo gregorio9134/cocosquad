@@ -436,6 +436,7 @@ class AndroidApp {
 
       this.engine.update(dt);
 
+      this.ctx.resetTransform();
       this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       this.ctx.clearRect(0, 0, w, h);
       this.engine.draw(this.ctx, w, h);
@@ -1017,6 +1018,17 @@ class AndroidApp {
               base64: this.attachedFile.base64,
             }
           : null,
+        file: this.attachedFile
+          ? {
+              name: this.attachedFile.name,
+              data: this.attachedFile.base64,
+              mime: this.attachedFile.name.endsWith(".pdf")
+                ? "application/pdf"
+                : this.attachedFile.name.endsWith(".png") || this.attachedFile.name.endsWith(".jpg")
+                ? "image/jpeg"
+                : "text/plain",
+            }
+          : null,
         todos: this.todos,
         notes: this.notes,
       };
@@ -1078,26 +1090,52 @@ class AndroidApp {
     }
   }
 
-  private processFileToDevour(file: File) {
-    const isImage = file.type.startsWith("image/");
-    const thumbUrl = isImage ? URL.createObjectURL(file) : null;
-    const fileExt = (file.name.split(".").pop() || "FILE").toUpperCase().slice(0, 4);
-    const fileSizeStr =
-      file.size < 1024
-        ? `${file.size} B`
-        : file.size < 1024 * 1024
-        ? `${Math.round(file.size / 1024)} KB`
-        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+  private readFileAsBase64(file: File): Promise<{ base64: string; dataUri: string }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUri = reader.result as string;
+        const base64 = dataUri.includes(",") ? dataUri.split(",")[1] : dataUri;
+        resolve({ base64, dataUri });
+      };
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
+  }
 
-    // Concurrently read Base64 for Oracle payload
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = (reader.result as string).split(",")[1] || "";
+  private resetMochiToBase() {
+    // 1. Full engine reset: clearing all tweens, locks, morph, slotH, scales, gaze, and reverting to idle
+    this.engine.resetToBase();
+
+    // 2. Reset canvas transformation matrix
+    if (this.ctx) {
+      try {
+        this.ctx.resetTransform();
+      } catch {}
+    }
+  }
+
+  private async processFileToDevour(file: File) {
+    try {
+      const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name);
+      const fileExt = (file.name.split(".").pop() || "FILE").toUpperCase().slice(0, 4);
+      const fileSizeStr =
+        file.size < 1024
+          ? `${file.size} B`
+          : file.size < 1024 * 1024
+          ? `${Math.round(file.size / 1024)} KB`
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+      // Read file to Base64 and Data URL before launching animation
+      const { base64, dataUri } = await this.readFileAsBase64(file);
       this.attachedFile = { name: file.name, base64 };
-    };
-    reader.readAsDataURL(file);
 
-    this.runAuthenticDevourSequence(file, fileSizeStr, fileExt, isImage, thumbUrl);
+      const thumbUrl = isImage ? dataUri : null;
+
+      this.runAuthenticDevourSequence(file, fileSizeStr, fileExt, isImage, thumbUrl, base64, dataUri);
+    } catch (err) {
+      console.error("Error leyendo archivo:", err);
+    }
   }
 
   private runAuthenticDevourSequence(
@@ -1105,7 +1143,9 @@ class AndroidApp {
     fileSizeStr: string,
     fileExt: string,
     isImage: boolean,
-    thumbUrl: string | null
+    thumbUrl: string | null,
+    base64: string,
+    dataUri: string
   ) {
     this.switchToChatView();
 
@@ -1218,8 +1258,7 @@ class AndroidApp {
         } else {
           // Card has completely entered the mouth
           card.remove();
-          if (thumbUrl) URL.revokeObjectURL(thumbUrl);
-          this.executeDevourChewingAndFeedback(file, fileSizeStr);
+          this.executeDevourChewingAndFeedback(file, fileSizeStr, isImage, base64, dataUri);
         }
       };
 
@@ -1227,8 +1266,14 @@ class AndroidApp {
     }, 320);
   }
 
-  private executeDevourChewingAndFeedback(file: File, fileSizeStr: string) {
-    // 1. Snap mouth shut tight with squash & stretch bounce!
+  private executeDevourChewingAndFeedback(
+    file: File,
+    fileSizeStr: string,
+    isImage: boolean,
+    base64: string,
+    dataUri: string
+  ) {
+    // 1. Snap mouth shut tight with squash & stretch bounce
     this.engine.slotHTarget = 0;
     this.engine.squash();
 
@@ -1253,20 +1298,23 @@ class AndroidApp {
       [1.0, 150, Ease.back],
     ]);
 
-    // 3. Chewing finishes after 900ms
+    // 3. Chewing finishes after 900ms -> FORCED EXPLICIT RESET to baseline idle!
     setTimeout(() => {
-      this.engine.isChewing = false;
-      this.engine.eyeOverride = null;
-      this.engine.animateMorph(0, 350); // Morphs smoothly back to cute round Mochi body
-      this.engine.squash();
+      this.resetMochiToBase();
       this.engine.triggerEmote("happy");
 
       // 4. Feedback in the chat thread and Oracle analysis
-      void this.completeDevourInChat(file, fileSizeStr);
+      void this.completeDevourInChat(file, fileSizeStr, isImage, base64, dataUri);
     }, 900);
   }
 
-  private async completeDevourInChat(file: File, fileSizeStr: string) {
+  private async completeDevourInChat(
+    file: File,
+    fileSizeStr: string,
+    isImage: boolean,
+    base64: string,
+    dataUri: string
+  ) {
     // Ensure chat view is active
     this.switchToChatView();
 
@@ -1276,38 +1324,55 @@ class AndroidApp {
     if (emptyState) emptyState.style.display = "none";
     if (container) container.style.display = "flex";
 
-    // 1. Confirmation message in active Coco's thread
-    const confirmMsg: ChatMessage = {
-      id: Date.now(),
+    // 1. Show waiting/loading message in the active Coco thread
+    const waitingMsgId = Date.now();
+    const waitingMsg: ChatMessage = {
+      id: waitingMsgId,
       role: "assistant",
-      content: `📁 **${file.name}** (${fileSizeStr}) fue devorado con éxito por **${this.activeMember.name}**.\n\nIniciando análisis del documento con IA...`,
+      content: isImage
+        ? `🖼️ **${file.name}** (${fileSizeStr}) devorado por **${this.activeMember.name}**.\n\n*Analizando imagen con IA...*`
+        : `📁 **${file.name}** (${fileSizeStr}) devorado por **${this.activeMember.name}**.\n\n*Analizando documento con IA...*`,
     };
-    this.messages.push(confirmMsg);
+    this.messages.push(waitingMsg);
     this.saveStorage();
 
     // Display attached file badge above input
     this.showAttachedFileChip(file.name, fileSizeStr);
 
-    // 2. Set thinking state and render messages
+    // 2. Set thinking state and render messages (shows typing dots and activates fast pulse in Coco)
     this.isThinking = true;
-    this.renderChatMessages();
     this.engine.setState("thinking");
+    const pulseEl = document.getElementById("header-pulse");
+    if (pulseEl) pulseEl.classList.add("thinking");
+    this.renderChatMessages();
 
     // 3. Initiate analysis with Oracle staging backend
     try {
-      const promptText = `Analizá el archivo adjunto (${file.name}) y explicame sus puntos clave y conclusiones principales.`;
+      const promptText = isImage
+        ? `[Imagen adjunta: ${file.name}] Analizá detalladamente esta imagen/captura adjunta y explicame su contenido visual, elementos clave y conclusiones.`
+        : `[Documento adjunto: ${file.name}] Analizá el documento adjunto y resumí sus puntos clave, estructura y conclusiones principales.`;
+
       const payload: Record<string, unknown> = {
         message: promptText,
         chat_id: 1,
         tenant_id: 1,
         coco_id: this.activeMember.id,
-        contexto: this.attachedFile
-          ? {
-              kind: "file",
-              name: this.attachedFile.name,
-              base64: this.attachedFile.base64,
-            }
-          : null,
+        attachment: base64,
+        image: isImage ? (dataUri || base64) : undefined,
+        images: isImage ? [dataUri || base64] : undefined,
+        file: {
+          name: file.name,
+          data: base64,
+          base64: base64,
+          mime: file.type || (isImage ? "image/jpeg" : "application/pdf"),
+        },
+        contexto: {
+          kind: "file",
+          name: file.name,
+          archivo_base64: base64,
+          base64: base64,
+          path: file.name,
+        },
         todos: this.todos,
         notes: this.notes,
       };
@@ -1323,29 +1388,41 @@ class AndroidApp {
       }
 
       const data = await res.json();
-      const reply = data.reply || data.respuesta || "Archivo analizado con éxito por el escuadrón.";
+      const reply = data.reply || data.respuesta || data.response || "Análisis completado con éxito.";
 
-      this.messages.push({
-        id: Date.now() + 1,
-        role: "assistant",
-        content: reply,
-      });
+      // REEMPLAZAR el mensaje de espera por el análisis real del contenido
+      const target = this.messages.find((m) => m.id === waitingMsgId);
+      if (target) {
+        target.content = isImage
+          ? `🖼️ **${file.name}** (${fileSizeStr}) analizado:\n\n${reply}`
+          : `📁 **${file.name}** (${fileSizeStr}) analizado:\n\n${reply}`;
+      } else {
+        this.messages.push({
+          id: Date.now() + 1,
+          role: "assistant",
+          content: reply,
+        });
+      }
       this.saveStorage();
 
+      this.resetMochiToBase();
       this.engine.setState("finished");
       this.engine.triggerEmote("happy");
       Sound.play("finish");
     } catch (err: any) {
-      this.messages.push({
-        id: Date.now() + 1,
-        role: "assistant",
-        content: `⚠️ No pude conectar con el servidor Oracle de Staging (150.136.59.173:8080):\n\n\`${err?.message || String(err)}\`\n\n*El archivo fue devorado y está almacenado en memoria activa.*`,
-      });
+      // Reemplazar mensaje de espera por error explicativo
+      const target = this.messages.find((m) => m.id === waitingMsgId);
+      if (target) {
+        target.content = `⚠️ No pude completar el análisis de **${file.name}** en el servidor de Staging (150.136.59.173:8080):\n\n\`${err?.message || String(err)}\`\n\n*El archivo fue devorado y está almacenado en memoria activa.*`;
+      }
       this.saveStorage();
+      this.resetMochiToBase();
       this.engine.setState("error");
       Sound.play("error");
     } finally {
       this.isThinking = false;
+      const pulseEl = document.getElementById("header-pulse");
+      if (pulseEl) pulseEl.classList.remove("thinking");
       this.renderChatMessages();
     }
   }
@@ -1385,7 +1462,7 @@ class AndroidApp {
       testCanvas.toBlob((b) => {
         if (b) {
           const file = new File([b], fileName, { type: "image/png" });
-          this.processFileToDevour(file);
+          void this.processFileToDevour(file);
         }
       }, "image/png");
       return;
@@ -1394,7 +1471,7 @@ class AndroidApp {
     const blobText = "Resumen del plan clínico y seguimiento del paciente por Coco Squad.";
     const blob = new Blob([blobText], { type: "application/pdf" });
     const file = new File([blob], fileName, { type: "application/pdf" });
-    this.processFileToDevour(file);
+    void this.processFileToDevour(file);
   }
 }
 

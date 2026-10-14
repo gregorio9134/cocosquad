@@ -516,6 +516,36 @@ export class BotEngine {
   }
 
   /**
+   * Resets all transforms, tweens, morph, slot/mouth, scales and posture cleanly back to baseline idle.
+   */
+  resetToBase() {
+    this.tweens.clear();
+    this.locks.clear();
+    this.morph = 0;
+    this.slotH = 0;
+    this.slotHTarget = 0;
+    this.slotHVel = 0;
+    this.isChewing = false;
+    this.sx = 1;
+    this.sy = 1;
+    this.tgSx = 1;
+    this.tgSy = 1;
+    this.ox = 0;
+    this.oy = 0;
+    this.tilt = 0;
+    this.yaw = 0;
+    this.pitch = 0;
+    this.roll = 0;
+    this.es = 1;
+    this.tgEs = 1;
+    this.open = 1;
+    this.eyeOverride = null;
+    this.eyeOverrideUntil = 0;
+    this.isUserTracking = false;
+    this.setState("idle", true);
+  }
+
+  /**
    * Dresses Mochi. Animated: the old outfit leaves (180 ms), the new one drops
    * in (350 ms) and Mochi does a little squash — BotEngine.setOutfit on macOS.
    */

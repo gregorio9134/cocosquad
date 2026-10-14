@@ -225,6 +225,22 @@ html, body {
   }
 }
 
+.status-dot-pulse.thinking {
+  animation: pulseDotThinking 0.8s infinite ease-in-out;
+  box-shadow: 0 0 12px var(--coco-accent);
+}
+
+@keyframes pulseDotThinking {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1.4);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(0.7);
+  }
+}
+
 /* Dynamic Squad Selector on the Right (Mini Mochis) */
 .top-bar-right {
   display: flex;
