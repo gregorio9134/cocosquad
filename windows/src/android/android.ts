@@ -316,6 +316,7 @@ class AndroidApp {
               </div>
 
               <div id="attached-chip-container" style="padding: 0 14px;"></div>
+              <input type="file" id="mobile-devour-input" style="display:none;" accept="*/*" />
 
               <div class="chat-input-bar">
                 <button class="btn-icon-round btn-tools-trigger" id="btn-tools-plus" title="Herramientas y atajos">+</button>
@@ -762,7 +763,7 @@ class AndroidApp {
         row.appendChild(badge);
         bubble.innerHTML = `<div class="message-content">${marked.parse(msg.content, { async: false }) as string}</div>`;
       } else {
-        bubble.textContent = msg.content;
+        bubble.innerHTML = `<div class="message-content user">${marked.parse(msg.content, { async: false }) as string}</div>`;
       }
 
       row.appendChild(bubble);
@@ -874,6 +875,14 @@ class AndroidApp {
       btn.addEventListener("click", (e) => {
         const target = e.currentTarget as HTMLElement;
         const tab = target.dataset.tab as "chat" | "devour" | "tasks";
+
+        if (tab === "devour") {
+          // Devour action: ensure user is in chat view so protagonist Mochi is visible, and open native file selector
+          this.switchToChatView();
+          this.openNativeDevourSelector();
+          return;
+        }
+
         if (tab === this.activeTab) return;
 
         document.querySelectorAll(".nav-item-btn").forEach((b) => b.classList.remove("active"));
@@ -884,10 +893,6 @@ class AndroidApp {
 
         this.activeTab = tab;
         Sound.play("open");
-
-        if (tab === "devour") {
-          this.initDevourIdleCanvas();
-        }
       });
     });
 
@@ -930,11 +935,18 @@ class AndroidApp {
 
     // Attach button in chat input bar
     document.getElementById("btn-attach")?.addEventListener("click", () => {
-      const devourTab = document.querySelector('.nav-item-btn[data-tab="devour"]') as HTMLElement;
-      devourTab?.click();
+      this.openNativeDevourSelector();
     });
 
-    // Devour actions
+    // Native devour file selector
+    const mobileDevourInput = document.getElementById("mobile-devour-input") as HTMLInputElement;
+    mobileDevourInput?.addEventListener("change", () => {
+      if (mobileDevourInput.files && mobileDevourInput.files[0]) {
+        this.processFileToDevour(mobileDevourInput.files[0]);
+      }
+    });
+
+    // Devour actions (if accessed from devour page)
     const camBtn = document.getElementById("btn-camera");
     const galBtn = document.getElementById("btn-gallery");
     const camInput = document.getElementById("input-camera") as HTMLInputElement;
@@ -1047,225 +1059,366 @@ class AndroidApp {
     }
   }
 
-  private initDevourIdleCanvas() {
-    const canvas = document.getElementById("devour-canvas") as HTMLCanvasElement;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.parentElement?.clientWidth || 320;
-    const h = 180;
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-    ctx.scale(dpr, dpr);
+  private switchToChatView() {
+    this.activeTab = "chat";
+    document.querySelectorAll(".nav-item-btn").forEach((b) => {
+      const isChat = (b as HTMLElement).dataset.tab === "chat";
+      b.classList.toggle("active", isChat);
+    });
+    document.querySelectorAll(".view-page").forEach((p) => p.classList.remove("active"));
+    document.getElementById("page-chat")?.classList.add("active");
+  }
 
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "rgba(255,255,255,0.06)";
-    ctx.font = '13px system-ui, -apple-system, sans-serif';
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("🥥 Esperando archivo o foto...", w / 2, h / 2);
+  private openNativeDevourSelector() {
+    this.switchToChatView();
+    const input = document.getElementById("mobile-devour-input") as HTMLInputElement;
+    if (input) {
+      input.value = "";
+      input.click();
+    }
   }
 
   private processFileToDevour(file: File) {
+    const isImage = file.type.startsWith("image/");
+    const thumbUrl = isImage ? URL.createObjectURL(file) : null;
+    const fileExt = (file.name.split(".").pop() || "FILE").toUpperCase().slice(0, 4);
+    const fileSizeStr =
+      file.size < 1024
+        ? `${file.size} B`
+        : file.size < 1024 * 1024
+        ? `${Math.round(file.size / 1024)} KB`
+        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+    // Concurrently read Base64 for Oracle payload
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = (reader.result as string).split(",")[1] || "";
       this.attachedFile = { name: file.name, base64 };
-      this.runDevourAnimation(file.name);
     };
     reader.readAsDataURL(file);
+
+    this.runAuthenticDevourSequence(file, fileSizeStr, fileExt, isImage, thumbUrl);
   }
 
-  private runDevourAnimation(fileName: string) {
-    const canvas = document.getElementById("devour-canvas") as HTMLCanvasElement;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.parentElement?.clientWidth || 320;
-    const h = 180;
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-    ctx.scale(dpr, dpr);
-
-    Sound.play("open");
-    Sound.play("attach");
-    if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
-
-    let startTime = performance.now();
-    const duration = 2600; // ms
-
-    const animate = (now: number) => {
-      const elapsed = now - startTime;
-      const p = Math.min(elapsed / duration, 1);
-
-      ctx.clearRect(0, 0, w, h);
-
-      const cx = w / 2;
-      const cy = h / 2 - 10;
-
-      // Phase 1: File sucked into mouth (0 -> 0.4)
-      if (p < 0.4) {
-        const suckP = p / 0.4;
-        const fileX = cx + (1 - suckP) * 85;
-        const fileY = cy - 40 + suckP * 40;
-        const fileScale = 1 - suckP * 0.75;
-
-        ctx.save();
-        ctx.translate(fileX, fileY);
-        ctx.scale(fileScale, fileScale);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(-15, -20, 30, 40);
-        ctx.fillStyle = "#2563eb";
-        ctx.fillRect(-12, -16, 24, 6);
-        ctx.restore();
-
-        this.drawDevourMochi(ctx, cx, cy, 1.2, 0.4, "pill");
-      }
-      // Phase 2: Snap shut & chew happily (0.4 -> 0.8)
-      else if (p < 0.8) {
-        if (p < 0.44) Sound.play("gulp");
-        const chewP = (p - 0.4) / 0.4;
-        const chewSquash = 1 + Math.sin(chewP * Math.PI * 4) * 0.12;
-
-        this.drawDevourMochi(ctx, cx, cy, chewSquash, 0, "happy");
-
-        ctx.fillStyle = "#facc15";
-        ctx.beginPath();
-        ctx.arc(cx - 35, cy - 20, 3, 0, Math.PI * 2);
-        ctx.arc(cx + 35, cy - 15, 4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      // Phase 3: Progress bar (0.8 -> 1.0)
-      else {
-        const progP = (p - 0.8) / 0.2;
-        this.drawDevourMochi(ctx, cx, cy, 1.0, 0, "wink");
-
-        const barW = w * 0.75;
-        const barH = 6;
-        const barX = (w - barW) / 2;
-        const barY = h - 25;
-
-        ctx.fillStyle = "rgba(255,255,255,0.15)";
-        ctx.roundRect(barX, barY, barW, barH, 3);
-        ctx.fill();
-
-        ctx.fillStyle = this.activeMember.color;
-        ctx.roundRect(barX, barY, barW * progP, barH, 3);
-        ctx.fill();
-      }
-
-      ctx.fillStyle = "rgba(255,255,255,0.85)";
-      ctx.font = '12px system-ui, -apple-system, sans-serif';
-      ctx.textAlign = "center";
-      ctx.fillText(fileName, cx, h - 8);
-
-      if (p < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        Sound.play("finish");
-        this.onDevourFinished(fileName);
-      }
-    };
-
-    requestAnimationFrame(animate);
-  }
-
-  private drawDevourMochi(
-    ctx: CanvasRenderingContext2D,
-    cx: number,
-    cy: number,
-    scaleY: number,
-    mouthOpen: number,
-    eyeShape: "pill" | "happy" | "wink"
+  private runAuthenticDevourSequence(
+    file: File,
+    fileSizeStr: string,
+    fileExt: string,
+    isImage: boolean,
+    thumbUrl: string | null
   ) {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(1, scaleY);
+    this.switchToChatView();
 
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 38, 30, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "#EDEDEF";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.1)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    const appEl = document.getElementById("app");
+    const avatarBtn = document.getElementById("avatar-btn");
+    if (!appEl || !avatarBtn) return;
 
-    ctx.fillStyle = "#1A1412";
-    if (eyeShape === "happy") {
-      ctx.beginPath();
-      ctx.arc(-14, -4, 6, Math.PI, 0);
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = "#1A1412";
-      ctx.stroke();
+    const avatarRect = avatarBtn.getBoundingClientRect();
+    const appRect = appEl.getBoundingClientRect();
 
-      ctx.beginPath();
-      ctx.arc(14, -4, 6, Math.PI, 0);
-      ctx.stroke();
-    } else if (eyeShape === "wink") {
-      ctx.beginPath();
-      ctx.arc(-14, -4, 5, 0, Math.PI * 2);
-      ctx.fill();
+    // Center of protagonist Mochi's mouth relative to #app
+    const targetX = avatarRect.left - appRect.left + avatarRect.width / 2;
+    const targetY = avatarRect.top - appRect.top + avatarRect.height / 2 + 3;
 
-      ctx.beginPath();
-      ctx.arc(14, -4, 6, Math.PI, 0);
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = "#1A1412";
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.arc(-14, -4, 5, 0, Math.PI * 2);
-      ctx.arc(14, -4, 5, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // Center of app horizontally, above bottom bar vertically
+    const startX = appRect.width / 2;
+    const startY = Math.max(140, appRect.height - 210);
 
-    if (mouthOpen > 0) {
-      ctx.beginPath();
-      ctx.ellipse(0, 8, 8, 8 * mouthOpen * 2, 0, 0, Math.PI * 2);
-      ctx.fillStyle = "#1A1412";
-      ctx.fill();
-    }
+    // Create the floating card element
+    const card = document.createElement("div");
+    card.className = "floating-devour-card";
+    card.innerHTML = `
+      <div class="devour-card-preview">
+        ${
+          isImage && thumbUrl
+            ? `<img src="${thumbUrl}" class="devour-thumb" alt="${file.name}" />`
+            : `<div class="devour-doc-icon">${fileExt}</div>`
+        }
+      </div>
+      <div class="devour-card-info">
+        <div class="devour-card-name">${file.name}</div>
+        <div class="devour-card-meta">${fileExt} · ${fileSizeStr}</div>
+      </div>
+    `;
 
-    ctx.restore();
+    card.style.left = `${startX}px`;
+    card.style.top = `${startY}px`;
+    card.style.transform = "translate(-50%, -50%) scale(0.6)";
+    card.style.opacity = "0";
+    appEl.appendChild(card);
+
+    // Phase 1: Card pops up & Mochi reacts (0ms -> 320ms)
+    requestAnimationFrame(() => {
+      card.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease";
+      card.style.transform = "translate(-50%, -50%) scale(1)";
+      card.style.opacity = "1";
+    });
+
+    Sound.play("attach");
+
+    // Mochi spots the card, gets excited, morphs body and opens mouth wide
+    this.engine.isUserTracking = false;
+    this.engine.lookY = 0.85;
+    this.engine.lookX = 0;
+    this.engine.animateMorph(1, 320);
+    this.engine.slotHTarget = 0.65;
+    this.engine.eyeOverride = "cup";
+    Sound.play("open");
+
+    // Phase 2: Suction flight towards Mochi's mouth (after 320ms)
+    setTimeout(() => {
+      card.style.transition = "none";
+      const flightDuration = 780; // ms
+      const flightStart = performance.now();
+      let gulped = false;
+
+      const flightStep = (now: number) => {
+        const elapsed = now - flightStart;
+        const rawP = Math.min(elapsed / flightDuration, 1);
+
+        // Accelerated suction trajectory curving into Mochi's mouth slot
+        const pTraj = Math.pow(rawP, 1.4);
+        const curX = startX + (targetX - startX) * pTraj;
+        const curY = startY + (targetY - startY) * pTraj;
+
+        let scale = 1;
+        let opacity = 1;
+        let blur = 0;
+        let rot = 0;
+
+        // In the final 48% of trajectory, card is pulled into the mouth
+        if (rawP > 0.52) {
+          const suckP = (rawP - 0.52) / 0.48; // 0 -> 1
+          scale = Math.max(0, 1 - suckP);
+          opacity = Math.max(0, 1 - Math.pow(suckP, 1.8));
+          blur = suckP * 5;
+          rot = suckP * -18;
+        }
+
+        card.style.left = `${curX}px`;
+        card.style.top = `${curY}px`;
+        card.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${rot}deg)`;
+        card.style.opacity = `${opacity}`;
+        card.style.filter = blur > 0 ? `blur(${blur}px)` : "none";
+
+        // Mochi's head & eyes track the card precisely
+        const dx = (curX - targetX) / appRect.width;
+        const dy = (curY - targetY) / appRect.height;
+        this.engine.lookX = Math.max(-1, Math.min(1, dx * 2));
+        this.engine.lookY = Math.max(-1, Math.min(1, dy * 2));
+
+        if (rawP >= 0.72 && !gulped) {
+          gulped = true;
+          Sound.play("gulp");
+          if (navigator.vibrate) navigator.vibrate([25, 45, 25]);
+        }
+
+        if (rawP < 1) {
+          requestAnimationFrame(flightStep);
+        } else {
+          // Card has completely entered the mouth
+          card.remove();
+          if (thumbUrl) URL.revokeObjectURL(thumbUrl);
+          this.executeDevourChewingAndFeedback(file, fileSizeStr);
+        }
+      };
+
+      requestAnimationFrame(flightStep);
+    }, 320);
   }
 
-  private onDevourFinished(fileName: string) {
-    const speech = document.getElementById("mascot-speech");
-    if (speech) {
-      speech.textContent = `¡Acabo de devorar "${fileName}"! Ya está en mi memoria activa.`;
-      speech.style.borderColor = this.activeMember.color;
-    }
+  private executeDevourChewingAndFeedback(file: File, fileSizeStr: string) {
+    // 1. Snap mouth shut tight with squash & stretch bounce!
+    this.engine.slotHTarget = 0;
+    this.engine.squash();
 
+    // 2. Satisfied chewing cycle with happy eyes and sound
+    this.engine.isChewing = true;
+    this.engine.eyeOverride = "happy";
+    Sound.play("approve");
+
+    // Rhythmic chewing squash & stretch
+    this.engine.anim("sy", [
+      [0.85, 110, Ease.out],
+      [1.15, 110, Ease.inOut],
+      [0.90, 110, Ease.out],
+      [1.10, 110, Ease.inOut],
+      [1.0, 150, Ease.back],
+    ]);
+    this.engine.anim("sx", [
+      [1.15, 110, Ease.out],
+      [0.85, 110, Ease.inOut],
+      [1.10, 110, Ease.out],
+      [0.90, 110, Ease.inOut],
+      [1.0, 150, Ease.back],
+    ]);
+
+    // 3. Chewing finishes after 900ms
     setTimeout(() => {
-      // Switch back to chat
-      const chatTab = document.querySelector('.nav-item-btn[data-tab="chat"]') as HTMLElement;
-      chatTab?.click();
+      this.engine.isChewing = false;
+      this.engine.eyeOverride = null;
+      this.engine.animateMorph(0, 350); // Morphs smoothly back to cute round Mochi body
+      this.engine.squash();
+      this.engine.triggerEmote("happy");
 
-      // Show attached chip
-      const chipContainer = document.getElementById("attached-chip-container");
-      if (chipContainer && this.attachedFile) {
-        chipContainer.innerHTML = `
-          <div style="display:flex;align-items:center;gap:6px;background:var(--surface-elevated);border:1px solid var(--coco-accent);border-radius:20px;padding:4px 12px;font-size:11.5px;color:var(--text-main);width:fit-content;margin-bottom:6px;">
-            <span>📄 ${fileName}</span>
-            <span style="color:var(--text-muted);cursor:pointer;padding-left:4px;" id="btn-remove-chip">✕</span>
-          </div>
-        `;
-        document.getElementById("btn-remove-chip")?.addEventListener("click", () => {
-          this.attachedFile = null;
-          chipContainer.innerHTML = "";
-        });
+      // 4. Feedback in the chat thread and Oracle analysis
+      void this.completeDevourInChat(file, fileSizeStr);
+    }, 900);
+  }
+
+  private async completeDevourInChat(file: File, fileSizeStr: string) {
+    // Ensure chat view is active
+    this.switchToChatView();
+
+    // Hide empty state and show chat history
+    const emptyState = document.getElementById("chat-empty-state");
+    const container = document.getElementById("chat-history");
+    if (emptyState) emptyState.style.display = "none";
+    if (container) container.style.display = "flex";
+
+    // 1. Confirmation message in active Coco's thread
+    const confirmMsg: ChatMessage = {
+      id: Date.now(),
+      role: "assistant",
+      content: `📁 **${file.name}** (${fileSizeStr}) fue devorado con éxito por **${this.activeMember.name}**.\n\nIniciando análisis del documento con IA...`,
+    };
+    this.messages.push(confirmMsg);
+    this.saveStorage();
+
+    // Display attached file badge above input
+    this.showAttachedFileChip(file.name, fileSizeStr);
+
+    // 2. Set thinking state and render messages
+    this.isThinking = true;
+    this.renderChatMessages();
+    this.engine.setState("thinking");
+
+    // 3. Initiate analysis with Oracle staging backend
+    try {
+      const promptText = `Analizá el archivo adjunto (${file.name}) y explicame sus puntos clave y conclusiones principales.`;
+      const payload: Record<string, unknown> = {
+        message: promptText,
+        chat_id: 1,
+        tenant_id: 1,
+        coco_id: this.activeMember.id,
+        contexto: this.attachedFile
+          ? {
+              kind: "file",
+              name: this.attachedFile.name,
+              base64: this.attachedFile.base64,
+            }
+          : null,
+        todos: this.todos,
+        notes: this.notes,
+      };
+
+      const res = await fetch("http://150.136.59.173:8080/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Código de estado HTTP ${res.status}`);
       }
+
+      const data = await res.json();
+      const reply = data.reply || data.respuesta || "Archivo analizado con éxito por el escuadrón.";
 
       this.messages.push({
-        id: Date.now(),
+        id: Date.now() + 1,
         role: "assistant",
-        content: `📁 **${fileName}** fue absorbido correctamente por **${this.activeMember.name}**.\n\nEscribí cualquier pregunta sobre este documento y lo analizaré de inmediato.`,
+        content: reply,
       });
+      this.saveStorage();
+
+      this.engine.setState("finished");
+      this.engine.triggerEmote("happy");
+      Sound.play("finish");
+    } catch (err: any) {
+      this.messages.push({
+        id: Date.now() + 1,
+        role: "assistant",
+        content: `⚠️ No pude conectar con el servidor Oracle de Staging (150.136.59.173:8080):\n\n\`${err?.message || String(err)}\`\n\n*El archivo fue devorado y está almacenado en memoria activa.*`,
+      });
+      this.saveStorage();
+      this.engine.setState("error");
+      Sound.play("error");
+    } finally {
+      this.isThinking = false;
       this.renderChatMessages();
-    }, 700);
+    }
+  }
+
+  private showAttachedFileChip(fileName: string, fileSizeStr: string) {
+    const chipContainer = document.getElementById("attached-chip-container");
+    if (!chipContainer) return;
+
+    chipContainer.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;background:var(--surface-elevated);border:1px solid var(--coco-accent);border-radius:20px;padding:4px 12px;font-size:11.5px;color:var(--text-main);width:fit-content;margin-bottom:6px;box-shadow:0 0 10px var(--coco-glow);">
+        <span>📄 ${fileName} (${fileSizeStr})</span>
+        <span style="color:var(--text-muted);cursor:pointer;padding-left:4px;font-weight:bold;" id="btn-remove-chip">✕</span>
+      </div>
+    `;
+    document.getElementById("btn-remove-chip")?.addEventListener("click", () => {
+      this.attachedFile = null;
+      chipContainer.innerHTML = "";
+      Sound.play("close");
+    });
+  }
+
+  public testDevour(fileName: string = "informe_clinico.pdf") {
+    const isImage = fileName.endsWith(".png") || fileName.endsWith(".jpg");
+    if (isImage) {
+      const testCanvas = document.createElement("canvas");
+      testCanvas.width = 64;
+      testCanvas.height = 64;
+      const tctx = testCanvas.getContext("2d")!;
+      tctx.fillStyle = "#10b981";
+      tctx.fillRect(0, 0, 64, 64);
+      tctx.fillStyle = "#ffffff";
+      tctx.font = "bold 28px sans-serif";
+      tctx.textAlign = "center";
+      tctx.textBaseline = "middle";
+      tctx.fillText("🥥", 32, 34);
+
+      testCanvas.toBlob((b) => {
+        if (b) {
+          const file = new File([b], fileName, { type: "image/png" });
+          this.processFileToDevour(file);
+        }
+      }, "image/png");
+      return;
+    }
+
+    const blobText = "Resumen del plan clínico y seguimiento del paciente por Coco Squad.";
+    const blob = new Blob([blobText], { type: "application/pdf" });
+    const file = new File([blob], fileName, { type: "application/pdf" });
+    this.processFileToDevour(file);
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function initApp() {
   const app = new AndroidApp();
+  (window as any).__cocoApp = app;
   app.render();
-});
+
+  if (window.location.search.includes("devour=1")) {
+    window.history.replaceState(null, "", window.location.pathname);
+    setTimeout(() => {
+      app.testDevour("informe_clinico.pdf");
+    }, 500);
+  } else if (window.location.search.includes("devour_img=1")) {
+    window.history.replaceState(null, "", window.location.pathname);
+    setTimeout(() => {
+      app.testDevour("captura_ecografia.png");
+    }, 500);
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApp);
+} else {
+  initApp();
+}
+
