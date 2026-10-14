@@ -181,7 +181,18 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: -0.2px;
+  letter-spacing: 0.25px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.coco-emoji {
+  font-size: 0.82em;
+  display: inline-block;
+  vertical-align: -1px;
+  transform: scale(0.85);
+  margin: 0 1px;
+  line-height: 1;
 }
 
 .agent-subtitle-text {
@@ -191,6 +202,28 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: 1px;
+}
+
+.status-dot-pulse {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background-color: var(--coco-accent, #10b981);
+  box-shadow: 0 0 6px var(--coco-glow);
+  display: inline-block;
+  flex-shrink: 0;
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
 }
 
 /* Dynamic Squad Selector on the Right (Mini Mochis) */

@@ -260,6 +260,11 @@ class AndroidApp {
     } catch {}
   }
 
+  private getFormattedAgentTitle(m: SquadMember): string {
+    const roleSuffix = m.name.replace(/^Coco\s*/i, "");
+    return `C<span class="coco-emoji">🥥</span>C<span class="coco-emoji">🥥</span> ${roleSuffix}`;
+  }
+
   public render() {
     const root = document.getElementById("root");
     if (!root) return;
@@ -274,7 +279,7 @@ class AndroidApp {
             </div>
             <div class="agent-meta-info">
               <div class="agent-title-row">
-                <span class="agent-name-text" id="header-agent-name">${this.activeMember.name}</span>
+                <span class="agent-name-text" id="header-agent-name">${this.getFormattedAgentTitle(this.activeMember)}</span>
                 <div class="status-dot-pulse" id="header-pulse"></div>
               </div>
               <span class="agent-subtitle-text" id="header-agent-role">${this.activeMember.role} · En línea</span>
@@ -621,7 +626,7 @@ class AndroidApp {
     const nameEl = document.getElementById("header-agent-name");
     const roleEl = document.getElementById("header-agent-role");
     const pulseEl = document.getElementById("header-pulse");
-    if (nameEl) nameEl.textContent = m.name;
+    if (nameEl) nameEl.innerHTML = this.getFormattedAgentTitle(m);
     if (roleEl) roleEl.textContent = `${m.role} · En línea`;
     if (pulseEl) pulseEl.style.backgroundColor = m.color;
 
@@ -758,7 +763,7 @@ class AndroidApp {
       if (msg.role === "assistant") {
         const badge = document.createElement("div");
         badge.className = "chat-agent-badge";
-        badge.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${this.activeMember.color};"></span> ${this.activeMember.name}`;
+        badge.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${this.activeMember.color};"></span> ${this.getFormattedAgentTitle(this.activeMember)}`;
         row.appendChild(badge);
         bubble.innerHTML = `<div class="message-content">${marked.parse(msg.content, { async: false }) as string}</div>`;
       } else {
