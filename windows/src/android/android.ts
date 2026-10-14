@@ -118,33 +118,26 @@ class AndroidApp {
 
     root.innerHTML = `
       <div id="app">
-        <!-- 1. Top Header -->
-        <header class="top-header">
-          <div class="header-brand">
-            <span class="header-brand-logo">🥥</span>
-            <span class="header-brand-title">Coco Squad</span>
+        <!-- 1. Compact Top App Bar -->
+        <header class="compact-top-bar">
+          <div class="top-bar-left">
+            <div class="avatar-wrapper" id="avatar-btn" title="Tocar a Mochi">
+              <canvas id="mascot-mini-canvas"></canvas>
+            </div>
+            <div class="agent-meta-info">
+              <div class="agent-title-row">
+                <span class="agent-name-text" id="header-agent-name">${this.activeMember.name}</span>
+                <div class="status-dot-pulse" id="header-pulse"></div>
+              </div>
+              <span class="agent-subtitle-text" id="header-agent-role">${this.activeMember.role} · En línea</span>
+            </div>
           </div>
-          <div class="header-status-pill">
-            <div class="status-dot-pulse" id="header-pulse"></div>
-            <span id="header-agent-name">${this.activeMember.name}</span>
-          </div>
+
+          <!-- 4 Compact Squad Chips on the Right -->
+          <div class="top-bar-right" id="top-squad-chips"></div>
         </header>
 
-        <!-- 2. Hero Mascot Stage -->
-        <section class="hero-mascot-section">
-          <div class="mascot-glow-aura" id="mascot-glow"></div>
-          <canvas id="mascot-canvas"></canvas>
-          <div class="mascot-speech" id="mascot-speech">
-            ${this.activeMember.greeting}
-          </div>
-        </section>
-
-        <!-- 3. Squad Bar (Horizontal Selector) -->
-        <section class="squad-bar-section">
-          <div class="squad-carousel" id="squad-carousel"></div>
-        </section>
-
-        <!-- 4. Main Views Area -->
+        <!-- 2. Main Views Area (Maximized Chat Area) -->
         <main class="main-view-container">
           <!-- Chat Page -->
           <div class="view-page active" id="page-chat">
@@ -216,7 +209,7 @@ class AndroidApp {
           </div>
         </main>
 
-        <!-- 5. Bottom Navigation Bar -->
+        <!-- 3. Bottom Navigation Bar -->
         <nav class="bottom-nav-bar">
           <button class="nav-item-btn active" data-tab="chat">
             <span class="nav-item-icon">💬</span>
@@ -235,7 +228,7 @@ class AndroidApp {
     `;
 
     this.initMascotCanvas();
-    this.renderSquadBar();
+    this.renderTopSquadChips();
     this.renderChatMessages();
     this.renderTasks();
     this.bindEvents();
@@ -243,13 +236,13 @@ class AndroidApp {
   }
 
   private initMascotCanvas() {
-    this.mascotCanvas = document.getElementById("mascot-canvas") as HTMLCanvasElement;
+    this.mascotCanvas = document.getElementById("mascot-mini-canvas") as HTMLCanvasElement;
     if (!this.mascotCanvas) return;
     this.ctx = this.mascotCanvas.getContext("2d")!;
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = 170;
-    const h = 110;
+    const w = 36;
+    const h = 36;
     this.mascotCanvas.width = Math.round(w * dpr);
     this.mascotCanvas.height = Math.round(h * dpr);
     this.mascotCanvas.style.width = `${w}px`;
@@ -275,54 +268,50 @@ class AndroidApp {
     this.animId = requestAnimationFrame(loop);
   }
 
-  private renderSquadBar() {
-    const bar = document.getElementById("squad-carousel");
+  private renderTopSquadChips() {
+    const bar = document.getElementById("top-squad-chips");
     if (!bar) return;
 
     bar.innerHTML = "";
     SQUAD.forEach((m) => {
-      const btn = document.createElement("div");
-      btn.className = `squad-btn ${m.id === this.activeMember.id ? "active" : ""}`;
-      btn.style.setProperty("--btn-color", m.color);
-      btn.style.setProperty("--btn-glow", m.glow);
+      const chip = document.createElement("button");
+      chip.className = `compact-chip ${m.id === this.activeMember.id ? "active" : ""}`;
+      chip.style.setProperty("--chip-color", m.color);
+      chip.style.setProperty("--chip-glow", m.glow);
 
-      btn.innerHTML = `
-        <div class="squad-btn-dot"></div>
-        <span class="squad-btn-name">${m.name}</span>
-        <span class="squad-btn-role">${m.role}</span>
+      const colorName = m.name.replace("Coco ", "");
+      chip.innerHTML = `
+        <span class="compact-chip-dot"></span>
+        <span class="compact-chip-label">${colorName}</span>
       `;
 
-      btn.addEventListener("click", () => this.selectSquadMember(m));
-      bar.appendChild(btn);
+      chip.addEventListener("click", () => this.selectSquadMember(m));
+      bar.appendChild(chip);
     });
   }
 
   private selectSquadMember(m: SquadMember) {
     this.activeMember = m;
-    this.renderSquadBar();
+    this.renderTopSquadChips();
 
     // Update CSS variables
     document.documentElement.style.setProperty("--coco-accent", m.color);
     document.documentElement.style.setProperty("--coco-glow", m.glow);
-    document.documentElement.style.setProperty("--coco-bg-tint", m.bgTint);
 
-    // Update Header
+    // Update Header info
     const nameEl = document.getElementById("header-agent-name");
+    const roleEl = document.getElementById("header-agent-role");
     const pulseEl = document.getElementById("header-pulse");
+    const avatar = document.getElementById("avatar-btn");
     if (nameEl) nameEl.textContent = m.name;
+    if (roleEl) roleEl.textContent = `${m.role} · En línea`;
     if (pulseEl) pulseEl.style.backgroundColor = m.color;
+    if (avatar) avatar.style.borderColor = m.color;
 
-    // Update Mascot
+    // Update Mascot in mini canvas
     this.engine.setCocoSquadRole(m.squadRole);
     this.engine.triggerEmote("wink");
     Sound.play("blip");
-
-    // Update Speech Bubble
-    const speech = document.getElementById("mascot-speech");
-    if (speech) {
-      speech.textContent = m.greeting;
-      speech.style.borderColor = m.color;
-    }
 
     if (navigator.vibrate) navigator.vibrate(12);
   }
@@ -416,12 +405,16 @@ class AndroidApp {
     document.addEventListener("click", () => Sound.resume(), { once: true });
 
     // Mascot petting
+    const avatarWrapper = document.getElementById("avatar-btn");
+    const petMascot = () => {
+      this.engine.triggerEmote("love");
+      Sound.play("love");
+      if (navigator.vibrate) navigator.vibrate(25);
+    };
+    avatarWrapper?.addEventListener("click", petMascot);
+
     if (this.mascotCanvas) {
-      this.mascotCanvas.addEventListener("click", () => {
-        this.engine.triggerEmote("love");
-        Sound.play("love");
-        if (navigator.vibrate) navigator.vibrate(25);
-      });
+      this.mascotCanvas.addEventListener("click", petMascot);
 
       // Eye tracking on touch / mouse move
       window.addEventListener("touchmove", (e) => {
