@@ -2,7 +2,7 @@
 // Authentic Material 3 / iOS mobile companion with Mochi, Squad Bar, Oracle Chat & Devour
 
 import "./android.css";
-import { BotEngine, type RGB } from "../mochi/engine";
+import { BotEngine } from "../mochi/engine";
 import { Ease } from "../core/anim";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage, type TodoItem, type QuickNote } from "../core/state";
@@ -182,6 +182,16 @@ const SQUAD: SquadMember[] = [
   },
 ];
 
+interface MiniMochiChip {
+  member: SquadMember;
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  engine: BotEngine;
+  w: number;
+  h: number;
+  dpr: number;
+}
+
 class AndroidApp {
   private activeMember: SquadMember = SQUAD[0];
   private activeTab: "chat" | "devour" | "tasks" = "chat";
@@ -191,6 +201,7 @@ class AndroidApp {
   private animId: number = 0;
   private isToolsMenuOpen: boolean = false;
   private nextIdleActionTime: number = performance.now() + 4500;
+  private miniMochis: MiniMochiChip[] = [];
 
   private messages: ChatMessage[] = [];
   private isThinking = false;
@@ -369,6 +380,10 @@ class AndroidApp {
     if (!this.mascotCanvas) return;
     this.ctx = this.mascotCanvas.getContext("2d")!;
 
+    if (this.animId) {
+      cancelAnimationFrame(this.animId);
+    }
+
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = 40;
     const h = 40;
@@ -396,6 +411,14 @@ class AndroidApp {
       this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       this.ctx.clearRect(0, 0, w, h);
       this.engine.draw(this.ctx, w, h);
+
+      // Render the mini Mochis in top squad selector with independent blinks, breathing & tilts
+      for (const mini of this.miniMochis) {
+        mini.engine.update(dt);
+        mini.ctx.setTransform(mini.dpr, 0, 0, mini.dpr, 0, 0);
+        mini.ctx.clearRect(0, 0, mini.w, mini.h);
+        mini.engine.draw(mini.ctx, mini.w, mini.h);
+      }
 
       this.animId = requestAnimationFrame(loop);
     };
@@ -449,20 +472,53 @@ class AndroidApp {
     if (!bar) return;
 
     bar.innerHTML = "";
+    this.miniMochis = [];
+
     // Only display members OTHER than the active one (dynamic swap filter)
     const available = SQUAD.filter((m) => m.id !== this.activeMember.id);
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = 36;
+    const h = 36;
 
     available.forEach((m) => {
-      const chip = document.createElement("button");
-      chip.className = "squad-circle-chip";
-      chip.title = `Cambiar a ${m.name} (${m.role})`;
-      chip.style.setProperty("--chip-color", m.color);
-      chip.style.setProperty("--chip-glow", m.glow);
+      const btn = document.createElement("button");
+      btn.className = "squad-mochi-chip";
+      btn.title = `Cambiar a ${m.name} (${m.role})`;
+      btn.setAttribute("aria-label", m.name);
 
-      chip.innerHTML = `<span class="squad-chip-dot"></span>`;
+      const canvas = document.createElement("canvas");
+      canvas.className = "squad-mochi-canvas";
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
 
-      chip.addEventListener("click", () => this.selectSquadMember(m));
-      bar.appendChild(chip);
+      btn.appendChild(canvas);
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const engine = new BotEngine();
+      engine.setState("idle");
+      engine.setCocoSquadRole(m.squadRole);
+      engine.isUserTracking = false;
+
+      this.miniMochis.push({
+        member: m,
+        canvas,
+        ctx,
+        engine,
+        w,
+        h,
+        dpr,
+      });
+
+      btn.addEventListener("click", () => {
+        engine.triggerEmote("wink", 0.8);
+        this.selectSquadMember(m);
+      });
+
+      bar.appendChild(btn);
     });
   }
 
