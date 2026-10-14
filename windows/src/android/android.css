@@ -1,4 +1,5 @@
 /* Coco Squad Mobile — Material 3 / iOS Modern Smartphone Interface */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap');
 
 :root {
   --bg-color: #07080c;
@@ -175,24 +176,22 @@ html, body {
 }
 
 .agent-name-text {
-  font-size: 14.5px;
-  font-weight: 700;
+  font-family: 'Fredoka', cursive, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: 0.25px;
+  letter-spacing: 0.5px;
   display: inline-flex;
   align-items: center;
 }
 
-.coco-emoji {
-  font-size: 0.82em;
-  display: inline-block;
-  vertical-align: -1px;
-  transform: scale(0.85);
-  margin: 0 1px;
-  line-height: 1;
+.coco-name-animated {
+  font-family: 'Fredoka', cursive, sans-serif;
+  letter-spacing: 0.5px;
+  font-weight: 600;
 }
 
 .agent-subtitle-text {
@@ -373,6 +372,14 @@ html, body {
   margin: 0;
   line-height: 1.4;
   transition: color 0.3s ease;
+}
+
+.empty-state-subtitle .coco-name-animated {
+  font-family: 'Fredoka', cursive, sans-serif;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 1.08em;
 }
 
 .chat-history {

@@ -142,43 +142,43 @@ const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
 const SQUAD: SquadMember[] = [
   {
     id: "coco_blanco",
-    name: "Coco Blanco",
+    name: "Coco",
     role: "General",
     color: "#FFFFFF",
     glow: "rgba(255, 255, 255, 0.25)",
     bgTint: "rgba(255, 255, 255, 0.04)",
     squadRole: "white",
-    greeting: "¡Hola Gregorio! 🥥 Soy Coco Blanco, tu asistente general de productividad y chat.",
+    greeting: "¡Hola Gregorio! Soy Coco, tu asistente general de productividad y chat.",
   },
   {
     id: "coco_verde",
-    name: "Coco Verde",
+    name: "Green",
     role: "WhatsApp",
     color: "#10B981",
     glow: "rgba(16, 185, 129, 0.35)",
     bgTint: "rgba(16, 185, 129, 0.06)",
     squadRole: "green",
-    greeting: "¡Qué tal! Coco Verde a cargo de comunicaciones y WhatsApp.",
+    greeting: "¡Qué tal! Green a cargo de comunicaciones y WhatsApp.",
   },
   {
     id: "coco_rojo",
-    name: "Coco Rojo",
+    name: "Red",
     role: "Investigador",
     color: "#EF4444",
     glow: "rgba(239, 68, 68, 0.35)",
     bgTint: "rgba(239, 68, 68, 0.06)",
     squadRole: "red",
-    greeting: "Coco Rojo listo. Investigaciones profundas, síntesis y análisis técnico.",
+    greeting: "Red listo. Investigaciones profundas, síntesis y análisis técnico.",
   },
   {
     id: "coco_azul",
-    name: "Coco Azul",
+    name: "Blu",
     role: "Analista",
     color: "#3B82F6",
     glow: "rgba(59, 130, 246, 0.35)",
     bgTint: "rgba(59, 130, 246, 0.06)",
     squadRole: "blue",
-    greeting: "Coco Azul aquí. Análisis de métricas, reportes mensuales y hábitos.",
+    greeting: "Blu aquí. Análisis de métricas, reportes mensuales y hábitos.",
   },
 ];
 
@@ -260,11 +260,6 @@ class AndroidApp {
     } catch {}
   }
 
-  private getFormattedAgentTitle(m: SquadMember): string {
-    const roleSuffix = m.name.replace(/^Coco\s*/i, "");
-    return `C<span class="coco-emoji">🥥</span>C<span class="coco-emoji">🥥</span> ${roleSuffix}`;
-  }
-
   public render() {
     const root = document.getElementById("root");
     if (!root) return;
@@ -279,7 +274,7 @@ class AndroidApp {
             </div>
             <div class="agent-meta-info">
               <div class="agent-title-row">
-                <span class="agent-name-text" id="header-agent-name">${this.getFormattedAgentTitle(this.activeMember)}</span>
+                <span class="agent-name-text coco-name-animated" id="header-agent-name">${this.activeMember.name}</span>
                 <div class="status-dot-pulse" id="header-pulse"></div>
               </div>
               <span class="agent-subtitle-text" id="header-agent-role">${this.activeMember.role} · En línea</span>
@@ -300,7 +295,7 @@ class AndroidApp {
                 <div class="empty-state-glow"></div>
                 <div class="empty-state-content">
                   <h1 class="empty-state-title">¿Qué hacemos hoy?</h1>
-                  <p class="empty-state-subtitle" id="empty-state-agent-hint">${this.activeMember.name} está listo para ayudarte</p>
+                  <p class="empty-state-subtitle" id="empty-state-agent-hint"><span class="coco-name-animated">${this.activeMember.name}</span> está listo para ayudarte</p>
                 </div>
               </div>
 
@@ -626,13 +621,13 @@ class AndroidApp {
     const nameEl = document.getElementById("header-agent-name");
     const roleEl = document.getElementById("header-agent-role");
     const pulseEl = document.getElementById("header-pulse");
-    if (nameEl) nameEl.innerHTML = this.getFormattedAgentTitle(m);
+    if (nameEl) nameEl.textContent = m.name;
     if (roleEl) roleEl.textContent = `${m.role} · En línea`;
     if (pulseEl) pulseEl.style.backgroundColor = m.color;
 
     // Update Empty State subtitle if visible
     const emptyHint = document.getElementById("empty-state-agent-hint");
-    if (emptyHint) emptyHint.textContent = `${m.name} está listo para ayudarte`;
+    if (emptyHint) emptyHint.innerHTML = `<span class="coco-name-animated">${m.name}</span> está listo para ayudarte`;
 
     // Render Chat Messages for this specific Coco (isolated conversation thread)
     this.renderChatMessages();
@@ -763,7 +758,7 @@ class AndroidApp {
       if (msg.role === "assistant") {
         const badge = document.createElement("div");
         badge.className = "chat-agent-badge";
-        badge.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${this.activeMember.color};"></span> ${this.getFormattedAgentTitle(this.activeMember)}`;
+        badge.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${this.activeMember.color};"></span> <span class="coco-name-animated">${this.activeMember.name}</span>`;
         row.appendChild(badge);
         bubble.innerHTML = `<div class="message-content">${marked.parse(msg.content, { async: false }) as string}</div>`;
       } else {
