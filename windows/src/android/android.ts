@@ -201,6 +201,7 @@ class AndroidApp {
   private ctx!: CanvasRenderingContext2D;
   private animId: number = 0;
   private isToolsMenuOpen: boolean = false;
+  private isDevourSheetOpen: boolean = false;
   private nextIdleActionTime: number = performance.now() + 3000;
   private miniMochis: MiniMochiChip[] = [];
 
@@ -390,6 +391,46 @@ class AndroidApp {
             <span class="nav-item-label">Tareas</span>
           </button>
         </nav>
+
+        <!-- 4. Devour Source Selector Bottom Sheet (Dark Glassmorphism) -->
+        <div class="devour-sheet-overlay hidden" id="devour-sheet-overlay"></div>
+        <div class="devour-sheet-card hidden" id="devour-sheet-card">
+          <div class="devour-sheet-handle"></div>
+          <div class="devour-sheet-header">
+            <div class="devour-sheet-title-col">
+              <div class="devour-sheet-title">Devorar con Coco</div>
+              <div class="devour-sheet-subtitle">Elegí el origen para que Coco lo engulla y analice con IA</div>
+            </div>
+            <button class="devour-sheet-close" id="btn-close-devour-sheet" title="Cerrar">✕</button>
+          </div>
+
+          <div class="devour-sheet-options">
+            <button class="devour-option-btn" id="sheet-btn-camera">
+              <div class="devour-option-icon-box camera">
+                <span class="devour-option-emoji">📷</span>
+              </div>
+              <div class="devour-option-text">
+                <span class="devour-option-title">Cámara</span>
+                <span class="devour-option-desc">Sacar foto o grabar video en directo</span>
+              </div>
+              <span class="devour-option-arrow">›</span>
+            </button>
+
+            <button class="devour-option-btn" id="sheet-btn-gallery">
+              <div class="devour-option-icon-box gallery">
+                <span class="devour-option-emoji">📁</span>
+              </div>
+              <div class="devour-option-text">
+                <span class="devour-option-title">Archivos / Galería</span>
+                <span class="devour-option-desc">Fotos, videos, documentos o PDFs</span>
+              </div>
+              <span class="devour-option-arrow">›</span>
+            </button>
+          </div>
+
+          <input type="file" id="devour-sheet-input-camera" accept="image/*,video/*" capture="environment" style="display:none;" />
+          <input type="file" id="devour-sheet-input-gallery" accept="*/*" style="display:none;" />
+        </div>
       </div>
     `;
 
@@ -878,9 +919,8 @@ class AndroidApp {
         const tab = target.dataset.tab as "chat" | "devour" | "tasks";
 
         if (tab === "devour") {
-          // Devour action: ensure user is in chat view so protagonist Mochi is visible, and open native file selector
-          this.switchToChatView();
-          this.openNativeDevourSelector();
+          // Devour action: show Bottom Sheet so user can choose Cámara or Archivos / Galería
+          this.openDevourSheet();
           return;
         }
 
@@ -925,21 +965,77 @@ class AndroidApp {
     overlay?.addEventListener("click", () => this.closeToolsMenu());
     closeToolsBtn?.addEventListener("click", () => this.closeToolsMenu());
 
-    // Dismiss tools menu if clicking outside
+    // Dismiss tools menu or devour bottom sheet if clicking outside
     document.addEventListener("click", (e) => {
-      if (!this.isToolsMenuOpen) return;
       const target = e.target as HTMLElement;
-      if (!target.closest("#tools-popup-card") && !target.closest("#btn-tools-plus")) {
-        this.closeToolsMenu();
+      if (this.isToolsMenuOpen) {
+        if (!target.closest("#tools-popup-card") && !target.closest("#btn-tools-plus")) {
+          this.closeToolsMenu();
+        }
+      }
+      if (this.isDevourSheetOpen) {
+        if (!target.closest("#devour-sheet-card") && !target.closest("#btn-attach") && !target.closest('[data-tab="devour"]')) {
+          this.closeDevourSheet();
+        }
+      }
+    });
+
+    // Dismiss modals on Escape key
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (this.isDevourSheetOpen) this.closeDevourSheet();
+        if (this.isToolsMenuOpen) this.closeToolsMenu();
       }
     });
 
     // Attach button in chat input bar
     document.getElementById("btn-attach")?.addEventListener("click", () => {
-      this.openNativeDevourSelector();
+      this.openDevourSheet();
     });
 
-    // Native devour file selector
+    // Devour Bottom Sheet event handlers
+    const sheetOverlay = document.getElementById("devour-sheet-overlay");
+    const closeSheetBtn = document.getElementById("btn-close-devour-sheet");
+    const sheetCamBtn = document.getElementById("sheet-btn-camera");
+    const sheetGalBtn = document.getElementById("sheet-btn-gallery");
+    const sheetCamInput = document.getElementById("devour-sheet-input-camera") as HTMLInputElement;
+    const sheetGalInput = document.getElementById("devour-sheet-input-gallery") as HTMLInputElement;
+
+    sheetCamBtn?.addEventListener("click", () => {
+      sheetCamInput?.click();
+    });
+
+    sheetGalBtn?.addEventListener("click", () => {
+      sheetGalInput?.click();
+    });
+
+    sheetOverlay?.addEventListener("click", () => {
+      this.closeDevourSheet();
+    });
+
+    closeSheetBtn?.addEventListener("click", () => {
+      this.closeDevourSheet();
+    });
+
+    sheetCamInput?.addEventListener("change", () => {
+      if (sheetCamInput.files && sheetCamInput.files[0]) {
+        const file = sheetCamInput.files[0];
+        this.closeDevourSheet();
+        void this.processFileToDevour(file);
+        sheetCamInput.value = "";
+      }
+    });
+
+    sheetGalInput?.addEventListener("change", () => {
+      if (sheetGalInput.files && sheetGalInput.files[0]) {
+        const file = sheetGalInput.files[0];
+        this.closeDevourSheet();
+        void this.processFileToDevour(file);
+        sheetGalInput.value = "";
+      }
+    });
+
+    // Native devour file selector (legacy fallback)
     const mobileDevourInput = document.getElementById("mobile-devour-input") as HTMLInputElement;
     mobileDevourInput?.addEventListener("change", () => {
       if (mobileDevourInput.files && mobileDevourInput.files[0]) {
@@ -1081,13 +1177,23 @@ class AndroidApp {
     document.getElementById("page-chat")?.classList.add("active");
   }
 
-  private openNativeDevourSelector() {
+  public openDevourSheet() {
+    this.isDevourSheetOpen = true;
     this.switchToChatView();
-    const input = document.getElementById("mobile-devour-input") as HTMLInputElement;
-    if (input) {
-      input.value = "";
-      input.click();
-    }
+    if (this.isToolsMenuOpen) this.closeToolsMenu();
+    const overlay = document.getElementById("devour-sheet-overlay");
+    const card = document.getElementById("devour-sheet-card");
+    overlay?.classList.remove("hidden");
+    card?.classList.remove("hidden");
+    Sound.play("open");
+  }
+
+  public closeDevourSheet() {
+    this.isDevourSheetOpen = false;
+    const overlay = document.getElementById("devour-sheet-overlay");
+    const card = document.getElementById("devour-sheet-card");
+    overlay?.classList.add("hidden");
+    card?.classList.add("hidden");
   }
 
   private readFileAsBase64(file: File): Promise<{ base64: string; dataUri: string }> {
@@ -1117,7 +1223,8 @@ class AndroidApp {
 
   private async processFileToDevour(file: File) {
     try {
-      const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name);
+      const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|svg|bmp)$/i.test(file.name);
+      const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv|3gp|avi)$/i.test(file.name);
       const fileExt = (file.name.split(".").pop() || "FILE").toUpperCase().slice(0, 4);
       const fileSizeStr =
         file.size < 1024
@@ -1132,7 +1239,7 @@ class AndroidApp {
 
       const thumbUrl = isImage ? dataUri : null;
 
-      this.runAuthenticDevourSequence(file, fileSizeStr, fileExt, isImage, thumbUrl, base64, dataUri);
+      this.runAuthenticDevourSequence(file, fileSizeStr, fileExt, isImage, isVideo, thumbUrl, base64, dataUri);
     } catch (err) {
       console.error("Error leyendo archivo:", err);
     }
@@ -1143,6 +1250,7 @@ class AndroidApp {
     fileSizeStr: string,
     fileExt: string,
     isImage: boolean,
+    isVideo: boolean,
     thumbUrl: string | null,
     base64: string,
     dataUri: string
@@ -1172,12 +1280,14 @@ class AndroidApp {
         ${
           isImage && thumbUrl
             ? `<img src="${thumbUrl}" class="devour-thumb" alt="${file.name}" />`
+            : isVideo
+            ? `<div class="devour-doc-icon" style="background:rgba(239,68,68,0.2);color:#ef4444;font-size:20px;">🎥</div>`
             : `<div class="devour-doc-icon">${fileExt}</div>`
         }
       </div>
       <div class="devour-card-info">
         <div class="devour-card-name">${file.name}</div>
-        <div class="devour-card-meta">${fileExt} · ${fileSizeStr}</div>
+        <div class="devour-card-meta">${isVideo ? "VIDEO" : fileExt} · ${fileSizeStr}</div>
       </div>
     `;
 
@@ -1258,7 +1368,7 @@ class AndroidApp {
         } else {
           // Card has completely entered the mouth
           card.remove();
-          this.executeDevourChewingAndFeedback(file, fileSizeStr, isImage, base64, dataUri);
+          this.executeDevourChewingAndFeedback(file, fileSizeStr, isImage, isVideo, base64, dataUri);
         }
       };
 
@@ -1270,6 +1380,7 @@ class AndroidApp {
     file: File,
     fileSizeStr: string,
     isImage: boolean,
+    isVideo: boolean,
     base64: string,
     dataUri: string
   ) {
@@ -1304,7 +1415,7 @@ class AndroidApp {
       this.engine.triggerEmote("happy");
 
       // 4. Feedback in the chat thread and Oracle analysis
-      void this.completeDevourInChat(file, fileSizeStr, isImage, base64, dataUri);
+      void this.completeDevourInChat(file, fileSizeStr, isImage, isVideo, base64, dataUri);
     }, 900);
   }
 
@@ -1312,6 +1423,7 @@ class AndroidApp {
     file: File,
     fileSizeStr: string,
     isImage: boolean,
+    isVideo: boolean,
     base64: string,
     dataUri: string
   ) {
@@ -1331,13 +1443,15 @@ class AndroidApp {
       role: "assistant",
       content: isImage
         ? `🖼️ **${file.name}** (${fileSizeStr}) devorado por **${this.activeMember.name}**.\n\n*Analizando imagen con IA...*`
+        : isVideo
+        ? `🎬 **${file.name}** (${fileSizeStr}) devorado por **${this.activeMember.name}**.\n\n*Analizando video con IA...*`
         : `📁 **${file.name}** (${fileSizeStr}) devorado por **${this.activeMember.name}**.\n\n*Analizando documento con IA...*`,
     };
     this.messages.push(waitingMsg);
     this.saveStorage();
 
     // Display attached file badge above input
-    this.showAttachedFileChip(file.name, fileSizeStr);
+    this.showAttachedFileChip(file.name, fileSizeStr, isImage, isVideo);
 
     // 2. Set thinking state and render messages (shows typing dots and activates fast pulse in Coco)
     this.isThinking = true;
@@ -1350,6 +1464,8 @@ class AndroidApp {
     try {
       const promptText = isImage
         ? `[Imagen adjunta: ${file.name}] Analizá detalladamente esta imagen/captura adjunta y explicame su contenido visual, elementos clave y conclusiones.`
+        : isVideo
+        ? `[Video adjunto: ${file.name}] Analizá detalladamente este video/grabación adjunta y explicame las escenas, elementos clave y conclusiones.`
         : `[Documento adjunto: ${file.name}] Analizá el documento adjunto y resumí sus puntos clave, estructura y conclusiones principales.`;
 
       const payload: Record<string, unknown> = {
@@ -1360,11 +1476,12 @@ class AndroidApp {
         attachment: base64,
         image: isImage ? (dataUri || base64) : undefined,
         images: isImage ? [dataUri || base64] : undefined,
+        video: isVideo ? (dataUri || base64) : undefined,
         file: {
           name: file.name,
           data: base64,
           base64: base64,
-          mime: file.type || (isImage ? "image/jpeg" : "application/pdf"),
+          mime: file.type || (isImage ? "image/jpeg" : isVideo ? "video/mp4" : "application/pdf"),
         },
         contexto: {
           kind: "file",
@@ -1395,6 +1512,8 @@ class AndroidApp {
       if (target) {
         target.content = isImage
           ? `🖼️ **${file.name}** (${fileSizeStr}) analizado:\n\n${reply}`
+          : isVideo
+          ? `🎬 **${file.name}** (${fileSizeStr}) analizado:\n\n${reply}`
           : `📁 **${file.name}** (${fileSizeStr}) analizado:\n\n${reply}`;
       } else {
         this.messages.push({
@@ -1427,13 +1546,14 @@ class AndroidApp {
     }
   }
 
-  private showAttachedFileChip(fileName: string, fileSizeStr: string) {
+  private showAttachedFileChip(fileName: string, fileSizeStr: string, isImage?: boolean, isVideo?: boolean) {
     const chipContainer = document.getElementById("attached-chip-container");
     if (!chipContainer) return;
 
+    const icon = isImage ? "🖼️" : isVideo ? "🎬" : "📄";
     chipContainer.innerHTML = `
       <div style="display:flex;align-items:center;gap:6px;background:var(--surface-elevated);border:1px solid var(--coco-accent);border-radius:20px;padding:4px 12px;font-size:11.5px;color:var(--text-main);width:fit-content;margin-bottom:6px;box-shadow:0 0 10px var(--coco-glow);">
-        <span>📄 ${fileName} (${fileSizeStr})</span>
+        <span>${icon} ${fileName} (${fileSizeStr})</span>
         <span style="color:var(--text-muted);cursor:pointer;padding-left:4px;font-weight:bold;" id="btn-remove-chip">✕</span>
       </div>
     `;
@@ -1480,7 +1600,12 @@ function initApp() {
   (window as any).__cocoApp = app;
   app.render();
 
-  if (window.location.search.includes("devour=1")) {
+  if (window.location.search.includes("sheet=1") || window.location.search.includes("devour_sheet=1")) {
+    window.history.replaceState(null, "", window.location.pathname);
+    setTimeout(() => {
+      app.openDevourSheet();
+    }, 400);
+  } else if (window.location.search.includes("devour=1")) {
     window.history.replaceState(null, "", window.location.pathname);
     setTimeout(() => {
       app.testDevour("informe_clinico.pdf");
