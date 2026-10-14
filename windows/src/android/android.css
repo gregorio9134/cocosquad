@@ -283,6 +283,41 @@ html, body {
   pointer-events: none;
 }
 
+.squad-mochi-chip.thinking {
+  opacity: 1;
+}
+
+.squad-mochi-chip.thinking::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid var(--chip-accent, #ffffff);
+  opacity: 0.8;
+  animation: miniMochiPulseRing 1.3s infinite ease-out;
+  pointer-events: none;
+}
+
+.mini-mochi-thinking-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 7.5px;
+  height: 7.5px;
+  border-radius: 50%;
+  background: var(--chip-accent, #ffffff);
+  border: 1px solid #07080c;
+  animation: pulseDotThinking 0.8s infinite alternate ease-in-out;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes miniMochiPulseRing {
+  0% { transform: scale(0.85); opacity: 0.9; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
+
+
 /* ── 2. Main Views Area (Maximized) ────────────────────────────────────────── */
 .main-view-container {
   flex: 1;
