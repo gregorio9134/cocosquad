@@ -1,11 +1,11 @@
 /* Coco Squad Mobile — Material 3 / iOS Modern Smartphone Interface */
 
 :root {
-  --bg-color: #090a0f;
-  --surface-base: #11131a;
-  --surface-card: #181b26;
-  --surface-elevated: #212534;
-  --border-color: rgba(255, 255, 255, 0.08);
+  --bg-color: #07080c;
+  --surface-base: rgba(14, 16, 24, 0.7);
+  --surface-card: rgba(20, 20, 28, 0.75);
+  --surface-elevated: rgba(28, 30, 42, 0.82);
+  --border-color: rgba(255, 255, 255, 0.07);
   --border-active: rgba(255, 255, 255, 0.22);
   --text-main: #f8fafc;
   --text-sub: #94a3b8;
@@ -44,25 +44,42 @@ html, body {
   max-width: 480px;
   margin: 0 auto;
   position: relative;
-  background-color: var(--surface-base);
+  background: radial-gradient(circle at 50% 20%, rgba(32, 38, 58, 0.45) 0%, rgba(13, 15, 22, 0.95) 55%, #07080c 100%);
   border-left: 1px solid rgba(255, 255, 255, 0.05);
   border-right: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.85);
   overflow: hidden;
 }
 
-/* ── 1. Compact Top App Bar ─────────────────────────────────────────────────── */
+#app::before {
+  content: "";
+  position: absolute;
+  top: 16%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, var(--coco-glow) 0%, transparent 70%);
+  opacity: 0.16;
+  filter: blur(65px);
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.5s ease;
+}
+
+/* ── 1. Compact Top App Bar (Glassmorphism) ─────────────────────────────────── */
 .compact-top-bar {
   padding-top: var(--safe-top);
-  padding-left: 12px;
-  padding-right: 12px;
-  padding-bottom: 8px;
+  padding-left: 14px;
+  padding-right: 14px;
+  padding-bottom: 9px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(17, 19, 26, 0.95);
+  background: rgba(20, 20, 28, 0.75);
   backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border-color);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   z-index: 50;
   flex-shrink: 0;
   gap: 8px;
@@ -133,55 +150,50 @@ html, body {
   margin-top: 1px;
 }
 
-/* 4 Compact Squad Chips on the Right */
+/* Dynamic Squad Selector on the Right (Filtered Circles) */
 .top-bar-right {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 7px;
   flex-shrink: 0;
 }
 
-.compact-chip {
+.squad-circle-chip {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3.5px;
-  padding: 4px 6.5px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-.compact-chip:active {
-  transform: scale(0.92);
-}
-
-.compact-chip.active {
-  background: var(--surface-elevated);
+.squad-circle-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
   border-color: var(--chip-color);
-  box-shadow: 0 0 8px var(--chip-glow);
 }
 
-.compact-chip-dot {
-  width: 7px;
-  height: 7px;
+.squad-circle-chip:active {
+  transform: scale(0.88);
+}
+
+.squad-chip-dot {
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background-color: var(--chip-color);
-  box-shadow: 0 0 5px var(--chip-glow);
-  flex-shrink: 0;
+  box-shadow: 0 0 8px var(--chip-glow);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.compact-chip-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-sub);
-}
-
-.compact-chip.active .compact-chip-label {
-  font-weight: 700;
-  color: var(--text-main);
+.squad-circle-chip:active .squad-chip-dot {
+  transform: scale(1.25);
 }
 
 /* ── 2. Main Views Area (Maximized) ────────────────────────────────────────── */
@@ -416,56 +428,173 @@ html, body {
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
-/* Quick suggestions */
-.suggestions-bar {
-  display: flex;
-  gap: 8px;
-  padding: 8px 14px 10px 14px;
-  overflow-x: auto;
-  white-space: nowrap;
-  flex-shrink: 0;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+/* ── Tools Popup Menu (+) ─────────────────────────────────────────────────── */
+.tools-popup-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 40;
+  opacity: 1;
+  transition: opacity 0.25s ease;
 }
-.suggestions-bar::-webkit-scrollbar { display: none; }
 
-.suggestion-chip {
-  background: var(--surface-card);
-  border: 1px solid var(--border-color);
-  color: var(--text-sub);
-  font-size: 12px;
-  font-weight: 500;
-  padding: 7px 13px;
+.tools-popup-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tools-popup-card {
+  position: absolute;
+  bottom: 70px;
+  left: 12px;
+  right: 12px;
+  background: rgba(20, 20, 28, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.suggestion-chip:active {
-  background: var(--surface-elevated);
-  color: var(--text-main);
-  transform: scale(0.96);
-  border-color: var(--coco-accent);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.7);
+  padding: 14px;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transform: translateY(0);
+  opacity: 1;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
 }
 
-/* Chat Input Bar */
+.tools-popup-card.hidden {
+  transform: translateY(16px) scale(0.96);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tools-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tools-popup-title-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tools-popup-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--coco-accent);
+  box-shadow: 0 0 8px var(--coco-glow);
+}
+
+.tools-popup-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.2px;
+}
+
+.tools-popup-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.tools-popup-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 270px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tool-item-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.tool-item-btn:active {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: var(--coco-accent);
+  transform: scale(0.98);
+}
+
+.tool-item-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.tool-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tool-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.tool-item-desc {
+  font-size: 11px;
+  color: var(--text-sub);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Chat Input Bar (Glassmorphism) ────────────────────────────────────────── */
 .chat-input-bar {
-  padding: 8px 14px;
-  background: var(--surface-base);
-  border-top: 1px solid var(--border-color);
+  padding: 10px 14px;
+  background: rgba(20, 20, 28, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  z-index: 30;
+  position: relative;
 }
 
 .chat-input-field {
   flex: 1;
-  background: var(--surface-card);
-  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 22px;
   padding: 10px 16px;
   color: var(--text-main);
@@ -473,17 +602,20 @@ html, body {
   font-size: 14px;
   outline: none;
   user-select: text;
+  transition: border-color 0.2s, background 0.2s;
 }
+
 .chat-input-field:focus {
   border-color: var(--coco-accent);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .btn-icon-round {
-  background: var(--surface-card);
-  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   color: var(--text-sub);
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -491,19 +623,38 @@ html, body {
   cursor: pointer;
   flex-shrink: 0;
   font-size: 16px;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
+
 .btn-icon-round:active {
-  transform: scale(0.92);
-  background: var(--surface-elevated);
+  transform: scale(0.90);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--coco-accent);
+}
+
+.btn-tools-trigger {
+  font-size: 22px;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--text-main);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s, border-color 0.2s;
+}
+
+.btn-tools-trigger.active {
+  transform: rotate(45deg);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--coco-accent);
+  color: var(--coco-accent);
 }
 
 .btn-send-round {
   background: var(--coco-accent);
   color: #000000;
   border: none;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -511,14 +662,15 @@ html, body {
   cursor: pointer;
   flex-shrink: 0;
   font-size: 15px;
-  box-shadow: 0 0 12px var(--coco-glow);
+  box-shadow: 0 0 14px var(--coco-glow);
   transition: all 0.2s;
 }
+
 .btn-send-round:active {
-  transform: scale(0.92);
+  transform: scale(0.90);
 }
 
-/* ── Devour Page ──────────────────────────────────────────────────────────── */
+/* ── Devour Page (Glassmorphism) ──────────────────────────────────────────── */
 .devour-page {
   padding: 16px;
   display: flex;
@@ -530,15 +682,17 @@ html, body {
 
 .devour-main-card {
   width: 100%;
-  background: var(--surface-card);
-  border: 1px solid var(--border-color);
-  border-radius: 18px;
+  background: rgba(20, 20, 28, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 20px;
   padding: 20px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
 }
 
 .devour-header-title {
@@ -558,7 +712,7 @@ html, body {
 .devour-stage-box {
   width: 100%;
   height: 180px;
-  background: #000000;
+  background: rgba(0, 0, 0, 0.5);
   border-radius: 14px;
   border: 1px dashed rgba(255, 255, 255, 0.18);
   position: relative;
@@ -594,21 +748,24 @@ html, body {
   border: none;
   transition: all 0.2s;
 }
+
 .devour-action-btn.primary {
   background: var(--coco-accent);
   color: #000000;
   box-shadow: 0 0 12px var(--coco-glow);
 }
+
 .devour-action-btn.secondary {
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text-main);
 }
+
 .devour-action-btn:active {
   transform: scale(0.96);
 }
 
-/* ── Tasks Page ───────────────────────────────────────────────────────────── */
+/* ── Tasks Page (Glassmorphism) ───────────────────────────────────────────── */
 .tasks-page {
   padding: 16px;
   display: flex;
@@ -618,13 +775,16 @@ html, body {
 }
 
 .card-box {
-  background: var(--surface-card);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
+  background: rgba(20, 20, 28, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 18px;
   padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .card-box-header {
@@ -636,25 +796,45 @@ html, body {
   color: var(--text-main);
 }
 
+.card-action-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-sub);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.card-action-chip:active {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+}
+
 .todo-item-row {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 9px 12px;
-  background: var(--surface-elevated);
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
   cursor: pointer;
 }
+
 .todo-check {
   width: 18px;
   height: 18px;
   accent-color: var(--coco-accent);
 }
+
 .todo-text-label {
   font-size: 13px;
   color: var(--text-main);
   flex: 1;
 }
+
 .todo-text-label.done {
   text-decoration: line-through;
   color: var(--text-muted);
@@ -662,20 +842,23 @@ html, body {
 
 .note-card-row {
   padding: 10px 14px;
-  background: var(--surface-elevated);
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
   font-size: 13px;
   color: var(--text-main);
   line-height: 1.4;
   border-left: 3px solid var(--coco-accent);
 }
 
-/* ── 5. Bottom Navigation Bar ─────────────────────────────────────────────── */
+/* ── 5. Bottom Navigation Bar (Glassmorphism) ─────────────────────────────── */
 .bottom-nav-bar {
   padding-bottom: var(--safe-bottom);
-  padding-top: 6px;
-  background: var(--surface-base);
-  border-top: 1px solid var(--border-color);
+  padding-top: 8px;
+  background: rgba(20, 20, 28, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
   display: flex;
   justify-content: space-around;
   align-items: center;
@@ -710,7 +893,11 @@ html, body {
 
 .nav-item-btn.active {
   color: var(--coco-accent);
-  background: var(--surface-card);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-item-btn.active .nav-item-icon {
+  transform: translateY(-2px);
 }
 
 .nav-item-btn.active .nav-item-icon {

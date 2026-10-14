@@ -3,6 +3,7 @@
 
 import "./android.css";
 import { BotEngine, type RGB } from "../mochi/engine";
+import { Ease } from "../core/anim";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage, type TodoItem, type QuickNote } from "../core/state";
 import { marked } from "marked";
@@ -22,6 +23,121 @@ interface SquadMember {
   squadRole: "white" | "green" | "red" | "blue";
   greeting: string;
 }
+
+interface QuickToolItem {
+  icon: string;
+  title: string;
+  desc: string;
+  prompt?: string;
+  actionType?: "todo" | "note";
+}
+
+const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
+  coco_blanco: [
+    {
+      icon: "💡",
+      title: "¿Quién sos y qué hacés?",
+      desc: "Conocé al escuadrón y sus capacidades",
+      prompt: "¿Quién sos y qué funciones tenés en el escuadrón?",
+    },
+    {
+      icon: "📋",
+      title: "Resumir pendientes",
+      desc: "Repasar prioridades y tareas del día",
+      prompt: "Resumí mis pendientes y prioridades del día.",
+    },
+    {
+      icon: "📝",
+      title: "Nueva tarea rápida",
+      desc: "Agregar un ítem a la lista de tareas",
+      actionType: "todo",
+    },
+    {
+      icon: "📌",
+      title: "Guardar nota rápida",
+      desc: "Crear una nota en Taby",
+      actionType: "note",
+    },
+  ],
+  coco_verde: [
+    {
+      icon: "💬",
+      title: "Mensajes pendientes",
+      desc: "Revisar WhatsApp y chats por contestar",
+      prompt: "Revisar comunicaciones de redes y mensajes pendientes de WhatsApp.",
+    },
+    {
+      icon: "📅",
+      title: "Recordatorio de turnos",
+      desc: "Redactar confirmación para pacientes",
+      prompt: "Redactá un mensaje de WhatsApp para recordar y confirmar los turnos de mañana.",
+    },
+    {
+      icon: "⚡",
+      title: "Plantillas de respuesta",
+      desc: "Respuestas prearmadas para dudas frecuentes",
+      prompt: "Mostrame las plantillas de respuesta rápida para pacientes en WhatsApp.",
+    },
+    {
+      icon: "🔍",
+      title: "Buscar contacto / historial",
+      desc: "Consultar mensajes anteriores",
+      prompt: "Buscar conversaciones y consultas recientes de pacientes.",
+    },
+  ],
+  coco_rojo: [
+    {
+      icon: "🔬",
+      title: "Investigación profunda",
+      desc: "Análisis exhaustivo de un tema o técnica",
+      prompt: "Iniciar una investigación profunda sobre tendencias y protocolos clínicos.",
+    },
+    {
+      icon: "📚",
+      title: "Buscar evidencia / papers",
+      desc: "Revisión bibliográfica y científica",
+      prompt: "Buscá evidencia clínica y papers científicos recientes sobre este caso.",
+    },
+    {
+      icon: "📑",
+      title: "Sintetizar documento",
+      desc: "Resumir puntos clave de un archivo o PDF",
+      prompt: "Sintetizá los puntos clave del documento o archivo adjunto.",
+    },
+    {
+      icon: "🧪",
+      title: "Comparar tratamientos",
+      desc: "Contraste de protocolos clínicos",
+      prompt: "Compará ventajas y desventajas de los distintos enfoques terapéuticos.",
+    },
+  ],
+  coco_azul: [
+    {
+      icon: "📊",
+      title: "Métricas del mes",
+      desc: "Rendimiento, consultas e ingresos",
+      prompt: "Mostrame el reporte de métricas y rendimiento mensual.",
+    },
+    {
+      icon: "📈",
+      title: "Evolución y asistencia",
+      desc: "Tasa de asistencia y cancelaciones",
+      prompt: "Analizá la tasa de asistencia, reprogramaciones y cancelaciones recientes.",
+    },
+    {
+      icon: "⏱️",
+      title: "Productividad semanal",
+      desc: "Horas y volumen de atención clínica",
+      prompt: "Generá un resumen de productividad y carga horaria de la última semana.",
+    },
+    {
+      icon: "📉",
+      title: "Detección de patrones",
+      desc: "Horarios pico y demanda estacional",
+      prompt: "Identificá los patrones y horarios con mayor demanda de pacientes.",
+    },
+  ],
+};
 
 const SQUAD: SquadMember[] = [
   {
@@ -73,6 +189,8 @@ class AndroidApp {
   private mascotCanvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private animId: number = 0;
+  private isToolsMenuOpen: boolean = false;
+  private nextIdleActionTime: number = performance.now() + 4500;
 
   private messages: ChatMessage[] = [];
   private isThinking = false;
@@ -148,16 +266,23 @@ class AndroidApp {
               <!-- Chat Message History -->
               <div class="chat-history" id="chat-history" style="display: none;"></div>
 
-              <div class="suggestions-bar">
-                <button class="suggestion-chip" data-prompt="¿Quién sos y qué funciones tenés?">💡 ¿Quién sos?</button>
-                <button class="suggestion-chip" data-prompt="Resumí mis pendientes del día">📋 Resumir pendientes</button>
-                <button class="suggestion-chip" data-prompt="Revisar comunicaciones de redes y WhatsApp">🟢 Ver WhatsApp</button>
-                <button class="suggestion-chip" data-prompt="Iniciar investigación profunda de mercado">🔴 Investigar mercado</button>
+              <!-- Floating Tools Popup Card (+) -->
+              <div class="tools-popup-overlay hidden" id="tools-popup-overlay"></div>
+              <div class="tools-popup-card hidden" id="tools-popup-card">
+                <div class="tools-popup-header">
+                  <div class="tools-popup-title-row">
+                    <span class="tools-popup-dot" id="tools-popup-dot"></span>
+                    <span class="tools-popup-title" id="tools-popup-title">Herramientas · ${this.activeMember.name}</span>
+                  </div>
+                  <button class="tools-popup-close-btn" id="btn-close-tools" title="Cerrar">✕</button>
+                </div>
+                <div class="tools-popup-grid" id="tools-popup-list"></div>
               </div>
 
               <div id="attached-chip-container" style="padding: 0 14px;"></div>
 
               <div class="chat-input-bar">
+                <button class="btn-icon-round btn-tools-trigger" id="btn-tools-plus" title="Herramientas y atajos">+</button>
                 <button class="btn-icon-round" id="btn-attach" title="Adjuntar archivo">📎</button>
                 <input type="text" class="chat-input-field" id="chat-input" placeholder="Preguntale a Coco..." />
                 <button class="btn-send-round" id="btn-send" title="Enviar">➤</button>
@@ -197,7 +322,7 @@ class AndroidApp {
               <div class="card-box">
                 <div class="card-box-header">
                   <span>Tareas Pendientes</span>
-                  <button class="suggestion-chip" id="btn-add-todo">+ Nueva Tarea</button>
+                  <button class="card-action-chip" id="btn-add-todo">+ Nueva Tarea</button>
                 </div>
                 <div id="todo-container" style="display:flex; flex-direction:column; gap:8px;"></div>
               </div>
@@ -205,7 +330,7 @@ class AndroidApp {
               <div class="card-box">
                 <div class="card-box-header">
                   <span>Notas Rápidas (Taby)</span>
-                  <button class="suggestion-chip" id="btn-add-note">+ Nueva Nota</button>
+                  <button class="card-action-chip" id="btn-add-note">+ Nueva Nota</button>
                 </div>
                 <div id="notes-container" style="display:flex; flex-direction:column; gap:8px;"></div>
               </div>
@@ -260,6 +385,12 @@ class AndroidApp {
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
 
+      // Random idle actions every 4-7 seconds (wink, bounce, lookAround)
+      if (now > this.nextIdleActionTime) {
+        this.triggerRandomIdleEvent();
+        this.nextIdleActionTime = now + 4000 + Math.random() * 3000;
+      }
+
       this.engine.update(dt);
 
       this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -272,22 +403,63 @@ class AndroidApp {
     this.animId = requestAnimationFrame(loop);
   }
 
+  private triggerRandomIdleEvent() {
+    if (this.engine.state !== "idle" || this.engine.isUserTracking) return;
+
+    const action = Math.floor(Math.random() * 3);
+    if (action === 0) {
+      // 1. Wink
+      this.engine.triggerEmote("wink", 1.2);
+      Sound.play("blip");
+    } else if (action === 1) {
+      // 2. Micro-bounce
+      this.engine.anim("oy", [
+        [-0.15, 120, Ease.out],
+        [0.03, 160, Ease.inOut],
+        [0, 140, Ease.back],
+      ]);
+      this.engine.anim("sy", [
+        [1.16, 120, Ease.out],
+        [0.92, 160, Ease.inOut],
+        [1, 140, Ease.back],
+      ]);
+      this.engine.anim("sx", [
+        [0.92, 120, Ease.out],
+        [1.06, 160, Ease.inOut],
+        [1, 140, Ease.back],
+      ]);
+    } else {
+      // 3. Lateral lookAround
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      this.engine.anim("yaw", [
+        [0.62 * dir, 220, Ease.inOut],
+        [-0.42 * dir, 460, Ease.inOut],
+        [0, 260, Ease.out],
+      ]);
+      this.engine.anim("tilt", [
+        [0.08 * dir, 220, Ease.out],
+        [-0.06 * dir, 460, Ease.inOut],
+        [0, 260, Ease.out],
+      ]);
+    }
+  }
+
   private renderTopSquadChips() {
     const bar = document.getElementById("top-squad-chips");
     if (!bar) return;
 
     bar.innerHTML = "";
-    SQUAD.forEach((m) => {
+    // Only display members OTHER than the active one (dynamic swap filter)
+    const available = SQUAD.filter((m) => m.id !== this.activeMember.id);
+
+    available.forEach((m) => {
       const chip = document.createElement("button");
-      chip.className = `compact-chip ${m.id === this.activeMember.id ? "active" : ""}`;
+      chip.className = "squad-circle-chip";
+      chip.title = `Cambiar a ${m.name} (${m.role})`;
       chip.style.setProperty("--chip-color", m.color);
       chip.style.setProperty("--chip-glow", m.glow);
 
-      const colorName = m.name.replace("Coco ", "");
-      chip.innerHTML = `
-        <span class="compact-chip-dot"></span>
-        <span class="compact-chip-label">${colorName}</span>
-      `;
+      chip.innerHTML = `<span class="squad-chip-dot"></span>`;
 
       chip.addEventListener("click", () => this.selectSquadMember(m));
       bar.appendChild(chip);
@@ -297,6 +469,9 @@ class AndroidApp {
   private selectSquadMember(m: SquadMember) {
     this.activeMember = m;
     this.renderTopSquadChips();
+    if (this.isToolsMenuOpen) {
+      this.renderToolsMenu();
+    }
 
     // Update CSS variables
     document.documentElement.style.setProperty("--coco-accent", m.color);
@@ -320,6 +495,99 @@ class AndroidApp {
     Sound.play("blip");
 
     if (navigator.vibrate) navigator.vibrate(12);
+  }
+
+  private toggleToolsMenu() {
+    if (this.isToolsMenuOpen) {
+      this.closeToolsMenu();
+    } else {
+      this.openToolsMenu();
+    }
+  }
+
+  private openToolsMenu() {
+    this.isToolsMenuOpen = true;
+    this.renderToolsMenu();
+    const overlay = document.getElementById("tools-popup-overlay");
+    const card = document.getElementById("tools-popup-card");
+    const plusBtn = document.getElementById("btn-tools-plus");
+    if (overlay) overlay.classList.remove("hidden");
+    if (card) card.classList.remove("hidden");
+    if (plusBtn) plusBtn.classList.add("active");
+    Sound.play("open");
+  }
+
+  private closeToolsMenu() {
+    if (!this.isToolsMenuOpen) return;
+    this.isToolsMenuOpen = false;
+    const overlay = document.getElementById("tools-popup-overlay");
+    const card = document.getElementById("tools-popup-card");
+    const plusBtn = document.getElementById("btn-tools-plus");
+    if (overlay) overlay.classList.add("hidden");
+    if (card) card.classList.add("hidden");
+    if (plusBtn) plusBtn.classList.remove("active");
+  }
+
+  private renderToolsMenu() {
+    const titleEl = document.getElementById("tools-popup-title");
+    const dotEl = document.getElementById("tools-popup-dot");
+    const listEl = document.getElementById("tools-popup-list");
+    if (!listEl) return;
+
+    if (titleEl) titleEl.textContent = `Herramientas · ${this.activeMember.name}`;
+    if (dotEl) {
+      dotEl.style.backgroundColor = this.activeMember.color;
+      dotEl.style.boxShadow = `0 0 8px ${this.activeMember.glow}`;
+    }
+
+    listEl.innerHTML = "";
+    const tools = SQUAD_TOOLS[this.activeMember.id] || SQUAD_TOOLS.coco_blanco;
+
+    tools.forEach((t) => {
+      const btn = document.createElement("button");
+      btn.className = "tool-item-btn";
+      btn.innerHTML = `
+        <span class="tool-item-icon">${t.icon}</span>
+        <div class="tool-item-text">
+          <span class="tool-item-title">${t.title}</span>
+          <span class="tool-item-desc">${t.desc}</span>
+        </div>
+      `;
+
+      btn.addEventListener("click", () => {
+        this.closeToolsMenu();
+        if (t.prompt) {
+          this.sendChatMessage(t.prompt);
+        } else if (t.actionType === "todo") {
+          const text = prompt("Nueva tarea para Coco Squad:");
+          if (text && text.trim()) {
+            this.todos.push({
+              id: Date.now().toString(),
+              text: text.trim(),
+              done: false,
+              createdAt: Date.now(),
+            });
+            this.saveStorage();
+            this.renderTasks();
+            Sound.play("tick");
+          }
+        } else if (t.actionType === "note") {
+          const text = prompt("Nueva nota rápida:");
+          if (text && text.trim()) {
+            this.notes.push({
+              id: Date.now().toString(),
+              text: text.trim(),
+              createdAt: Date.now(),
+            });
+            this.saveStorage();
+            this.renderTasks();
+            Sound.play("tick");
+          }
+        }
+      });
+
+      listEl.appendChild(btn);
+    });
   }
 
   private renderChatMessages() {
@@ -496,12 +764,25 @@ class AndroidApp {
       if (e.key === "Enter") doSend();
     });
 
-    // Suggestion chips
-    document.querySelectorAll(".suggestion-chip[data-prompt]").forEach((chip) => {
-      chip.addEventListener("click", (e) => {
-        const prompt = (e.currentTarget as HTMLElement).dataset.prompt;
-        if (prompt) this.sendChatMessage(prompt);
-      });
+    // Tools popup (+) button trigger and overlay dismissal
+    const plusBtn = document.getElementById("btn-tools-plus");
+    const overlay = document.getElementById("tools-popup-overlay");
+    const closeToolsBtn = document.getElementById("btn-close-tools");
+
+    plusBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.toggleToolsMenu();
+    });
+    overlay?.addEventListener("click", () => this.closeToolsMenu());
+    closeToolsBtn?.addEventListener("click", () => this.closeToolsMenu());
+
+    // Dismiss tools menu if clicking outside
+    document.addEventListener("click", (e) => {
+      if (!this.isToolsMenuOpen) return;
+      const target = e.target as HTMLElement;
+      if (!target.closest("#tools-popup-card") && !target.closest("#btn-tools-plus")) {
+        this.closeToolsMenu();
+      }
     });
 
     // Attach button in chat input bar
