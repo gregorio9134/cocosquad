@@ -77,29 +77,28 @@ html, body {
 }
 
 .avatar-wrapper {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #000000;
-  border: 1.5px solid var(--coco-accent);
-  box-shadow: 0 0 10px var(--coco-glow);
+  width: 42px;
+  height: 42px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   cursor: pointer;
-  overflow: hidden;
-  transition: all 0.3s ease;
+  overflow: visible;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .avatar-wrapper:active {
-  transform: scale(0.92);
+  transform: scale(0.90);
 }
 
 #mascot-mini-canvas {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   pointer-events: none;
 }
 
@@ -267,6 +266,28 @@ html, body {
   border: 1px solid var(--border-color);
   color: var(--text-main);
   border-bottom-left-radius: 4px;
+  padding: 14px 16px;
+}
+
+/* Explicit Markdown / HTML list formatting */
+.message-content ul,
+.message-content ol,
+.chat-bubble ul,
+.chat-bubble ol {
+  padding-left: 20px;
+  margin: 8px 0;
+  list-style-position: outside;
+}
+
+.message-content li,
+.chat-bubble li {
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+
+.message-content li:last-child,
+.chat-bubble li:last-child {
+  margin-bottom: 0;
 }
 
 .chat-agent-badge {

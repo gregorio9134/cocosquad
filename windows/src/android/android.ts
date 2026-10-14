@@ -78,7 +78,8 @@ class AndroidApp {
     {
       id: 1,
       role: "assistant",
-      content: "¡Hola Gregorio! 🥥 Soy **Coco Blanco**. Tu escuadrón de IA ya está activo en tu Android. ¿En qué trabajamos hoy?",
+      content:
+        "¡Hola Gregorio! 🥥 Soy **Coco Blanco**. Tu escuadrón de IA ya está activo en tu Android:\n\n- **Coco Blanco**: Asistencia general y organización\n- **Coco Verde**: WhatsApp y turnos\n- **Coco Rojo**: Investigación profunda\n- **Coco Azul**: Métricas y hábitos\n\n¿En qué trabajamos hoy?",
     },
   ];
   private isThinking = false;
@@ -241,8 +242,8 @@ class AndroidApp {
     this.ctx = this.mascotCanvas.getContext("2d")!;
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = 36;
-    const h = 36;
+    const w = 40;
+    const h = 40;
     this.mascotCanvas.width = Math.round(w * dpr);
     this.mascotCanvas.height = Math.round(h * dpr);
     this.mascotCanvas.style.width = `${w}px`;
@@ -302,11 +303,9 @@ class AndroidApp {
     const nameEl = document.getElementById("header-agent-name");
     const roleEl = document.getElementById("header-agent-role");
     const pulseEl = document.getElementById("header-pulse");
-    const avatar = document.getElementById("avatar-btn");
     if (nameEl) nameEl.textContent = m.name;
     if (roleEl) roleEl.textContent = `${m.role} · En línea`;
     if (pulseEl) pulseEl.style.backgroundColor = m.color;
-    if (avatar) avatar.style.borderColor = m.color;
 
     // Update Mascot in mini canvas
     this.engine.setCocoSquadRole(m.squadRole);
@@ -333,7 +332,7 @@ class AndroidApp {
         badge.className = "chat-agent-badge";
         badge.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${this.activeMember.color};"></span> ${this.activeMember.name}`;
         row.appendChild(badge);
-        bubble.innerHTML = marked.parse(msg.content, { async: false }) as string;
+        bubble.innerHTML = `<div class="message-content">${marked.parse(msg.content, { async: false }) as string}</div>`;
       } else {
         bubble.textContent = msg.content;
       }
@@ -416,27 +415,29 @@ class AndroidApp {
     if (this.mascotCanvas) {
       this.mascotCanvas.addEventListener("click", petMascot);
 
-      // Eye tracking on touch / mouse move
-      window.addEventListener("touchmove", (e) => {
-        if (e.touches.length > 0) {
-          const touch = e.touches[0];
-          const rect = this.mascotCanvas.getBoundingClientRect();
-          const cx = rect.left + rect.width / 2;
-          const cy = rect.top + rect.height / 2;
-          const dx = (touch.clientX - cx) / (window.innerWidth / 2);
-          const dy = (touch.clientY - cy) / (window.innerHeight / 2);
-          this.engine.lookX = Math.max(-1, Math.min(1, dx));
-          this.engine.lookY = Math.max(-1, Math.min(1, dy));
-        }
-      });
-      window.addEventListener("mousemove", (e) => {
+      // Eye tracking on touch / mouse move with auto-idle fallback
+      let userTrackingTimer: number | null = null;
+      const onUserPointer = (clientX: number, clientY: number) => {
+        this.engine.isUserTracking = true;
         const rect = this.mascotCanvas.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
-        const dx = (e.clientX - cx) / (window.innerWidth / 2);
-        const dy = (e.clientY - cy) / (window.innerHeight / 2);
+        const dx = (clientX - cx) / (window.innerWidth / 2);
+        const dy = (clientY - cy) / (window.innerHeight / 2);
         this.engine.lookX = Math.max(-1, Math.min(1, dx));
         this.engine.lookY = Math.max(-1, Math.min(1, dy));
+
+        if (userTrackingTimer) window.clearTimeout(userTrackingTimer);
+        userTrackingTimer = window.setTimeout(() => {
+          this.engine.isUserTracking = false;
+        }, 2200);
+      };
+
+      window.addEventListener("touchmove", (e) => {
+        if (e.touches.length > 0) onUserPointer(e.touches[0].clientX, e.touches[0].clientY);
+      });
+      window.addEventListener("mousemove", (e) => {
+        onUserPointer(e.clientX, e.clientY);
       });
     }
 

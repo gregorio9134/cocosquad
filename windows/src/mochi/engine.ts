@@ -205,6 +205,13 @@ export class BotEngine {
     this.cocoSquadRole = role;
   }
 
+  /** When true, Mochi tracks user touch/mouse. When false, autonomous idle gaze & micro-tilts engage. */
+  isUserTracking = false;
+  private idleLookTarget = { x: 0, y: 0 };
+  private idleLookNextTime = 0;
+  private idleMicroTilt = 0;
+  private idleTiltNextTime = 0;
+
   // Animated state (BotEngine `s`)
   yaw = 0; pitch = 0; roll = 0; tilt = 0; open = 1;
   sx = 1; sy = 1; oy = 0; ox = 0;
@@ -606,6 +613,19 @@ export class BotEngine {
     if (this.state === "sleeping") { ty = 0; tp = -0.14; }
     if (this.state === "dizzy") { ty = Math.sin(t * 9) * 0.25; }
 
+    // Autonomous gaze shift during idle when not actively tracking user touch
+    if (this.state === "idle" && !this.isUserTracking && !this.cfg.look && !this.cfg.scans) {
+      if (n > this.idleLookNextTime) {
+        this.idleLookTarget = {
+          x: -0.55 + Math.random() * 1.1,
+          y: -0.3 + Math.random() * 0.6,
+        };
+        this.idleLookNextTime = n + 1.8 + Math.random() * 2.5;
+      }
+      ty = this.idleLookTarget.x * 0.62;
+      tp = this.idleLookTarget.y * 0.5;
+    }
+
     // Mini bots never follow the mouse — they wander.
     if (this.isMini && !this.cfg.look && !this.cfg.scans && this.state !== "sleeping" && this.state !== "dizzy") {
       if (n > this.miniLookNextTime) {
@@ -621,14 +641,27 @@ export class BotEngine {
 
     this.tgYaw = ty;
     this.tgPitch = tp;
-    this.tgTilt = this.cfg.tilt;
+
+    // Micro-tilts during idle
+    let targetTilt = this.cfg.tilt;
+    if (this.state === "idle") {
+      if (n > this.idleTiltNextTime) {
+        // Subtle tilt: e.g. -0.09 to +0.09 rad, with 30% chance of returning to 0 (head straight)
+        this.idleMicroTilt = Math.random() < 0.3 ? 0 : (Math.random() - 0.5) * 0.18;
+        this.idleTiltNextTime = n + 2.2 + Math.random() * 2.8;
+      }
+      targetTilt += this.idleMicroTilt + Math.sin(t * 0.95) * 0.03;
+    }
+    this.tgTilt = targetTilt;
 
     if (n > this.waveStart && n < this.waveUntil) {
       const wt = n - this.waveStart;
       this.tgTilt = -0.06 + Math.sin(2 * Math.PI * 1.2 * wt) * 0.07;
     }
 
-    const bounce = this.cfg.bounces ? -Math.abs(Math.sin(t * 5.2)) * 0.07 : 0;
+    // Smooth bobbing in idle (gentle organic floating)
+    const idleBob = this.state === "idle" ? Math.sin(t * 2.2) * 0.12 : 0;
+    const bounce = this.cfg.bounces ? -Math.abs(Math.sin(t * 5.2)) * 0.07 : idleBob;
     const kGen = 1 - Math.pow(0.0008, dt);
     if (!this.locks.has("oy")) this.oy += (bounce - this.oy) * kGen;
 
