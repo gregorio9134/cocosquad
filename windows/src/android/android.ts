@@ -242,6 +242,13 @@ class AndroidApp {
     coco_azul: null,
   };
 
+  private taskCompletedUnread: Record<string, boolean> = {
+    coco_blanco: false,
+    coco_verde: false,
+    coco_rojo: false,
+    coco_azul: false,
+  };
+
   private todos: TodoItem[] = [];
   private notes: QuickNote[] = [];
 
@@ -504,7 +511,13 @@ class AndroidApp {
 
       // Render the mini Mochis in top squad selector with independent blinks, breathing & micro-actions
       for (const mini of this.miniMochis) {
-        if (now > mini.nextActionTime) {
+        const hasUnread = !!this.taskCompletedUnread[mini.member.id];
+        if (hasUnread) {
+          if (now > mini.nextActionTime) {
+            this.triggerUnreadCelebrationAction(mini.engine);
+            mini.nextActionTime = now + 1300;
+          }
+        } else if (now > mini.nextActionTime) {
           if (mini.engine.state === "idle") {
             this.triggerPlayfulAction(mini.engine, true);
           }
@@ -613,6 +626,56 @@ class AndroidApp {
     }
   }
 
+  private triggerUnreadCelebrationAction(engine: BotEngine) {
+    const action = Math.floor(Math.random() * 3);
+    const t = performance.now() / 1000;
+    engine.eyeOverride = "happy";
+    engine.eyeOverrideUntil = t + 1.2;
+
+    switch (action) {
+      case 0:
+        // 1. Saludo animado continuo (Wave / Hands)
+        engine.waveStart = t;
+        engine.waveUntil = t + 1.1;
+        engine.anim("hands", [[1, 180, Ease.out], [1, 750, Ease.lin], [0, 180, Ease.inOut]]);
+        engine.anim("oy", [[-0.22, 160, Ease.out], [0, 180, Ease.back]]);
+        break;
+      case 1:
+        // 2. Rebote alegre (Bounce)
+        engine.anim("oy", [
+          [-0.30, 140, Ease.out],
+          [0.08, 140, Ease.inOut],
+          [-0.14, 110, Ease.out],
+          [0, 130, Ease.back],
+        ]);
+        engine.anim("sy", [
+          [1.28, 140, Ease.out],
+          [0.82, 140, Ease.inOut],
+          [1.12, 110, Ease.out],
+          [1, 130, Ease.back],
+        ]);
+        engine.anim("sx", [
+          [0.80, 140, Ease.out],
+          [1.18, 140, Ease.inOut],
+          [0.92, 110, Ease.out],
+          [1, 130, Ease.back],
+        ]);
+        break;
+      case 2:
+      default:
+        // 3. Guiño alegre y giro / inclinación
+        engine.triggerEmote("wink", 1.0);
+        const side = Math.random() < 0.5 ? 1 : -1;
+        engine.anim("tilt", [
+          [0.26 * side, 160, Ease.out],
+          [0.26 * side, 600, Ease.lin],
+          [0, 180, Ease.inOut],
+        ]);
+        engine.anim("sy", [[1.14, 140, Ease.out], [1, 160, Ease.back]]);
+        break;
+    }
+  }
+
   private renderTopSquadChips() {
     const bar = document.getElementById("top-squad-chips");
     if (!bar) return;
@@ -628,10 +691,15 @@ class AndroidApp {
 
     available.forEach((m, idx) => {
       const isThinking = !!this.thinkingByAgent[m.id];
+      const hasUnread = !isThinking && !!this.taskCompletedUnread[m.id];
       const btn = document.createElement("button");
-      btn.className = `squad-mochi-chip ${isThinking ? "thinking" : ""}`;
+      btn.className = `squad-mochi-chip ${isThinking ? "thinking" : ""} ${hasUnread ? "has-unread" : ""}`;
       btn.style.setProperty("--chip-accent", m.color);
-      btn.title = isThinking ? `${m.name} está procesando con IA...` : `Cambiar a ${m.name} (${m.role})`;
+      btn.title = isThinking
+        ? `${m.name} está procesando con IA...`
+        : hasUnread
+        ? `¡${m.name} completó el análisis! Toca para ver la respuesta`
+        : `Cambiar a ${m.name} (${m.role})`;
       btn.setAttribute("aria-label", m.name);
 
       const canvas = document.createElement("canvas");
@@ -643,7 +711,13 @@ class AndroidApp {
 
       btn.appendChild(canvas);
 
-      if (isThinking) {
+      if (hasUnread) {
+        const unreadBadge = document.createElement("span");
+        unreadBadge.className = "mini-mochi-unread-badge";
+        unreadBadge.style.backgroundColor = m.color;
+        unreadBadge.style.boxShadow = `0 0 10px ${m.glow}`;
+        btn.appendChild(unreadBadge);
+      } else if (isThinking) {
         const pulseBadge = document.createElement("span");
         pulseBadge.className = "mini-mochi-thinking-badge";
         pulseBadge.style.backgroundColor = m.color;
@@ -658,6 +732,10 @@ class AndroidApp {
       engine.setState(isThinking ? "thinking" : "idle");
       engine.setCocoSquadRole(m.squadRole);
       engine.isUserTracking = false;
+      if (hasUnread) {
+        engine.eyeOverride = "happy";
+        engine.eyeOverrideUntil = (performance.now() / 1000) + 3600;
+      }
 
       this.miniMochis.push({
         member: m,
@@ -667,7 +745,7 @@ class AndroidApp {
         w,
         h,
         dpr,
-        nextActionTime: performance.now() + 2000 + Math.random() * 2500 + idx * 1200,
+        nextActionTime: performance.now() + 600 + Math.random() * 800 + idx * 400,
       });
 
       btn.addEventListener("click", () => {
@@ -681,6 +759,8 @@ class AndroidApp {
 
   public selectSquadMember(m: SquadMember) {
     this.activeMember = m;
+    // Apagar aviso persistente y resetear flag al entrar al chat de este Coco
+    this.taskCompletedUnread[m.id] = false;
     this.renderTopSquadChips();
     if (this.isToolsMenuOpen) {
       this.renderToolsMenu();
@@ -995,7 +1075,8 @@ class AndroidApp {
 
     const doSend = () => {
       const text = input.value.trim();
-      if (!text || this.thinkingByAgent[this.activeMember.id]) return;
+      const attached = this.attachedFilesByAgent[this.activeMember.id];
+      if ((!text && !attached) || this.thinkingByAgent[this.activeMember.id]) return;
       input.value = "";
       this.sendChatMessage(text);
     };
@@ -1143,15 +1224,39 @@ class AndroidApp {
       this.chatHistories[targetMemberId] = [];
     }
 
+    const attached = this.attachedFilesByAgent[targetMemberId];
+    // Inyectar prompt por defecto si el usuario sube imagen/archivo sin escribir texto
+    let messageText = text.trim();
+    if (!messageText && attached) {
+      if (attached.isImage) {
+        messageText = "Analiza detalladamente esta imagen, describe qué ves y extrae cualquier texto o dato relevante.";
+      } else if (attached.isVideo) {
+        messageText = "Analiza detalladamente este video y describe su contenido y puntos clave.";
+      } else {
+        messageText = `Analiza detalladamente este documento (${attached.name}) y extrae sus puntos clave y resumen.`;
+      }
+    }
+
+    // Burbuja del usuario con miniatura o icono de archivo
+    let userBubbleContent = messageText;
+    if (attached) {
+      if (attached.isImage) {
+        userBubbleContent = `🖼️ **${attached.name}** (${attached.fileSizeStr})\n\n${messageText}`;
+      } else if (attached.isVideo) {
+        userBubbleContent = `🎬 **${attached.name}** (${attached.fileSizeStr})\n\n${messageText}`;
+      } else {
+        userBubbleContent = `📁 **${attached.name}** (${attached.fileSizeStr})\n\n${messageText}`;
+      }
+    }
+
     this.chatHistories[targetMemberId].push({
       id: Date.now(),
       role: "user",
-      content: text,
+      content: userBubbleContent,
     });
     this.saveStorage();
 
-    const attached = this.attachedFilesByAgent[targetMemberId];
-    // If there was an attached file sent with this message, clear it after sending
+    // Limpiar adjunto del input tras enviar
     this.attachedFilesByAgent[targetMemberId] = null;
     if (this.activeMember.id === targetMemberId) {
       this.renderAttachedFileChip();
@@ -1169,27 +1274,40 @@ class AndroidApp {
     }
 
     try {
+      const pureB64 = attached
+        ? (attached.base64.includes(",") ? attached.base64.split(",")[1] : attached.base64)
+        : "";
+      const mimeType = attached
+        ? (attached.isImage
+            ? (attached.name.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg")
+            : attached.isVideo
+            ? "video/mp4"
+            : attached.name.toLowerCase().endsWith(".pdf")
+            ? "application/pdf"
+            : "text/plain")
+        : "";
+
       const payload: Record<string, unknown> = {
-        message: text,
+        message: messageText,
         chat_id: 1,
         tenant_id: 1,
         coco_id: targetMemberId,
+        file: attached
+          ? {
+              name: attached.name,
+              data: pureB64,
+              base64: pureB64,
+              mime: mimeType,
+            }
+          : null,
+        attachment: attached ? pureB64 : undefined,
+        image: attached && attached.isImage ? pureB64 : undefined,
+        mime_type: attached ? mimeType : undefined,
         contexto: attached
           ? {
               kind: "file",
               name: attached.name,
-              base64: attached.base64,
-            }
-          : null,
-        file: attached
-          ? {
-              name: attached.name,
-              data: attached.base64,
-              mime: attached.name.endsWith(".pdf")
-                ? "application/pdf"
-                : attached.name.endsWith(".png") || attached.name.endsWith(".jpg")
-                ? "image/jpeg"
-                : "text/plain",
+              archivo_base64: pureB64,
             }
           : null,
         todos: this.todos,
@@ -1221,7 +1339,9 @@ class AndroidApp {
         this.engine.triggerEmote("happy");
         Sound.play("finish");
       } else {
-        Sound.play("blip");
+        // Notificación persistente viva para el Coco que terminó en background
+        this.taskCompletedUnread[targetMemberId] = true;
+        Sound.play("finish");
       }
     } catch (err: any) {
       this.chatHistories[targetMemberId].push({
@@ -1233,6 +1353,9 @@ class AndroidApp {
       if (this.activeMember.id === targetMemberId) {
         this.engine.setState("error");
         Sound.play("error");
+      } else {
+        this.taskCompletedUnread[targetMemberId] = true;
+        Sound.play("blip");
       }
     } finally {
       this.thinkingByAgent[targetMemberId] = false;
@@ -1520,7 +1643,7 @@ class AndroidApp {
     isImage: boolean,
     isVideo: boolean,
     base64: string,
-    dataUri: string
+    _dataUri?: string
   ) {
     const targetMemberId = targetMember.id;
 
@@ -1561,8 +1684,11 @@ class AndroidApp {
 
     // 3. Initiate analysis with Oracle staging backend
     try {
+      const pureB64 = base64.includes(",") ? base64.split(",")[1] : base64;
+      const mimeType = file.type || (isImage ? (file.name.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg") : isVideo ? "video/mp4" : "application/pdf");
+
       const promptText = isImage
-        ? `[Imagen adjunta: ${file.name}] Analizá detalladamente esta imagen/captura adjunta y explicame su contenido visual, elementos clave y conclusiones.`
+        ? "Analiza detalladamente esta imagen, describe qué ves y extrae cualquier texto o dato relevante."
         : isVideo
         ? `[Video adjunto: ${file.name}] Analizá detalladamente este video/grabación adjunta y explicame las escenas, elementos clave y conclusiones.`
         : `[Documento adjunto: ${file.name}] Analizá el documento adjunto y resumí sus puntos clave, estructura y conclusiones principales.`;
@@ -1572,21 +1698,22 @@ class AndroidApp {
         chat_id: 1,
         tenant_id: 1,
         coco_id: targetMemberId,
-        attachment: base64,
-        image: isImage ? (dataUri || base64) : undefined,
-        images: isImage ? [dataUri || base64] : undefined,
-        video: isVideo ? (dataUri || base64) : undefined,
+        attachment: pureB64,
+        image: isImage ? pureB64 : undefined,
+        images: isImage ? [pureB64] : undefined,
+        video: isVideo ? pureB64 : undefined,
+        mime_type: mimeType,
         file: {
           name: file.name,
-          data: base64,
-          base64: base64,
-          mime: file.type || (isImage ? "image/jpeg" : isVideo ? "video/mp4" : "application/pdf"),
+          data: pureB64,
+          base64: pureB64,
+          mime: mimeType,
         },
         contexto: {
           kind: "file",
           name: file.name,
-          archivo_base64: base64,
-          base64: base64,
+          archivo_base64: pureB64,
+          base64: pureB64,
           path: file.name,
         },
         todos: this.todos,
@@ -1630,7 +1757,9 @@ class AndroidApp {
         this.engine.triggerEmote("happy");
         Sound.play("finish");
       } else {
-        Sound.play("blip");
+        // Notificación persistente viva para el Coco en segundo plano
+        this.taskCompletedUnread[targetMemberId] = true;
+        Sound.play("finish");
       }
     } catch (err: any) {
       const hist = this.chatHistories[targetMemberId] || [];
@@ -1643,6 +1772,9 @@ class AndroidApp {
         this.resetMochiToBase();
         this.engine.setState("error");
         Sound.play("error");
+      } else {
+        this.taskCompletedUnread[targetMemberId] = true;
+        Sound.play("blip");
       }
     } finally {
       this.thinkingByAgent[targetMemberId] = false;
