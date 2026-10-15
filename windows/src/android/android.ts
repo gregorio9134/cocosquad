@@ -346,7 +346,7 @@ class AndroidApp {
               </div>
 
               <div id="attached-chip-container" style="padding: 0 14px;"></div>
-              <input type="file" id="mobile-devour-input" style="display:none;" accept="*/*" />
+              <input type="file" id="mobile-devour-input" style="display:none;" accept="image/*,video/*,application/pdf,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx,.txt" />
 
               <div class="chat-input-bar">
                 <button class="btn-icon-round btn-tools-trigger" id="btn-tools-plus" title="Herramientas y atajos">+</button>
@@ -376,8 +376,8 @@ class AndroidApp {
                   </button>
                 </div>
 
-                <input type="file" id="input-camera" accept="image/*" capture="environment" style="display:none;" />
-                <input type="file" id="input-gallery" accept="*/*" style="display:none;" />
+                <input type="file" id="input-camera" accept="image/*,.heic,.heif" capture="environment" style="display:none;" />
+                <input type="file" id="input-gallery" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx,.txt" style="display:none;" />
               </div>
             </div>
           </div>
@@ -456,8 +456,8 @@ class AndroidApp {
             </button>
           </div>
 
-          <input type="file" id="devour-sheet-input-camera" accept="image/*,video/*" capture="environment" style="display:none;" />
-          <input type="file" id="devour-sheet-input-gallery" accept="*/*" style="display:none;" />
+          <input type="file" id="devour-sheet-input-camera" accept="image/*,video/*,.heic,.heif" capture="environment" style="display:none;" />
+          <input type="file" id="devour-sheet-input-gallery" accept="image/*,video/*,application/pdf,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx,.txt" style="display:none;" />
         </div>
       </div>
     `;
@@ -1249,7 +1249,9 @@ class AndroidApp {
     let messageText = text.trim();
     if (!messageText && attached) {
       if (attached.isImage) {
-        messageText = "Analiza detalladamente esta imagen, describe qué ves y extrae cualquier texto o dato relevante.";
+        messageText = targetMemberId === "coco_verde"
+          ? "Analiza detalladamente esta imagen de cliente (receta médica, orden de sesiones, derivación clínica o comprobante de pago). Si es una receta u orden médica, extrae diagnóstico, cantidad y tipo de sesiones prescritas, datos del paciente y profesional. Si es un comprobante de pago o transferencia, extrae monto, fecha, emisor y código de operación. Si la foto está borrosa o falta nitidez para leer algún dato crítico, indícalo amablemente explicando con precisión qué parte no se distingue."
+          : "Analiza detalladamente esta imagen, describe qué ves y extrae cualquier texto o dato relevante.";
       } else if (attached.isVideo) {
         messageText = "Analiza detalladamente este video y describe su contenido y puntos clave.";
       } else {
@@ -1297,12 +1299,17 @@ class AndroidApp {
       const pureB64 = attached
         ? (attached.base64.includes(",") ? attached.base64.split(",")[1] : attached.base64)
         : "";
+      const lowerName = (attached ? attached.name : "").toLowerCase();
       const mimeType = attached
         ? (attached.isImage
-            ? (attached.name.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg")
+            ? (lowerName.endsWith(".png") ? "image/png"
+               : lowerName.endsWith(".webp") ? "image/webp"
+               : lowerName.endsWith(".heic") ? "image/heic"
+               : lowerName.endsWith(".heif") ? "image/heif"
+               : "image/jpeg")
             : attached.isVideo
             ? "video/mp4"
-            : attached.name.toLowerCase().endsWith(".pdf")
+            : lowerName.endsWith(".pdf")
             ? "application/pdf"
             : "text/plain")
         : "";
@@ -1445,7 +1452,7 @@ class AndroidApp {
   private async processFileToDevour(file: File) {
     const targetMember = this.activeMember;
     try {
-      const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|svg|bmp)$/i.test(file.name);
+      const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|heic|heif|gif|svg|bmp)$/i.test(file.name);
       const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv|3gp|avi)$/i.test(file.name);
       const fileExt = (file.name.split(".").pop() || "FILE").toUpperCase().slice(0, 4);
       const fileSizeStr =
@@ -1705,10 +1712,21 @@ class AndroidApp {
     // 3. Initiate analysis with Oracle staging backend
     try {
       const pureB64 = base64.includes(",") ? base64.split(",")[1] : base64;
-      const mimeType = file.type || (isImage ? (file.name.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg") : isVideo ? "video/mp4" : "application/pdf");
+      const lowerName = file.name.toLowerCase();
+      const mimeType = file.type || (
+        isImage
+          ? (lowerName.endsWith(".png") ? "image/png"
+             : lowerName.endsWith(".webp") ? "image/webp"
+             : lowerName.endsWith(".heic") ? "image/heic"
+             : lowerName.endsWith(".heif") ? "image/heif"
+             : "image/jpeg")
+          : isVideo ? "video/mp4" : "application/pdf"
+      );
 
       const promptText = isImage
-        ? "Analiza detalladamente esta imagen, describe qué ves y extrae cualquier texto o dato relevante."
+        ? (targetMemberId === "coco_verde"
+            ? "Analiza detalladamente esta imagen de cliente (receta médica, orden de sesiones, derivación clínica o comprobante de pago). Si es una receta u orden médica, extrae diagnóstico, cantidad y tipo de sesiones prescritas, datos del paciente y profesional. Si es un comprobante de pago o transferencia, extrae monto, fecha, emisor y código de operación. Si la foto está borrosa o falta nitidez para leer algún dato crítico, indícalo amablemente explicando con precisión qué parte no se distingue."
+            : "Analiza detalladamente esta imagen, describe qué ves y extrae cualquier texto o dato relevante.")
         : isVideo
         ? `[Video adjunto: ${file.name}] Analizá detalladamente este video/grabación adjunta y explicame las escenas, elementos clave y conclusiones.`
         : `[Documento adjunto: ${file.name}] Analizá el documento adjunto y resumí sus puntos clave, estructura y conclusiones principales.`;
