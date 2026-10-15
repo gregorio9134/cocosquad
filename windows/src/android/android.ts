@@ -7,6 +7,7 @@ import { Ease } from "../core/anim";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage, type TodoItem, type QuickNote } from "../core/state";
 import { marked } from "marked";
+import { initSwipeController, type SwipeController } from "./swipeController";
 
 marked.setOptions({
   gfm: true,
@@ -213,6 +214,7 @@ class AndroidApp {
   private isDevourSheetOpen: boolean = false;
   private nextIdleActionTime: number = performance.now() + 3000;
   private miniMochis: MiniMochiChip[] = [];
+  private swipeController: SwipeController | null = null;
 
   private chatHistories: Record<string, ChatMessage[]> = {
     coco_blanco: [],
@@ -1214,6 +1216,24 @@ class AndroidApp {
         this.renderTasks();
       }
     });
+
+    // Horizontal Swipe Navigation between Cocos (Coco -> Green -> Red -> Blu -> Coco)
+    if (this.swipeController) {
+      this.swipeController.destroy();
+    }
+    const swipeTarget = document.getElementById("page-chat") || document.querySelector(".main-view-container") || document.body;
+    this.swipeController = initSwipeController({
+      container: swipeTarget,
+      squadIds: SQUAD.map((m) => m.id),
+      getCurrentAgentId: () => this.activeMember.id,
+      onSwitchAgent: (agentId) => {
+        this.switchAgent(agentId);
+      },
+      canSwipe: () => this.activeTab === "chat" && !this.isToolsMenuOpen && !this.isDevourSheetOpen,
+      minDistance: 60,
+      directionRatio: 1.5,
+      enableMouseFallback: true,
+    });
   }
 
   private async sendChatMessage(text: string) {
@@ -1840,12 +1860,17 @@ class AndroidApp {
     const file = new File([blob], fileName, { type: "application/pdf" });
     void this.processFileToDevour(file);
   }
+
+  public getSwipeController(): SwipeController | null {
+    return this.swipeController;
+  }
 }
 
 function initApp() {
   const app = new AndroidApp();
   (window as any).__cocoApp = app;
   app.render();
+  (window as any).__swipeController = app.getSwipeController();
 
   if (window.location.search.includes("sheet=1") || window.location.search.includes("devour_sheet=1")) {
     window.history.replaceState(null, "", window.location.pathname);
@@ -1877,6 +1902,72 @@ function initApp() {
     setTimeout(() => {
       app.switchAgent("coco_blanco");
     }, 300);
+  } else if (window.location.search.includes("test_swipe=1")) {
+    window.history.replaceState(null, "", window.location.pathname);
+    setTimeout(() => {
+      const target = document.getElementById("page-chat") || document.body;
+      const startTouch = new Touch({
+        identifier: 1,
+        target: target,
+        clientX: 300,
+        clientY: 300,
+      });
+      const endTouch = new Touch({
+        identifier: 1,
+        target: target,
+        clientX: 180, // dx = -120px (swipe left -> next agent)
+        clientY: 305,
+      });
+
+      target.dispatchEvent(new TouchEvent("touchstart", {
+        touches: [startTouch],
+        targetTouches: [startTouch],
+        changedTouches: [startTouch],
+        bubbles: true,
+      }));
+
+      setTimeout(() => {
+        target.dispatchEvent(new TouchEvent("touchend", {
+          touches: [],
+          targetTouches: [],
+          changedTouches: [endTouch],
+          bubbles: true,
+        }));
+      }, 80);
+    }, 600);
+  } else if (window.location.search.includes("test_swipe_prev=1")) {
+    window.history.replaceState(null, "", window.location.pathname);
+    setTimeout(() => {
+      const target = document.getElementById("page-chat") || document.body;
+      const startTouch = new Touch({
+        identifier: 1,
+        target: target,
+        clientX: 150,
+        clientY: 300,
+      });
+      const endTouch = new Touch({
+        identifier: 1,
+        target: target,
+        clientX: 280, // dx = +130px (swipe right -> prev agent)
+        clientY: 302,
+      });
+
+      target.dispatchEvent(new TouchEvent("touchstart", {
+        touches: [startTouch],
+        targetTouches: [startTouch],
+        changedTouches: [startTouch],
+        bubbles: true,
+      }));
+
+      setTimeout(() => {
+        target.dispatchEvent(new TouchEvent("touchend", {
+          touches: [],
+          targetTouches: [],
+          changedTouches: [endTouch],
+          bubbles: true,
+        }));
+      }, 80);
+    }, 600);
   }
 }
 
