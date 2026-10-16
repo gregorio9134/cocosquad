@@ -8,7 +8,7 @@ let activeNetworkRequests = 0;
 let pendingBackgroundTasksCount = 0;
 
 const NORMAL_FAVICON = "/icons/32x32.png";
-const ACTIVE_FAVICON_SVG = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="%23090a0f"/><circle cx="16" cy="16" r="8" fill="%2300E676"><animate attributeName="r" values="6;9;6" dur="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;1;0.6" dur="1s" repeatCount="indefinite"/></circle><circle cx="16" cy="16" r="4" fill="%23FFFFFF"/></svg>`;
+const ACTIVE_FAVICON_SVG = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="%230d0d12"/><circle cx="16" cy="16" r="8" fill="%2300E676"><animate attributeName="r" values="6;9;6" dur="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;1;0.6" dur="1s" repeatCount="indefinite"/></circle><circle cx="16" cy="16" r="4" fill="%23FFFFFF"/></svg>`;
 
 /**
  * Register callback to switch agents when a notification is clicked

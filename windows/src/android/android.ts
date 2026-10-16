@@ -353,8 +353,6 @@ class AndroidApp {
             </div>
           </div>
 
-          <div class="coco-brand-title">Coco Squad</div>
-
           <!-- 4 Compact Squad Chips on the Right -->
           <div class="top-bar-right" id="top-squad-chips"></div>
         </header>
@@ -2242,6 +2240,20 @@ function initApp() {
   (window as any).__cocoApp = app;
   app.render();
   (window as any).__swipeController = app.getSwipeController();
+
+  // Smooth dismiss of the native splash screen
+  const splashEl = document.getElementById("splash-screen");
+  if (splashEl) {
+    if (window.location.search.includes("splash_preview=1")) {
+      return;
+    }
+    setTimeout(() => {
+      splashEl.classList.add("fade-out");
+      setTimeout(() => {
+        splashEl.remove();
+      }, 420);
+    }, 500);
+  }
 
   if (window.location.search.includes("test_pdf_large=1")) {
     setTimeout(() => {
