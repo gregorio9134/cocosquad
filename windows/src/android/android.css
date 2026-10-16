@@ -538,10 +538,10 @@ html, body {
 }
 
 .chat-bubble-row.user .chat-bubble {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  background: linear-gradient(135deg, #0084ff, #0066cc);
   color: #ffffff;
   border-bottom-right-radius: 4px;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 132, 255, 0.3);
 }
 
 .chat-bubble-row.assistant .chat-bubble {
@@ -1547,30 +1547,45 @@ html, body {
   width: 100%;
 }
 .green-msg-row.user {
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 .green-msg-row.assistant,
 .green-msg-row.human_agent {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .green-msg-bubble {
-  max-width: 84%;
-  padding: 12px 15px;
-  border-radius: 18px;
+  width: fit-content;
+  max-width: 80%;
+  padding: 10px 14px;
   position: relative;
   word-break: break-word;
   line-height: 1.45;
   font-size: 13.5px;
 }
 
-/* User / Client message */
+/* User / Client message: Vibrant electric blue gradient matching Coco, Blu, Red */
 .green-msg-row.user .green-msg-bubble {
-  background: rgba(30, 34, 45, 0.85);
-  color: #f8fafc;
-  border-bottom-left-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, #0084ff, #0066cc);
+  color: #ffffff;
+  align-self: flex-end;
+  margin-left: auto;
+  border-radius: 16px 16px 4px 16px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 132, 255, 0.3);
+}
+
+.green-msg-row.user .green-msg-bubble .green-msg-text,
+.green-msg-row.user .green-msg-bubble .green-msg-text p,
+.green-msg-row.user .green-msg-bubble .green-msg-text strong {
+  color: #ffffff;
+}
+
+.green-msg-row.user .green-msg-bubble .green-msg-time {
+  color: rgba(255, 255, 255, 0.7);
+  text-align: right;
+  font-size: 9.5px;
+  margin-top: 3px;
 }
 
 /* Assistant / Green AI message: Unified Dark Glassmorphism + 3px Green Accent Border (Exact match with Blu & Red) */
@@ -1579,8 +1594,9 @@ html, body {
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.07));
   border-left: 3px solid #00e676;
   color: var(--text-main, #f8fafc);
-  border-bottom-right-radius: 4px;
+  border-radius: 16px 16px 16px 4px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  margin-right: auto;
 }
 
 /* Human Operator Intervened message */
@@ -1589,8 +1605,9 @@ html, body {
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.07));
   border-left: 3px solid #fbbf24;
   color: var(--text-main, #f8fafc);
-  border-bottom-right-radius: 4px;
+  border-radius: 16px 16px 16px 4px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  margin-right: auto;
 }
 
 .green-msg-badge {

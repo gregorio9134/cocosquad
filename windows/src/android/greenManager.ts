@@ -495,12 +495,6 @@ export class GreenManager {
             <span class="dot"></span> Asesor Humano (Intervención)
           </div>
         `;
-      } else {
-        headerBadge = `
-          <div class="green-msg-badge client">
-            <span class="dot"></span> ${currentContact.name} (Cliente)
-          </div>
-        `;
       }
 
       const parsedHtml = marked.parse(msg.content, { async: false }) as string;
