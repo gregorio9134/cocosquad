@@ -489,6 +489,10 @@ class AndroidApp {
           <input type="file" id="devour-sheet-input-camera" accept="image/*,video/*,.heic,.heif" capture="environment" style="display:none;" />
           <input type="file" id="devour-sheet-input-gallery" accept="image/*,video/*,application/pdf,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx,.txt" style="display:none;" />
         </div>
+
+        <!-- 5. Green WhatsApp Contacts Bottom Sheet (Modal vertical) -->
+        <div class="green-sheet-overlay hidden" id="green-sheet-overlay"></div>
+        <div class="green-sheet-card hidden" id="green-sheet-card"></div>
       </div>
     `;
 
@@ -520,6 +524,9 @@ class AndroidApp {
       if (unreadAgent && Object.prototype.hasOwnProperty.call(this.taskCompletedUnread, unreadAgent)) {
         this.taskCompletedUnread[unreadAgent] = true;
         this.renderTopSquadChips();
+      }
+      if (urlParams.get("sheet") === "green") {
+        setTimeout(() => this.greenManager.openSheet(), 150);
       }
     } catch {
       // ignore

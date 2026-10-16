@@ -195,8 +195,115 @@ export class GreenManager {
     }
   }
 
+  private isSheetOpen: boolean = false;
+
+  public openSheet() {
+    this.isSheetOpen = true;
+    const overlay = document.getElementById("green-sheet-overlay");
+    const card = document.getElementById("green-sheet-card");
+    if (overlay && card) {
+      this.renderSheet();
+      overlay.classList.remove("hidden");
+      card.classList.remove("hidden");
+      triggerHapticFeedback(12);
+      Sound.play("toggle");
+    }
+  }
+
+  public isContactsSheetOpen(): boolean {
+    return this.isSheetOpen;
+  }
+
+  public closeSheet() {
+    this.isSheetOpen = false;
+    const overlay = document.getElementById("green-sheet-overlay");
+    const card = document.getElementById("green-sheet-card");
+    if (overlay && card) {
+      overlay.classList.add("hidden");
+      card.classList.add("hidden");
+    }
+  }
+
+  public renderSheet() {
+    const card = document.getElementById("green-sheet-card");
+    const overlay = document.getElementById("green-sheet-overlay");
+    if (!card) return;
+
+    const currentContact = this.getActiveContact();
+
+    card.innerHTML = `
+      <div class="green-sheet-handle"></div>
+      <div class="green-sheet-header">
+        <div class="green-sheet-title-col">
+          <div class="green-sheet-title-row">
+            <span class="green-sheet-title">Chats de Clientes</span>
+            <span class="green-sheet-live-badge">🟢 WhatsApp Live</span>
+          </div>
+          <span class="green-sheet-subtitle">Selecciona una conversación para gestionar turnos o intervenir:</span>
+        </div>
+        <button class="green-sheet-close" id="btn-close-contacts-sheet" title="Cerrar">✕</button>
+      </div>
+
+      <div class="green-sheet-list" id="green-sheet-list">
+        ${this.contacts
+          .map((c) => {
+            const isActive = c.id === currentContact.id;
+            const lastMsg = c.messages.length > 0 ? c.messages[c.messages.length - 1].content : "";
+            const cleanSnippet = lastMsg.replace(/[#*`_]/g, "").trim().slice(0, 48) + (lastMsg.length > 48 ? "..." : "");
+            const statusDot = c.isBotActive ? "🟢 Bot Activo" : "✋ Intervenido";
+            return `
+              <button class="green-sheet-item ${isActive ? "active" : ""}" data-contact-id="${c.id}">
+                <div class="green-sheet-item-avatar" style="background:${c.avatarColor};">
+                  ${c.name.charAt(0)}
+                </div>
+                <div class="green-sheet-item-main">
+                  <div class="green-sheet-item-top">
+                    <span class="green-sheet-item-name">${c.name}</span>
+                    <span class="green-sheet-item-time">${c.lastTime}</span>
+                  </div>
+                  <div class="green-sheet-item-mid">
+                    <span class="green-sheet-item-snippet">${cleanSnippet}</span>
+                    <span class="green-sheet-item-badge ${c.isBotActive ? "bot" : "human"}">${statusDot}</span>
+                  </div>
+                  <div class="green-sheet-item-bottom">
+                    <span class="green-sheet-item-phone">${c.phone}</span>
+                    <span class="green-sheet-item-tag">${c.tag}</span>
+                  </div>
+                </div>
+              </button>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
+
+    // Bind close button
+    const closeBtn = card.querySelector("#btn-close-contacts-sheet");
+    closeBtn?.addEventListener("click", () => this.closeSheet());
+
+    // Bind overlay click
+    if (overlay) {
+      overlay.onclick = () => this.closeSheet();
+    }
+
+    // Bind contact item clicks
+    const items = card.querySelectorAll<HTMLButtonElement>(".green-sheet-item");
+    items.forEach((item) => {
+      item.addEventListener("click", () => {
+        const id = item.getAttribute("data-contact-id");
+        if (id) {
+          this.selectContact(id);
+          this.closeSheet();
+        }
+      });
+    });
+  }
+
   public selectContact(contactId: string) {
-    if (this.activeContactId === contactId) return;
+    if (this.activeContactId === contactId) {
+      this.closeSheet();
+      return;
+    }
     this.activeContactId = contactId;
     const contact = this.getActiveContact();
     contact.unreadCount = 0;
@@ -204,6 +311,7 @@ export class GreenManager {
     triggerHapticFeedback(12);
     Sound.play("blip");
     this.render();
+    this.closeSheet();
     this.scrollToBottom();
     if (this.onContactChangeListener) {
       this.onContactChangeListener(contact);
@@ -264,6 +372,7 @@ export class GreenManager {
   }
 
   public unmount() {
+    this.closeSheet();
     if (this.containerEl) {
       this.containerEl.innerHTML = "";
       this.containerEl.style.display = "none";
@@ -284,64 +393,33 @@ export class GreenManager {
 
     this.containerEl.innerHTML = `
       <div class="green-inbox-wrapper">
-        <!-- 1. Contact Threads Horizontal Carousel -->
-        <div class="green-threads-bar">
-          <div class="green-threads-label">
-            <span class="green-whatsapp-badge">🟢 WhatsApp Live</span>
-            <span class="green-threads-hint">Clientes activos:</span>
-          </div>
-          <div class="green-threads-scroll" id="green-threads-scroll">
-            ${this.contacts
-              .map((c) => {
-                const isActive = c.id === currentContact.id;
-                const statusDot = c.isBotActive
-                  ? `<span class="green-contact-bot-dot bot" title="Bot Activo">🤖</span>`
-                  : `<span class="green-contact-bot-dot human" title="Pausado e Intervenido">✋</span>`;
-                return `
-                  <button class="green-contact-pill ${isActive ? "active" : ""}" data-contact-id="${c.id}">
-                    <div class="green-contact-avatar" style="background:${c.avatarColor};">
-                      ${c.name.charAt(0)}
-                    </div>
-                    <div class="green-contact-meta">
-                      <div class="green-contact-name-row">
-                        <span class="green-contact-name">${c.name}</span>
-                        ${statusDot}
-                      </div>
-                      <span class="green-contact-tag">${c.tag}</span>
-                    </div>
-                  </button>
-                `;
-              })
-              .join("")}
-          </div>
-        </div>
-
-        <!-- 2. Takeover & Live Status Header Strip -->
-        <div class="green-takeover-strip">
-          <div class="green-active-contact-info">
-            <span class="green-phone-badge">${currentContact.phone}</span>
-            <span class="green-mode-indicator ${isBotActive ? "bot" : "human"}">
-              ${isBotActive ? "● Bot respondiendo automáticamente" : "● Modo manual: operador en control"}
-            </span>
-          </div>
-
-          <button class="green-takeover-toggle-btn ${isBotActive ? "bot-mode" : "human-mode"}" id="btn-green-takeover">
-            ${
-              isBotActive
-                ? `<span class="btn-icon">🤖</span> <span class="btn-text">Modo Bot Activo</span>`
-                : `<span class="btn-icon">✋</span> <span class="btn-text">Pausar e Intervenir</span>`
-            }
+        <!-- 1. Compact Header Strip: Selector Pill + Intervention Button -->
+        <div class="green-top-strip">
+          <button class="green-contact-selector-btn" id="btn-open-contacts-sheet" title="Tocar para cambiar de contacto">
+            <span class="contact-pill-status-dot">${currentContact.isBotActive ? "🟢" : "✋"}</span>
+            <span class="contact-pill-name">${currentContact.name}</span>
+            <span class="contact-pill-chevron">▾</span>
           </button>
+
+          <div class="green-strip-actions">
+            <button class="green-takeover-toggle-btn ${isBotActive ? "bot-mode" : "human-mode"}" id="btn-green-takeover" title="${isBotActive ? 'Pausar bot e intervenir manualmente' : 'Reactivar respuestas automáticas'}">
+              ${
+                isBotActive
+                  ? `<span class="btn-icon">🤖</span> <span class="btn-text">Bot Activo</span>`
+                  : `<span class="btn-icon">✋</span> <span class="btn-text">Pausar e Intervenir</span>`
+              }
+            </button>
+          </div>
         </div>
 
-        <!-- 3. Takeover Banner if Paused -->
+        <!-- 2. Takeover Alert Banner if Paused -->
         ${
           !isBotActive
             ? `
           <div class="green-takeover-alert-banner">
             <span class="alert-icon">✋</span>
             <div class="alert-text">
-              <strong>Intervención Humana Activa:</strong> Las respuestas automáticas de Green están pausadas para ${currentContact.name}. El campo de texto inferior envía mensajes manuales directos.
+              <strong>Intervención Humana:</strong> Respuestas automáticas pausadas para ${currentContact.name}. El campo de texto inferior envía mensajes manuales directos.
             </div>
             <button class="green-resume-bot-quick-btn" id="btn-quick-resume-bot">Reactivar Bot</button>
           </div>
@@ -349,19 +427,18 @@ export class GreenManager {
             : ""
         }
 
-        <!-- 4. Client Conversation Message Thread -->
+        <!-- 3. Client Conversation Message Thread -->
         <div class="green-messages-container" id="green-messages-container"></div>
       </div>
     `;
 
-    // Bind contact pill clicks
-    const pills = this.containerEl.querySelectorAll<HTMLButtonElement>(".green-contact-pill");
-    pills.forEach((p) => {
-      p.addEventListener("click", () => {
-        const id = p.getAttribute("data-contact-id");
-        if (id) this.selectContact(id);
+    // Bind opening contacts sheet
+    const selectorBtn = this.containerEl.querySelector<HTMLButtonElement>("#btn-open-contacts-sheet");
+    if (selectorBtn) {
+      selectorBtn.addEventListener("click", () => {
+        this.openSheet();
       });
-    });
+    }
 
     // Bind Takeover Switch toggle
     const toggleBtn = this.containerEl.querySelector<HTMLButtonElement>("#btn-green-takeover");
