@@ -24,6 +24,7 @@ interface SquadMember {
   bgTint: string;
   squadRole: "white" | "green" | "red" | "blue";
   greeting: string;
+  sendTextColor?: string;
 }
 
 interface QuickToolItem {
@@ -147,40 +148,44 @@ const SQUAD: SquadMember[] = [
     name: "Coco",
     role: "General",
     color: "#FFFFFF",
-    glow: "rgba(255, 255, 255, 0.25)",
-    bgTint: "rgba(255, 255, 255, 0.04)",
+    glow: "rgba(255, 255, 255, 0.40)",
+    bgTint: "rgba(255, 255, 255, 0.05)",
     squadRole: "white",
     greeting: "¡Hola Gregorio! Soy Coco, tu asistente general de productividad y chat.",
+    sendTextColor: "#000000",
   },
   {
     id: "coco_verde",
     name: "Green",
     role: "WhatsApp",
-    color: "#10B981",
-    glow: "rgba(16, 185, 129, 0.35)",
-    bgTint: "rgba(16, 185, 129, 0.06)",
+    color: "#00E676",
+    glow: "rgba(0, 230, 118, 0.45)",
+    bgTint: "rgba(0, 230, 118, 0.08)",
     squadRole: "green",
     greeting: "¡Qué tal! Green a cargo de comunicaciones y WhatsApp.",
+    sendTextColor: "#05160c",
   },
   {
     id: "coco_rojo",
     name: "Red",
     role: "Investigador",
-    color: "#EF4444",
-    glow: "rgba(239, 68, 68, 0.35)",
-    bgTint: "rgba(239, 68, 68, 0.06)",
+    color: "#FF2D55",
+    glow: "rgba(255, 45, 85, 0.45)",
+    bgTint: "rgba(255, 45, 85, 0.08)",
     squadRole: "red",
     greeting: "Red listo. Investigaciones profundas, síntesis y análisis técnico.",
+    sendTextColor: "#ffffff",
   },
   {
     id: "coco_azul",
     name: "Blu",
     role: "Analista",
-    color: "#3B82F6",
-    glow: "rgba(59, 130, 246, 0.35)",
-    bgTint: "rgba(59, 130, 246, 0.06)",
+    color: "#0084FF",
+    glow: "rgba(0, 132, 255, 0.45)",
+    bgTint: "rgba(0, 132, 255, 0.08)",
     squadRole: "blue",
     greeting: "Blu aquí. Análisis de métricas, reportes mensuales y hábitos.",
+    sendTextColor: "#ffffff",
   },
 ];
 
@@ -355,7 +360,7 @@ class AndroidApp {
               <div class="chat-history" id="chat-history" style="display: none;"></div>
 
               <!-- Green Inbox & Live Takeover (Dedicated modular view for WhatsApp & Customer chats) -->
-              <div id="green-inbox-container" style="display: none; flex: 1; flex-direction: column; min-height: 0; width: 100%;"></div>
+              <div id="green-inbox-container" style="display: none; flex: 1; flex-direction: column; height: 100%; min-height: 0; width: 100%; overflow: hidden;"></div>
 
               <!-- Floating Tools Popup Card (+) -->
               <div class="tools-popup-overlay hidden" id="tools-popup-overlay"></div>
@@ -486,6 +491,12 @@ class AndroidApp {
         </div>
       </div>
     `;
+
+    // Set initial CSS variables
+    document.documentElement.style.setProperty("--coco-accent", this.activeMember.color);
+    document.documentElement.style.setProperty("--coco-glow", this.activeMember.glow);
+    document.documentElement.style.setProperty("--coco-bg-tint", this.activeMember.bgTint);
+    document.documentElement.style.setProperty("--coco-send-color", this.activeMember.sendTextColor || "#000000");
 
     this.initMascotCanvas();
     this.renderTopSquadChips();
@@ -815,6 +826,8 @@ class AndroidApp {
     // Update CSS variables
     document.documentElement.style.setProperty("--coco-accent", m.color);
     document.documentElement.style.setProperty("--coco-glow", m.glow);
+    document.documentElement.style.setProperty("--coco-bg-tint", m.bgTint);
+    document.documentElement.style.setProperty("--coco-send-color", m.sendTextColor || "#000000");
 
     // Update Header info
     const nameEl = document.getElementById("header-agent-name");
@@ -846,6 +859,7 @@ class AndroidApp {
       if (chatHistory) chatHistory.style.display = "none";
       if (greenContainer) {
         this.greenManager.mount(greenContainer);
+        this.greenManager.scrollToBottom();
       }
       if (chatInput) {
         const contact = this.greenManager.getActiveContact();

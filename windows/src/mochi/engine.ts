@@ -938,13 +938,13 @@ export class BotEngine {
       const g = x.createLinearGradient(rx * 0.7, -ry * 0.85, -rx * 0.8, ry * 0.9);
       if (this.cocoSquadRole === "green") {
         g.addColorStop(0, "#d1fae5");
-        g.addColorStop(1, "#10b981");
+        g.addColorStop(1, "#00e676");
       } else if (this.cocoSquadRole === "red") {
-        g.addColorStop(0, "#fee2e2");
-        g.addColorStop(1, "#ef4444");
+        g.addColorStop(0, "#ffe4e8");
+        g.addColorStop(1, "#ff2d55");
       } else if (this.cocoSquadRole === "blue") {
-        g.addColorStop(0, "#dbeafe");
-        g.addColorStop(1, "#3b82f6");
+        g.addColorStop(0, "#e0f2fe");
+        g.addColorStop(1, "#0084ff");
       } else {
         g.addColorStop(0, rgba(BASE_TOP));
         g.addColorStop(1, rgba(BASE_BOTTOM));
@@ -1232,13 +1232,13 @@ export class BotEngine {
       const g = x.createLinearGradient(hew * 0.7, -heh * 0.85, -hew * 0.8, heh * 0.9);
       if (this.cocoSquadRole === "green") {
         g.addColorStop(0, "#d1fae5");
-        g.addColorStop(1, "#10b981");
+        g.addColorStop(1, "#00e676");
       } else if (this.cocoSquadRole === "red") {
-        g.addColorStop(0, "#fee2e2");
-        g.addColorStop(1, "#ef4444");
+        g.addColorStop(0, "#ffe4e8");
+        g.addColorStop(1, "#ff2d55");
       } else if (this.cocoSquadRole === "blue") {
-        g.addColorStop(0, "#dbeafe");
-        g.addColorStop(1, "#3b82f6");
+        g.addColorStop(0, "#e0f2fe");
+        g.addColorStop(1, "#0084ff");
       } else if (this.bodyColor) {
         g.addColorStop(0, rgba(mix3(this.bodyColor, [1, 1, 1], 0.35)));
         g.addColorStop(1, rgba(this.bodyColor));

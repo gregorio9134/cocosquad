@@ -36,7 +36,7 @@ const INITIAL_CONTACTS: GreenClientContact[] = [
     id: "client_martin",
     name: "Martín Domínguez",
     phone: "+54 9 11 4821-9920",
-    avatarColor: "#3B82F6",
+    avatarColor: "#0084FF",
     tag: "Receta Médica",
     isBotActive: true,
     unreadCount: 0,
@@ -60,7 +60,7 @@ const INITIAL_CONTACTS: GreenClientContact[] = [
     id: "client_laura",
     name: "Laura Benítez",
     phone: "+54 9 11 6532-1104",
-    avatarColor: "#10B981",
+    avatarColor: "#00E676",
     tag: "Comprobante $22.000",
     isBotActive: true,
     unreadCount: 0,
@@ -204,6 +204,7 @@ export class GreenManager {
     triggerHapticFeedback(12);
     Sound.play("blip");
     this.render();
+    this.scrollToBottom();
     if (this.onContactChangeListener) {
       this.onContactChangeListener(contact);
     }
@@ -230,7 +231,21 @@ export class GreenManager {
     contact.lastTime = timeStr;
     this.saveStorage();
     this.renderMessagesOnly();
+    this.scrollToBottom();
     return newMsg;
+  }
+
+  public scrollToBottom() {
+    if (!this.containerEl) return;
+    const msgBox = this.containerEl.querySelector<HTMLElement>("#green-messages-container");
+    if (!msgBox) return;
+    msgBox.scrollTop = msgBox.scrollHeight;
+    requestAnimationFrame(() => {
+      if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+    });
+    setTimeout(() => {
+      if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+    }, 40);
   }
 
   /**
@@ -238,7 +253,14 @@ export class GreenManager {
    */
   public mount(container: HTMLElement) {
     this.containerEl = container;
+    this.containerEl.style.display = "flex";
+    this.containerEl.style.flexDirection = "column";
+    this.containerEl.style.height = "100%";
+    this.containerEl.style.overflow = "hidden";
+    this.containerEl.style.flex = "1";
+    this.containerEl.style.minHeight = "0";
     this.render();
+    this.scrollToBottom();
   }
 
   public unmount() {
@@ -250,7 +272,12 @@ export class GreenManager {
 
   public render() {
     if (!this.containerEl) return;
-    this.containerEl.style.display = "block";
+    this.containerEl.style.display = "flex";
+    this.containerEl.style.flexDirection = "column";
+    this.containerEl.style.height = "100%";
+    this.containerEl.style.overflow = "hidden";
+    this.containerEl.style.flex = "1";
+    this.containerEl.style.minHeight = "0";
 
     const currentContact = this.getActiveContact();
     const isBotActive = currentContact.isBotActive;
@@ -411,6 +438,6 @@ export class GreenManager {
     });
 
     // Auto-scroll to bottom
-    msgBox.scrollTop = msgBox.scrollHeight;
+    this.scrollToBottom();
   }
 }
