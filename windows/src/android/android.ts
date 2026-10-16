@@ -7,7 +7,8 @@ import { Ease } from "../core/anim";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage, type TodoItem, type QuickNote } from "../core/state";
 import { marked } from "marked";
-import { initSwipeController, type SwipeController } from "./swipeController";
+import { initSwipeController, triggerHapticFeedback, type SwipeController } from "./swipeController";
+import { GreenManager } from "./greenManager";
 
 marked.setOptions({
   gfm: true,
@@ -253,9 +254,30 @@ class AndroidApp {
 
   private todos: TodoItem[] = [];
   private notes: QuickNote[] = [];
+  private greenManager: GreenManager = new GreenManager();
 
   constructor() {
     this.loadStorage();
+    this.greenManager.setOnInterventionToggle((isIntervened, contact) => {
+      if (this.activeMember.id === "coco_verde") {
+        const input = document.getElementById("chat-input") as HTMLInputElement | null;
+        if (input) {
+          input.placeholder = isIntervened
+            ? `Escribir como asesor humano a ${contact.name}...`
+            : `Escribir a Green (o simular mensaje de cliente)...`;
+        }
+      }
+    });
+    this.greenManager.setOnContactChange((contact) => {
+      if (this.activeMember.id === "coco_verde") {
+        const input = document.getElementById("chat-input") as HTMLInputElement | null;
+        if (input) {
+          input.placeholder = !contact.isBotActive
+            ? `Escribir como asesor humano a ${contact.name}...`
+            : `Escribir a Green (o simular mensaje de cliente)...`;
+        }
+      }
+    });
   }
 
   private loadStorage() {
@@ -331,6 +353,9 @@ class AndroidApp {
 
               <!-- Chat Message History -->
               <div class="chat-history" id="chat-history" style="display: none;"></div>
+
+              <!-- Green Inbox & Live Takeover (Dedicated modular view for WhatsApp & Customer chats) -->
+              <div id="green-inbox-container" style="display: none; flex: 1; flex-direction: column; min-height: 0; width: 100%;"></div>
 
               <!-- Floating Tools Popup Card (+) -->
               <div class="tools-popup-overlay hidden" id="tools-popup-overlay"></div>
@@ -469,6 +494,25 @@ class AndroidApp {
     this.renderTasks();
     this.bindEvents();
     void Sound.preload();
+
+    // Check URL parameters for fast debugging/testing: ?agent=coco_verde&unread=coco_blanco
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetAgent = urlParams.get("agent");
+      if (targetAgent) {
+        const found = SQUAD.find((s) => s.id === targetAgent || s.squadRole === targetAgent);
+        if (found) {
+          this.selectSquadMember(found);
+        }
+      }
+      const unreadAgent = urlParams.get("unread");
+      if (unreadAgent && Object.prototype.hasOwnProperty.call(this.taskCompletedUnread, unreadAgent)) {
+        this.taskCompletedUnread[unreadAgent] = true;
+        this.renderTopSquadChips();
+      }
+    } catch {
+      // ignore
+    }
   }
 
   private initMascotCanvas() {
@@ -515,9 +559,16 @@ class AndroidApp {
       for (const mini of this.miniMochis) {
         const hasUnread = !!this.taskCompletedUnread[mini.member.id];
         if (hasUnread) {
+          const nowSec = now / 1000;
+          mini.engine.hands = 1;
+          mini.engine.waveStart = nowSec - 0.2;
+          mini.engine.waveUntil = nowSec + 2.0;
+          mini.engine.eyeOverride = "happy";
+          mini.engine.eyeOverrideUntil = nowSec + 2.0;
+
           if (now > mini.nextActionTime) {
             this.triggerUnreadCelebrationAction(mini.engine);
-            mini.nextActionTime = now + 1300;
+            mini.nextActionTime = now + 900;
           }
         } else if (now > mini.nextActionTime) {
           if (mini.engine.state === "idle") {
@@ -629,53 +680,35 @@ class AndroidApp {
   }
 
   private triggerUnreadCelebrationAction(engine: BotEngine) {
-    const action = Math.floor(Math.random() * 3);
     const t = performance.now() / 1000;
     engine.eyeOverride = "happy";
-    engine.eyeOverrideUntil = t + 1.2;
+    engine.eyeOverrideUntil = t + 2.0;
 
-    switch (action) {
-      case 0:
-        // 1. Saludo animado continuo (Wave / Hands)
-        engine.waveStart = t;
-        engine.waveUntil = t + 1.1;
-        engine.anim("hands", [[1, 180, Ease.out], [1, 750, Ease.lin], [0, 180, Ease.inOut]]);
-        engine.anim("oy", [[-0.22, 160, Ease.out], [0, 180, Ease.back]]);
-        break;
-      case 1:
-        // 2. Rebote alegre (Bounce)
-        engine.anim("oy", [
-          [-0.30, 140, Ease.out],
-          [0.08, 140, Ease.inOut],
-          [-0.14, 110, Ease.out],
-          [0, 130, Ease.back],
-        ]);
-        engine.anim("sy", [
-          [1.28, 140, Ease.out],
-          [0.82, 140, Ease.inOut],
-          [1.12, 110, Ease.out],
-          [1, 130, Ease.back],
-        ]);
-        engine.anim("sx", [
-          [0.80, 140, Ease.out],
-          [1.18, 140, Ease.inOut],
-          [0.92, 110, Ease.out],
-          [1, 130, Ease.back],
-        ]);
-        break;
-      case 2:
-      default:
-        // 3. Guiño alegre y giro / inclinación
-        engine.triggerEmote("wink", 1.0);
-        const side = Math.random() < 0.5 ? 1 : -1;
-        engine.anim("tilt", [
-          [0.26 * side, 160, Ease.out],
-          [0.26 * side, 600, Ease.lin],
-          [0, 180, Ease.inOut],
-        ]);
-        engine.anim("sy", [[1.14, 140, Ease.out], [1, 160, Ease.back]]);
-        break;
-    }
+    // 1. Agitar manitos enérgicamente (wave / flapping arms continuo)
+    engine.hands = 1;
+    engine.waveStart = t - 0.2;
+    engine.waveUntil = t + 2.0;
+    engine.anim("hands", [[1, 100, Ease.out], [1, 700, Ease.lin], [0.85, 120, Ease.inOut]]);
+
+    // 2. Rebote alegre y enérgico (bounce continuo)
+    engine.anim("oy", [
+      [-0.32, 130, Ease.out],
+      [0.08, 140, Ease.inOut],
+      [-0.16, 110, Ease.out],
+      [0, 130, Ease.back],
+    ]);
+    engine.anim("sy", [
+      [1.28, 130, Ease.out],
+      [0.82, 140, Ease.inOut],
+      [1.12, 110, Ease.out],
+      [1, 130, Ease.back],
+    ]);
+    engine.anim("sx", [
+      [0.78, 130, Ease.out],
+      [1.18, 140, Ease.inOut],
+      [0.92, 110, Ease.out],
+      [1, 130, Ease.back],
+    ]);
   }
 
   private renderTopSquadChips() {
@@ -737,6 +770,9 @@ class AndroidApp {
       if (hasUnread) {
         engine.eyeOverride = "happy";
         engine.eyeOverrideUntil = (performance.now() / 1000) + 3600;
+        engine.hands = 1;
+        engine.waveStart = (performance.now() / 1000) - 0.2;
+        engine.waveUntil = (performance.now() / 1000) + 3600;
       }
 
       this.miniMochis.push({
@@ -763,6 +799,14 @@ class AndroidApp {
     this.activeMember = m;
     // Apagar aviso persistente y resetear flag al entrar al chat de este Coco
     this.taskCompletedUnread[m.id] = false;
+    for (const mini of this.miniMochis) {
+      if (mini.member.id === m.id || !this.taskCompletedUnread[mini.member.id]) {
+        mini.engine.waveStart = 0;
+        mini.engine.waveUntil = 0;
+        mini.engine.hands = 0;
+        mini.engine.eyeOverride = null;
+      }
+    }
     this.renderTopSquadChips();
     if (this.isToolsMenuOpen) {
       this.renderToolsMenu();
@@ -791,8 +835,33 @@ class AndroidApp {
     const emptyHint = document.getElementById("empty-state-agent-hint");
     if (emptyHint) emptyHint.innerHTML = `<span class="coco-name-animated">${m.name}</span> está listo para ayudarte`;
 
-    // Render Chat Messages for this specific Coco (isolated conversation thread)
-    this.renderChatMessages();
+    // Green Inbox & Live Takeover VS Standard Cocos Chat View
+    const greenContainer = document.getElementById("green-inbox-container");
+    const chatHistory = document.getElementById("chat-history");
+    const emptyState = document.getElementById("chat-empty-state");
+    const chatInput = document.getElementById("chat-input") as HTMLInputElement | null;
+
+    if (m.id === "coco_verde") {
+      if (emptyState) emptyState.style.display = "none";
+      if (chatHistory) chatHistory.style.display = "none";
+      if (greenContainer) {
+        this.greenManager.mount(greenContainer);
+      }
+      if (chatInput) {
+        const contact = this.greenManager.getActiveContact();
+        chatInput.placeholder = this.greenManager.isInterventionActive()
+          ? `Escribir como asesor humano a ${contact.name}...`
+          : `Escribir a Green (o simular mensaje de cliente)...`;
+      }
+    } else {
+      if (greenContainer) {
+        this.greenManager.unmount();
+      }
+      this.renderChatMessages();
+      if (chatInput) {
+        chatInput.placeholder = `Preguntale a ${m.name}...`;
+      }
+    }
 
     // Render Attached File Chip for this specific Coco
     this.renderAttachedFileChip();
@@ -1271,6 +1340,113 @@ class AndroidApp {
       }
     }
 
+    // ─── COCO VERDE (GREEN): WHATSAPP INBOX & LIVE TAKEOVER FLOW ───
+    if (targetMemberId === "coco_verde") {
+      const activeContact = this.greenManager.getActiveContact();
+      const isIntervened = this.greenManager.isInterventionActive();
+
+      // Limpiar adjunto si había
+      this.attachedFilesByAgent[targetMemberId] = null;
+      if (this.activeMember.id === targetMemberId) {
+        this.renderAttachedFileChip();
+      }
+
+      if (isIntervened) {
+        // En modo intervención: el usuario escribe directamente como asesor humano al cliente
+        this.greenManager.addMessage("human_agent", messageText);
+        Sound.play("send");
+        triggerHapticFeedback(12);
+        return;
+      }
+
+      // En modo Bot activo: el mensaje ingresa como consulta del cliente
+      this.greenManager.addMessage("user", userBubbleContent);
+      Sound.play("send");
+      triggerHapticFeedback(12);
+
+      this.thinkingByAgent["coco_verde"] = true;
+      this.renderTopSquadChips();
+      if (this.activeMember.id === "coco_verde") {
+        this.engine.setState("thinking");
+        const pulseEl = document.getElementById("header-pulse");
+        if (pulseEl) pulseEl.classList.add("thinking");
+      }
+
+      try {
+        const pureB64 = attached
+          ? (attached.base64.includes(",") ? attached.base64.split(",")[1] : attached.base64)
+          : "";
+        const lowerName = (attached ? attached.name : "").toLowerCase();
+        const mimeType = attached
+          ? (attached.isImage
+              ? (lowerName.endsWith(".png") ? "image/png"
+                 : lowerName.endsWith(".webp") ? "image/webp"
+                 : lowerName.endsWith(".heic") ? "image/heic"
+                 : lowerName.endsWith(".heif") ? "image/heif"
+                 : "image/jpeg")
+              : attached.isVideo
+              ? "video/mp4"
+              : lowerName.endsWith(".pdf")
+              ? "application/pdf"
+              : "text/plain")
+          : "";
+
+        const payload: Record<string, unknown> = {
+          message: messageText,
+          chat_id: activeContact.id,
+          coco_id: "verde",
+          tenant_id: 1,
+        };
+        if (attached && pureB64) {
+          payload.file = {
+            name: attached.name,
+            data: pureB64,
+            base64: pureB64,
+            mime: mimeType,
+          };
+        }
+
+        const res = await fetch("http://150.136.59.173:8080/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        const reply = data.reply || data.respuesta || data.response || "¡Hola! 🟢 Mensaje recibido y registrado en agenda.";
+
+        this.greenManager.addMessage("assistant", reply);
+
+        if (this.activeMember.id === "coco_verde") {
+          this.engine.setState("finished");
+          this.engine.triggerEmote("happy");
+          Sound.play("finish");
+        } else {
+          this.taskCompletedUnread["coco_verde"] = true;
+          this.renderTopSquadChips();
+          Sound.play("finish");
+        }
+      } catch (err: any) {
+        const fallbackReply = "¡Hola! 🟢 Gracias por tu mensaje. Recibí tu consulta y ya la estoy registrando en agenda.";
+        this.greenManager.addMessage("assistant", fallbackReply);
+        if (this.activeMember.id === "coco_verde") {
+          this.engine.setState("idle");
+        } else {
+          this.taskCompletedUnread["coco_verde"] = true;
+          this.renderTopSquadChips();
+        }
+      } finally {
+        this.thinkingByAgent["coco_verde"] = false;
+        if (this.activeMember.id === "coco_verde") {
+          this.engine.setState("idle");
+          const pulseEl = document.getElementById("header-pulse");
+          if (pulseEl) pulseEl.classList.remove("thinking");
+        }
+        this.renderTopSquadChips();
+      }
+      return;
+    }
+
+    // ─── GENERAL COCOS FLOW (BLANCO, ROJO, AZUL) ───
     this.chatHistories[targetMemberId].push({
       id: Date.now(),
       role: "user",
@@ -1368,6 +1544,7 @@ class AndroidApp {
       } else {
         // Notificación persistente viva para el Coco que terminó en background
         this.taskCompletedUnread[targetMemberId] = true;
+        this.renderTopSquadChips();
         Sound.play("finish");
       }
     } catch (err: any) {
@@ -1382,6 +1559,7 @@ class AndroidApp {
         Sound.play("error");
       } else {
         this.taskCompletedUnread[targetMemberId] = true;
+        this.renderTopSquadChips();
         Sound.play("blip");
       }
     } finally {
@@ -1789,6 +1967,11 @@ class AndroidApp {
       }
       this.saveStorage();
 
+      if (targetMemberId === "coco_verde") {
+        this.greenManager.addMessage("user", `[Archivo adjunto: ${file.name}] ${promptText}`);
+        this.greenManager.addMessage("assistant", reply);
+      }
+
       if (this.activeMember.id === targetMemberId) {
         this.resetMochiToBase();
         this.engine.setState("finished");
@@ -1797,6 +1980,7 @@ class AndroidApp {
       } else {
         // Notificación persistente viva para el Coco en segundo plano
         this.taskCompletedUnread[targetMemberId] = true;
+        this.renderTopSquadChips();
         Sound.play("finish");
       }
     } catch (err: any) {
@@ -1812,6 +1996,7 @@ class AndroidApp {
         Sound.play("error");
       } else {
         this.taskCompletedUnread[targetMemberId] = true;
+        this.renderTopSquadChips();
         Sound.play("blip");
       }
     } finally {
