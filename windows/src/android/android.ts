@@ -353,6 +353,8 @@ class AndroidApp {
             </div>
           </div>
 
+          <div class="coco-brand-title">Coco Squad</div>
+
           <!-- 4 Compact Squad Chips on the Right -->
           <div class="top-bar-right" id="top-squad-chips"></div>
         </header>

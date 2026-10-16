@@ -120,7 +120,22 @@ html, body {
   align-items: center;
   gap: 9px;
   min-width: 0;
+  flex: 0 1 auto;
+}
+
+.coco-brand-title {
+  font-family: 'Fredoka', cursive, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  opacity: 0.92;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  user-select: none;
+  text-align: center;
   flex: 1;
+  white-space: nowrap;
 }
 
 .avatar-wrapper {
@@ -1893,5 +1908,41 @@ html, body {
   padding: 1px 6px;
   border-radius: 6px;
   color: #a1a1aa;
+}
+
+/* ── Responsive adjustments for compact screens (<= 420px) ──────────────── */
+@media (max-width: 420px) {
+  .compact-top-bar {
+    padding-left: 10px;
+    padding-right: 10px;
+    gap: 6px;
+  }
+  .coco-brand-title {
+    font-size: 14px;
+    letter-spacing: 0.3px;
+  }
+  .agent-name-text {
+    font-size: 14px;
+  }
+  .agent-subtitle-text {
+    font-size: 10px;
+  }
+  .squad-mochi-chip {
+    width: 29px;
+    height: 29px;
+  }
+  .squad-mochi-canvas {
+    width: 27px;
+    height: 27px;
+  }
+}
+
+@media (max-width: 360px) {
+  .coco-brand-title {
+    font-size: 13px;
+  }
+  .agent-subtitle-text {
+    display: none;
+  }
 }
 
