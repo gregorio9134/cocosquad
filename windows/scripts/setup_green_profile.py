@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 
 REMOTE_HOST = "ubuntu@150.136.59.173"
-SSH_KEY = "/Users/Gregorio/Desktop/Copia_Seguridad_Vector_AI/CLAVES_SSH/oracle_key"
+SSH_KEY = os.path.expanduser("~/.ssh/oracle_key")
 
 def run_ssh(cmd: str) -> str:
     ssh_cmd = [
