@@ -9,6 +9,16 @@ import { State, type ChatMessage, type TodoItem, type QuickNote } from "../core/
 import { marked } from "marked";
 import { initSwipeController, triggerHapticFeedback, type SwipeController } from "./swipeController";
 import { GreenManager } from "./greenManager";
+import {
+  notifyAgentCompletion,
+  notifyRequestStart,
+  notifyRequestEnd,
+  registerAgentNavigator,
+  initSystemPresence,
+  clearAppBadge,
+  setAppBadge,
+  requestNotificationPermission,
+} from "./notifications";
 
 marked.setOptions({
   gfm: true,
@@ -510,6 +520,22 @@ class AndroidApp {
     this.bindEvents();
     void Sound.preload();
 
+    // Register native system notification navigator and presence handler
+    registerAgentNavigator((agentId: string) => {
+      const found = SQUAD.find((s) => s.id === agentId || s.squadRole === agentId);
+      if (found) {
+        this.switchToChatView();
+        this.selectSquadMember(found);
+      }
+    });
+
+    initSystemPresence(() => {
+      const hasAnyUnread = Object.values(this.taskCompletedUnread).some(Boolean);
+      if (!hasAnyUnread) {
+        void clearAppBadge();
+      }
+    });
+
     // Check URL parameters for fast debugging/testing: ?agent=coco_verde&unread=coco_blanco
     try {
       const urlParams = new URLSearchParams(window.location.search);
@@ -817,6 +843,12 @@ class AndroidApp {
     this.activeMember = m;
     // Apagar aviso persistente y resetear flag al entrar al chat de este Coco
     this.taskCompletedUnread[m.id] = false;
+    const remainingUnread = Object.values(this.taskCompletedUnread).filter(Boolean).length;
+    if (remainingUnread === 0) {
+      void clearAppBadge();
+    } else {
+      void setAppBadge(remainingUnread);
+    }
     for (const mini of this.miniMochis) {
       if (mini.member.id === m.id || !this.taskCompletedUnread[mini.member.id]) {
         mini.engine.waveStart = 0;
@@ -1327,6 +1359,8 @@ class AndroidApp {
   }
 
   private async sendChatMessage(text: string) {
+    void requestNotificationPermission();
+
     const targetMember = this.activeMember;
     const targetMemberId = targetMember.id;
 
@@ -1394,6 +1428,7 @@ class AndroidApp {
       }
 
       try {
+        notifyRequestStart();
         const pureB64 = attached
           ? (attached.base64.includes(",") ? attached.base64.split(",")[1] : attached.base64)
           : "";
@@ -1446,6 +1481,7 @@ class AndroidApp {
           this.renderTopSquadChips();
           Sound.play("finish");
         }
+        notifyAgentCompletion("coco_verde", "Green · WhatsApp", reply);
       } catch (err: any) {
         const fallbackReply = "¡Hola! 🟢 Gracias por tu mensaje. Recibí tu consulta y ya la estoy registrando en agenda.";
         this.greenManager.addMessage("assistant", fallbackReply);
@@ -1455,7 +1491,9 @@ class AndroidApp {
           this.taskCompletedUnread["coco_verde"] = true;
           this.renderTopSquadChips();
         }
+        notifyAgentCompletion("coco_verde", "Green · Aviso", fallbackReply);
       } finally {
+        notifyRequestEnd();
         this.thinkingByAgent["coco_verde"] = false;
         if (this.activeMember.id === "coco_verde") {
           this.engine.setState("idle");
@@ -1538,6 +1576,7 @@ class AndroidApp {
         notes: this.notes,
       };
 
+      notifyRequestStart();
       const res = await fetch("http://150.136.59.173:8080/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1558,6 +1597,9 @@ class AndroidApp {
       });
       this.saveStorage();
 
+      const agent = SQUAD.find((s) => s.id === targetMemberId);
+      const agentName = agent ? agent.name : "Coco";
+
       if (this.activeMember.id === targetMemberId) {
         this.engine.setState("finished");
         this.engine.triggerEmote("happy");
@@ -1568,7 +1610,10 @@ class AndroidApp {
         this.renderTopSquadChips();
         Sound.play("finish");
       }
+      notifyAgentCompletion(targetMemberId, `${agentName} respondió`, reply);
     } catch (err: any) {
+      const agent = SQUAD.find((s) => s.id === targetMemberId);
+      const agentName = agent ? agent.name : "Coco";
       this.chatHistories[targetMemberId].push({
         id: Date.now() + 1,
         role: "assistant",
@@ -1583,7 +1628,9 @@ class AndroidApp {
         this.renderTopSquadChips();
         Sound.play("blip");
       }
+      notifyAgentCompletion(targetMemberId, `${agentName} · Error`, "No se pudo conectar con el servidor de Staging");
     } finally {
+      notifyRequestEnd();
       this.thinkingByAgent[targetMemberId] = false;
       if (this.activeMember.id === targetMemberId) {
         const pulseEl = document.getElementById("header-pulse");
@@ -1823,6 +1870,8 @@ class AndroidApp {
     base64: string,
     dataUri: string
   ) {
+    void requestNotificationPermission();
+
     if (this.activeMember.id === targetMember.id) {
       // 1. Snap mouth shut tight with squash & stretch bounce
       this.engine.slotHTarget = 0;
@@ -1957,6 +2006,7 @@ class AndroidApp {
         notes: this.notes,
       };
 
+      notifyRequestStart();
       const res = await fetch("http://150.136.59.173:8080/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1993,6 +2043,9 @@ class AndroidApp {
         this.greenManager.addMessage("assistant", reply);
       }
 
+      const agent = SQUAD.find((s) => s.id === targetMemberId);
+      const agentName = agent ? agent.name : "Coco";
+
       if (this.activeMember.id === targetMemberId) {
         this.resetMochiToBase();
         this.engine.setState("finished");
@@ -2004,7 +2057,10 @@ class AndroidApp {
         this.renderTopSquadChips();
         Sound.play("finish");
       }
+      notifyAgentCompletion(targetMemberId, `${agentName} analizó ${file.name}`, reply);
     } catch (err: any) {
+      const agent = SQUAD.find((s) => s.id === targetMemberId);
+      const agentName = agent ? agent.name : "Coco";
       const hist = this.chatHistories[targetMemberId] || [];
       const target = hist.find((m) => m.id === waitingMsgId);
       if (target) {
@@ -2020,7 +2076,9 @@ class AndroidApp {
         this.renderTopSquadChips();
         Sound.play("blip");
       }
+      notifyAgentCompletion(targetMemberId, `${agentName} · Error al analizar`, `No se pudo procesar ${file.name}`);
     } finally {
+      notifyRequestEnd();
       this.thinkingByAgent[targetMemberId] = false;
       if (this.activeMember.id === targetMemberId) {
         const pulseEl = document.getElementById("header-pulse");
