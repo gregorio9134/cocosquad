@@ -19,6 +19,11 @@ import {
   setAppBadge,
   requestNotificationPermission,
 } from "./notifications";
+import {
+  evaluateFileForAgent,
+  COCO_LARGE_FILE_REJECTION_MESSAGE,
+  saveDevouredFileRecord,
+} from "./fileGuard";
 
 marked.setOptions({
   gfm: true,
@@ -1245,6 +1250,20 @@ class AndroidApp {
       }
     });
 
+    // Global drag & drop on screen for feeding/devouring files into current Coco
+    const dropArea = document.getElementById("app") || document.body;
+    dropArea.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    dropArea.addEventListener("drop", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        void this.processFileToDevour(e.dataTransfer.files[0]);
+      }
+    });
+
     // Devour Bottom Sheet event handlers
     const sheetOverlay = document.getElementById("devour-sheet-overlay");
     const closeSheetBtn = document.getElementById("btn-close-devour-sheet");
@@ -1698,15 +1717,54 @@ class AndroidApp {
   private async processFileToDevour(file: File) {
     const targetMember = this.activeMember;
     try {
+      // ─── FileGuard Evaluation: Delegate large files from Coco to Red ───
+      const decision = await evaluateFileForAgent(file, targetMember.id);
+
+      if (!decision.allowed) {
+        // Read file to store in local vault
+        const { base64, dataUri } = await this.readFileAsBase64(file);
+        void saveDevouredFileRecord({
+          id: `${Date.now()}-${file.name}`,
+          name: file.name,
+          size: file.size,
+          sizeStr: decision.sizeStr,
+          mimeType: file.type || "application/pdf",
+          pageCount: decision.pageCount,
+          agentId: targetMember.id,
+          base64,
+          dataUri,
+          timestamp: Date.now(),
+          analysis: "Delegado a Red por extensión/páginas",
+        });
+
+        // Insert directly in Coco's chat
+        this.switchToChatView();
+        const hist = this.chatHistories[targetMember.id] || (this.chatHistories[targetMember.id] = []);
+        hist.push({
+          id: Date.now(),
+          role: "user",
+          content: `📚 **${file.name}** (${decision.sizeStr}${decision.pageCount ? ` · ${decision.pageCount} págs` : ""})`,
+        });
+        hist.push({
+          id: Date.now() + 1,
+          role: "assistant",
+          content: decision.reason || COCO_LARGE_FILE_REJECTION_MESSAGE,
+        });
+        this.saveStorage();
+        this.renderChatMessages();
+
+        // Mochi surprised emote and audio feedback
+        this.engine.setState("idle");
+        this.engine.triggerEmote("surprised", 1.2);
+        Sound.play("blip");
+        triggerHapticFeedback(15);
+        return;
+      }
+
       const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|heic|heif|gif|svg|bmp)$/i.test(file.name);
       const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv|3gp|avi)$/i.test(file.name);
       const fileExt = (file.name.split(".").pop() || "FILE").toUpperCase().slice(0, 4);
-      const fileSizeStr =
-        file.size < 1024
-          ? `${file.size} B`
-          : file.size < 1024 * 1024
-          ? `${Math.round(file.size / 1024)} KB`
-          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+      const fileSizeStr = decision.sizeStr;
 
       // Read file to Base64 and Data URL before launching animation
       const { base64, dataUri } = await this.readFileAsBase64(file);
@@ -1918,7 +1976,7 @@ class AndroidApp {
     isImage: boolean,
     isVideo: boolean,
     base64: string,
-    _dataUri?: string
+    dataUri?: string
   ) {
     const targetMemberId = targetMember.id;
 
@@ -2043,6 +2101,20 @@ class AndroidApp {
         this.greenManager.addMessage("assistant", reply);
       }
 
+      // Guardar el archivo devorado de forma 100% local en IndexedDB del cliente
+      void saveDevouredFileRecord({
+        id: `${Date.now()}-${file.name}`,
+        name: file.name,
+        size: file.size,
+        sizeStr: fileSizeStr,
+        mimeType: mimeType,
+        agentId: targetMemberId,
+        base64,
+        dataUri,
+        timestamp: Date.now(),
+        analysis: reply,
+      });
+
       const agent = SQUAD.find((s) => s.id === targetMemberId);
       const agentName = agent ? agent.name : "Coco";
 
@@ -2113,7 +2185,7 @@ class AndroidApp {
     });
   }
 
-  public testDevour(fileName: string = "informe_clinico.pdf") {
+  public testDevour(fileName: string = "informe_clinico.pdf", options: { pages?: number; sizeMB?: number } = {}) {
     const isImage = fileName.endsWith(".png") || fileName.endsWith(".jpg");
     if (isImage) {
       const testCanvas = document.createElement("canvas");
@@ -2137,8 +2209,23 @@ class AndroidApp {
       return;
     }
 
-    const blobText = "Resumen del plan clínico y seguimiento del paciente por Coco Squad.";
-    const blob = new Blob([blobText], { type: "application/pdf" });
+    const pages = options.pages || (fileName.includes("large") || fileName.includes("extenso") ? 18 : 2);
+    let blobParts: BlobPart[];
+    if (options.sizeMB && options.sizeMB > 0) {
+      const dummyBuffer = new Uint8Array(Math.round(options.sizeMB * 1024 * 1024));
+      blobParts = [
+        `%PDF-1.4\n1 0 obj\n<< /Type /Pages /Count ${pages} >>\nendobj\n`,
+        dummyBuffer,
+      ];
+    } else {
+      blobParts = [
+        `%PDF-1.4\n1 0 obj\n<< /Type /Pages /Count ${pages} >>\nendobj\n` +
+        `Resumen del plan clínico y seguimiento del paciente por Coco Squad.\n` +
+        `Sección de investigación profunda, datos diagnósticos y referencias bibliográficas.`
+      ];
+    }
+
+    const blob = new Blob(blobParts, { type: "application/pdf" });
     const file = new File([blob], fileName, { type: "application/pdf" });
     void this.processFileToDevour(file);
   }
@@ -2154,7 +2241,11 @@ function initApp() {
   app.render();
   (window as any).__swipeController = app.getSwipeController();
 
-  if (window.location.search.includes("sheet=1") || window.location.search.includes("devour_sheet=1")) {
+  if (window.location.search.includes("test_pdf_large=1")) {
+    setTimeout(() => {
+      app.testDevour("investigacion_clinica_extensa.pdf", { pages: 18 });
+    }, 450);
+  } else if (window.location.search.includes("sheet=1") || window.location.search.includes("devour_sheet=1")) {
     window.history.replaceState(null, "", window.location.pathname);
     setTimeout(() => {
       app.openDevourSheet();
