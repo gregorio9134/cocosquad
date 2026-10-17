@@ -1979,8 +1979,10 @@ html, body {
 
 .coco-splash-logo-wrap {
   position: relative;
-  width: 136px;
-  height: 136px;
+  width: auto;
+  min-width: 200px;
+  max-width: 280px;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1988,20 +1990,23 @@ html, body {
 
 .coco-splash-glow {
   position: absolute;
-  inset: -14px;
+  inset: -16px;
   border-radius: 50%;
-  background: radial-gradient(circle at center, rgba(16, 185, 129, 0.28) 0%, rgba(59, 130, 246, 0.22) 45%, transparent 72%);
-  filter: blur(24px);
+  background: radial-gradient(circle at center, rgba(16, 185, 129, 0.32) 0%, rgba(59, 130, 246, 0.24) 45%, transparent 72%);
+  filter: blur(28px);
   animation: splashGlowPulse 2.4s infinite ease-in-out;
   pointer-events: none;
 }
 
 .coco-splash-logo {
-  width: 128px;
-  height: 128px;
-  border-radius: 28px;
-  object-fit: cover;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.2);
+  width: 200px;
+  max-width: 82vw;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.65));
   position: relative;
   z-index: 1;
 }

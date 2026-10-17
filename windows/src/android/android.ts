@@ -2241,18 +2241,15 @@ function initApp() {
   app.render();
   (window as any).__swipeController = app.getSwipeController();
 
-  // Smooth dismiss of the native splash screen
+  // Smooth dismiss of the native splash screen after 1.2s
   const splashEl = document.getElementById("splash-screen");
   if (splashEl) {
-    if (window.location.search.includes("splash_preview=1")) {
-      return;
-    }
     setTimeout(() => {
       splashEl.classList.add("fade-out");
       setTimeout(() => {
         splashEl.remove();
       }, 420);
-    }, 500);
+    }, 1200);
   }
 
   if (window.location.search.includes("test_pdf_large=1")) {
