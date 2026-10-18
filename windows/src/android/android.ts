@@ -46,7 +46,9 @@ export interface SquadIntervention {
   from_name: string;
   badge_color: string;
   reply: string;
+  micro_reply?: string;
   delay_ms?: number;
+  user_prompt?: string;
 }
 
 declare global {
@@ -991,34 +993,20 @@ class AndroidApp {
     const emptyHint = document.getElementById("empty-state-agent-hint");
     if (emptyHint) emptyHint.innerHTML = `<span class="coco-name-animated">${m.name}</span> está listo para ayudarte`;
 
-    // Green Inbox & Live Takeover VS Standard Cocos Chat View
+    // Ensure green-inbox-container is hidden / unmounted across all agents (prohibits split screen)
     const greenContainer = document.getElementById("green-inbox-container");
-    const chatHistory = document.getElementById("chat-history");
-    const emptyState = document.getElementById("chat-empty-state");
-    const chatInput = document.getElementById("chat-input") as HTMLInputElement | null;
-
-    if (m.id === "coco_verde") {
-      if (emptyState) emptyState.style.display = "none";
-      if (chatHistory) chatHistory.style.display = "none";
-      if (greenContainer) {
-        this.greenManager.mount(greenContainer);
-        this.greenManager.scrollToBottom();
-      }
-      if (chatInput) {
-        const contact = this.greenManager.getActiveContact();
-        chatInput.placeholder = this.greenManager.isInterventionActive()
-          ? `Escribir como asesor humano a ${contact.name}...`
-          : `Escribir a Green (o simular mensaje de cliente)...`;
-      }
-    } else {
-      if (greenContainer) {
-        this.greenManager.unmount();
-      }
-      this.renderChatMessages();
-      if (chatInput) {
-        chatInput.placeholder = `Preguntale a ${m.name}...`;
-      }
+    if (greenContainer) {
+      greenContainer.style.display = "none";
+      this.greenManager.unmount();
     }
+
+    const chatInput = document.getElementById("chat-input") as HTMLInputElement | null;
+    if (chatInput) {
+      chatInput.placeholder = `Preguntale a ${m.name}...`;
+    }
+
+    // Always render unified vertical chat for all Mochis
+    this.renderChatMessages();
 
     // Render Attached File Chip for this specific Coco
     this.renderAttachedFileChip();
@@ -1301,7 +1289,8 @@ class AndroidApp {
     const delay = intervention.delay_ms ?? 1000;
     await new Promise((resolve) => setTimeout(resolve, delay));
 
-    // 3. Insert assistant agent's bubble in chat with thematic color and name
+    // 3. Insert tactical micro-bubble of summoned agent into current chat
+    const microText = intervention.micro_reply || "¡Entendido! Me llevo el caso a mi estación.";
     const row = document.createElement("div");
     row.className = "chat-bubble-row assistant squad-assist-row";
 
@@ -1347,9 +1336,9 @@ class AndroidApp {
     row.appendChild(badge);
 
     const bubble = document.createElement("div");
-    bubble.className = "chat-bubble squad-assist-bubble";
+    bubble.className = "chat-bubble squad-assist-bubble squad-assist-micro-bubble";
     bubble.style.setProperty("--agent-badge-color", intervention.badge_color);
-    bubble.innerHTML = `<div class="message-content">${marked.parse(intervention.reply, { async: false }) as string}</div>`;
+    bubble.innerHTML = `<div class="message-content">${marked.parse(microText, { async: false }) as string}</div>`;
 
     const footerEl = document.createElement("div");
     footerEl.className = "squad-assist-footer";
@@ -1359,11 +1348,11 @@ class AndroidApp {
     row.appendChild(bubble);
     container?.appendChild(row);
 
-    // Save message with intervention metadata
+    // Save tactical micro-bubble into current agent's chat history
     this.messages.push({
       id: Date.now(),
       role: "assistant",
-      content: intervention.reply,
+      content: microText,
       intervention: {
         from_coco_id: intervention.from_coco_id,
         from_name: intervention.from_name,
@@ -1376,12 +1365,46 @@ class AndroidApp {
     container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
     Sound.play("receive");
 
-    // 4. Wait 1500ms reading time
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // 4. Wait reading time: 1.2s (1200ms)
+    await new Promise((resolve) => setTimeout(resolve, 1200));
 
-    // 5. Fly back to header
+    // 5. Fly back to header in 650ms
     if (headerTargetEl) {
       await this.flyBackToHeader(avatarEl, headerTargetEl, intervention.from_name, intervention.badge_color, footerEl);
+    }
+
+    // 6. Transición Automática al Chat del Especialista convocado
+    const targetMember = SQUAD.find((s) => s.id === intervention.from_coco_id);
+    if (targetMember) {
+      this.selectSquadMember(targetMember);
+
+      // Si se proveyó la respuesta completa del especialista, registrarla en su chat
+      if (intervention.reply) {
+        if (!this.chatHistories[targetMember.id]) {
+          this.chatHistories[targetMember.id] = [];
+        }
+
+        if (intervention.user_prompt) {
+          this.chatHistories[targetMember.id].push({
+            id: Date.now(),
+            role: "user",
+            content: intervention.user_prompt,
+          });
+        }
+
+        this.chatHistories[targetMember.id].push({
+          id: Date.now() + 1,
+          role: "assistant",
+          content: intervention.reply,
+        });
+
+        this.saveStorage();
+        this.renderChatMessages();
+        this.engine.setState("finished");
+        this.engine.triggerEmote("happy");
+        Sound.play("finish");
+        notifyAgentCompletion(targetMember.id, targetMember.name, intervention.reply);
+      }
     }
   }
 
@@ -1710,121 +1733,7 @@ class AndroidApp {
       }
     }
 
-    // ─── COCO VERDE (GREEN): WHATSAPP INBOX & LIVE TAKEOVER FLOW ───
-    if (targetMemberId === "coco_verde") {
-      const activeContact = this.greenManager.getActiveContact();
-      const isIntervened = this.greenManager.isInterventionActive();
-
-      // Limpiar adjunto si había
-      this.attachedFilesByAgent[targetMemberId] = null;
-      if (this.activeMember.id === targetMemberId) {
-        this.renderAttachedFileChip();
-      }
-
-      if (isIntervened) {
-        // En modo intervención: el usuario escribe directamente como asesor humano al cliente
-        this.greenManager.addMessage("human_agent", messageText);
-        Sound.play("send");
-        triggerHapticFeedback(12);
-        return;
-      }
-
-      // En modo Bot activo: el mensaje ingresa como consulta del cliente
-      this.greenManager.addMessage("user", userBubbleContent);
-      Sound.play("send");
-      triggerHapticFeedback(12);
-
-      this.thinkingByAgent["coco_verde"] = true;
-      this.renderTopSquadChips();
-      if (this.activeMember.id === "coco_verde") {
-        this.engine.setState("thinking");
-        const pulseEl = document.getElementById("header-pulse");
-        if (pulseEl) pulseEl.classList.add("thinking");
-      }
-
-      try {
-        notifyRequestStart();
-        const pureB64 = attached
-          ? (attached.base64.includes(",") ? attached.base64.split(",")[1] : attached.base64)
-          : "";
-        const lowerName = (attached ? attached.name : "").toLowerCase();
-        const mimeType = attached
-          ? (attached.isImage
-              ? (lowerName.endsWith(".png") ? "image/png"
-                 : lowerName.endsWith(".webp") ? "image/webp"
-                 : lowerName.endsWith(".heic") ? "image/heic"
-                 : lowerName.endsWith(".heif") ? "image/heif"
-                 : "image/jpeg")
-              : attached.isVideo
-              ? "video/mp4"
-              : lowerName.endsWith(".pdf")
-              ? "application/pdf"
-              : "text/plain")
-          : "";
-
-        const payload: Record<string, unknown> = {
-          message: messageText,
-          chat_id: activeContact.id,
-          coco_id: "verde",
-          tenant_id: 1,
-        };
-        if (attached && pureB64) {
-          payload.file = {
-            name: attached.name,
-            data: pureB64,
-            base64: pureB64,
-            mime: mimeType,
-          };
-        }
-
-        const res = await fetch("http://150.136.59.173:8080/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        const reply = data.reply || data.respuesta || data.response || "¡Hola! 🟢 Mensaje recibido y registrado en agenda.";
-
-        this.greenManager.addMessage("assistant", reply);
-
-        if (data.intervention) {
-          await this.executeSquadIntervention(data.intervention);
-        }
-
-        if (this.activeMember.id === "coco_verde") {
-          this.engine.setState("finished");
-          this.engine.triggerEmote("happy");
-          Sound.play("finish");
-        } else {
-          this.taskCompletedUnread["coco_verde"] = true;
-          this.renderTopSquadChips();
-          Sound.play("finish");
-        }
-        notifyAgentCompletion("coco_verde", "Green · WhatsApp", reply);
-      } catch (err: any) {
-        const fallbackReply = "¡Hola! 🟢 Gracias por tu mensaje. Recibí tu consulta y ya la estoy registrando en agenda.";
-        this.greenManager.addMessage("assistant", fallbackReply);
-        if (this.activeMember.id === "coco_verde") {
-          this.engine.setState("idle");
-        } else {
-          this.taskCompletedUnread["coco_verde"] = true;
-          this.renderTopSquadChips();
-        }
-        notifyAgentCompletion("coco_verde", "Green · Aviso", fallbackReply);
-      } finally {
-        notifyRequestEnd();
-        this.thinkingByAgent["coco_verde"] = false;
-        if (this.activeMember.id === "coco_verde") {
-          this.engine.setState("idle");
-          const pulseEl = document.getElementById("header-pulse");
-          if (pulseEl) pulseEl.classList.remove("thinking");
-        }
-        this.renderTopSquadChips();
-      }
-      return;
-    }
-
-    // ─── GENERAL COCOS FLOW (BLANCO, ROJO, AZUL) ───
+    // ─── UNIFIED SQUAD FLOW (BLANCO, VERDE, ROJO, AZUL) ───
     this.chatHistories[targetMemberId].push({
       id: Date.now(),
       role: "user",
@@ -1847,6 +1756,7 @@ class AndroidApp {
       const pulseEl = document.getElementById("header-pulse");
       if (pulseEl) pulseEl.classList.add("thinking");
       Sound.play("send");
+      triggerHapticFeedback(12);
     }
 
     try {
@@ -1921,23 +1831,26 @@ class AndroidApp {
       }
 
       if (data.intervention) {
-        await this.executeSquadIntervention(data.intervention);
-      }
-
-      const agent = SQUAD.find((s) => s.id === targetMemberId);
-      const agentName = agent ? agent.name : "Coco";
-
-      if (this.activeMember.id === targetMemberId) {
-        this.engine.setState("finished");
-        this.engine.triggerEmote("happy");
-        Sound.play("finish");
+        await this.executeSquadIntervention({
+          ...data.intervention,
+          user_prompt: messageText,
+        });
       } else {
-        // Notificación persistente viva para el Coco que terminó en background
-        this.taskCompletedUnread[targetMemberId] = true;
-        this.renderTopSquadChips();
-        Sound.play("finish");
+        const agent = SQUAD.find((s) => s.id === targetMemberId);
+        const agentName = agent ? agent.name : "Coco";
+
+        if (this.activeMember.id === targetMemberId) {
+          this.engine.setState("finished");
+          this.engine.triggerEmote("happy");
+          Sound.play("finish");
+        } else {
+          // Notificación persistente viva para el Coco que terminó en background
+          this.taskCompletedUnread[targetMemberId] = true;
+          this.renderTopSquadChips();
+          Sound.play("finish");
+        }
+        notifyAgentCompletion(targetMemberId, `${agentName} respondió`, reply);
       }
-      notifyAgentCompletion(targetMemberId, `${agentName} respondió`, reply);
     } catch (err: any) {
       const agent = SQUAD.find((s) => s.id === targetMemberId);
       const agentName = agent ? agent.name : "Coco";
@@ -2029,117 +1942,16 @@ class AndroidApp {
   private async processFileToDevour(file: File) {
     const targetMember = this.activeMember;
     try {
-      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-      const isTechnicalDoc = isPdf || /\.(doc|docx|txt|md|csv|xlsx?|pptx?|epub|tex)$/i.test(file.name);
-      const fileSizeStr = formatFileSize(file.size);
-
-      // ─── 1. INTERCEPTACIÓN: PDF / DOCUMENTO TÉCNICO CUANDO EL AGENTE ACTIVO NO ES RED ───
-      if (isTechnicalDoc && targetMember.id !== "coco_rojo") {
-        const { base64, dataUri } = await this.readFileAsBase64(file);
-
-        // Guardar registro en el vault local
-        void saveDevouredFileRecord({
-          id: `${Date.now()}-${file.name}`,
-          name: file.name,
-          size: file.size,
-          sizeStr: fileSizeStr,
-          mimeType: file.type || (isPdf ? "application/pdf" : "text/plain"),
-          agentId: targetMember.id,
-          base64,
-          dataUri,
-          timestamp: Date.now(),
-          analysis: "Delegado a Red para análisis exhaustivo",
-        });
-
-        // Asegurar que la vista esté en chat
-        this.switchToChatView();
-
-        // 1. Burbuja del usuario indicando el documento adjunto
-        this.messages.push({
-          id: Date.now(),
-          role: "user",
-          content: `📄 **${file.name}** (${fileSizeStr})`,
-        });
-
-        // 2. Mensaje inmediato del agente activo indicando la derivación a Red
-        this.messages.push({
-          id: Date.now() + 1,
-          role: "assistant",
-          content: `Ese documento lo analiza Red, nuestro especialista en investigaciones profundas, papers y archivos técnicos. Ya se lo derivo para que te brinde un informe detallado...`,
-        });
-        this.saveStorage();
-        this.renderChatMessages();
-        Sound.play("send");
-
-        // 3. Animación de llamada en el header hacia Red (.mochi-calling / opacity: 0.35)
-        const redTargetEl =
-          document.querySelector<HTMLElement>('#top-squad-chips [data-agent-id="coco_rojo"]') ||
-          document.getElementById("squad-chip-coco_rojo");
-        if (redTargetEl) {
-          redTargetEl.classList.add("mochi-calling");
-          redTargetEl.style.opacity = "0.35";
-        }
-
-        // 4. Llamada al endpoint de Red (/agente/rojo)
-        try {
-          notifyRequestStart();
-          const res = await fetch("http://150.136.59.173:8080/agente/rojo", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message: `Analiza detalladamente este documento (${file.name}) y presenta un informe exhaustivo con puntos clave, metodología y conclusiones.`,
-              chat_id: 1,
-              coco_id: "coco_rojo",
-              file: {
-                name: file.name,
-                data: base64,
-                base64: base64,
-                mime: file.type || (isPdf ? "application/pdf" : "text/plain"),
-              },
-            }),
-          });
-
-          const data = await res.json();
-          const redReply =
-            data.reply ||
-            data.respuesta ||
-            data.response ||
-            `He completado la lectura y análisis preliminar del documento **${file.name}**. Todo está archivado y disponible para consultas específicas.`;
-
-          // 5. Squad Assist: intromisión de Red en el chat actual y regreso a la cabecera
-          await this.executeSquadIntervention({
-            from_coco_id: "coco_rojo",
-            from_name: "Red",
-            badge_color: "#FF2D55",
-            reply: redReply,
-            delay_ms: 1000,
-          });
-        } catch (err: any) {
-          await this.executeSquadIntervention({
-            from_coco_id: "coco_rojo",
-            from_name: "Red",
-            badge_color: "#FF2D55",
-            reply: `⚠️ Ocurrió un error conectando con el servidor para que Red analice el documento: ${err?.message || String(err)}`,
-            delay_ms: 1000,
-          });
-        } finally {
-          notifyRequestEnd();
-          if (redTargetEl) {
-            redTargetEl.classList.remove("mochi-calling");
-            redTargetEl.style.opacity = "1";
-          }
-        }
-        return;
-      }
-
       const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|heic|heif|gif|svg|bmp)$/i.test(file.name);
       const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv|3gp|avi)$/i.test(file.name);
+      const fileSizeStr = formatFileSize(file.size);
       const fileExt = (file.name.split(".").pop() || "FILE").toUpperCase().slice(0, 4);
 
       // Read file to Base64 and Data URL before launching animation
       const { base64, dataUri } = await this.readFileAsBase64(file);
       const thumbUrl = isImage ? dataUri : null;
 
+      // UNIVERSAL DEVOUR: Always trigger authentic devour sequence on the active Mochi first!
       this.runAuthenticDevourSequence(targetMember, file, fileSizeStr, fileExt, isImage, isVideo, thumbUrl, base64, dataUri);
     } catch (err) {
       console.error("Error leyendo archivo:", err);
@@ -2334,9 +2146,183 @@ class AndroidApp {
         this.engine.triggerEmote("happy");
       }
 
-      // 4. Feedback in the chat thread and Oracle analysis
-      void this.completeDevourInChat(targetMember, file, fileSizeStr, isImage, isVideo, base64, dataUri);
+      // Check if this devoured file needs to be delegated to Red
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      const isTechnicalDoc = isPdf || /\.(doc|docx|txt|md|csv|xlsx?|pptx?|epub|tex)$/i.test(file.name);
+      const requiresRedDelegation = isTechnicalDoc && targetMember.id !== "coco_rojo";
+
+      if (requiresRedDelegation) {
+        void this.handleDevouredFileDelegationToRed(targetMember, file, fileSizeStr, isPdf, base64, dataUri);
+      } else {
+        void this.completeDevourInChat(targetMember, file, fileSizeStr, isImage, isVideo, base64, dataUri);
+      }
     }, 900);
+  }
+
+  private async handleDevouredFileDelegationToRed(
+    activeMember: SquadMember,
+    file: File,
+    fileSizeStr: string,
+    isPdf: boolean,
+    base64: string,
+    dataUri: string
+  ) {
+    const activeMemberId = activeMember.id;
+    if (!this.chatHistories[activeMemberId]) {
+      this.chatHistories[activeMemberId] = [];
+    }
+
+    // Guardar registro inicial en el vault local
+    void saveDevouredFileRecord({
+      id: `${Date.now()}-${file.name}`,
+      name: file.name,
+      size: file.size,
+      sizeStr: fileSizeStr,
+      mimeType: file.type || (isPdf ? "application/pdf" : "text/plain"),
+      agentId: activeMemberId,
+      base64,
+      dataUri,
+      timestamp: Date.now(),
+      analysis: "Delegado a Red para análisis exhaustivo",
+    });
+
+    // 1. Mensaje en el chat del agente activo (ej. Green)
+    this.chatHistories[activeMemberId].push({
+      id: Date.now(),
+      role: "user",
+      content: `📄 **${file.name}** (${fileSizeStr})`,
+    });
+    this.chatHistories[activeMemberId].push({
+      id: Date.now() + 1,
+      role: "assistant",
+      content: `Ese documento requiere análisis profundo. Se lo derivo a Red.`,
+    });
+    this.saveStorage();
+    if (this.activeMember.id === activeMemberId) {
+      this.renderChatMessages();
+      Sound.play("send");
+    }
+
+    // 2. Coreografía Squad Assist: Red aparece con micro-burbuja táctica, espera 1.2s, vuela a cabecera en 650ms y conmuta a Red
+    await this.executeSquadIntervention({
+      from_coco_id: "coco_rojo",
+      from_name: "Red",
+      badge_color: "#FF2D55",
+      reply: "", // se cargará de forma asíncrona en el chat de Red
+      micro_reply: "¡Entendido! Me llevo el caso a mi estación.",
+      delay_ms: 600,
+    });
+
+    // 3. Ya estamos en el chat de Red (selectSquadMember fue llamado en executeSquadIntervention)
+    if (!this.chatHistories["coco_rojo"]) {
+      this.chatHistories["coco_rojo"] = [];
+    }
+
+    const waitingMsgId = Date.now();
+    this.chatHistories["coco_rojo"].push({
+      id: waitingMsgId - 1,
+      role: "user",
+      content: `📄 **${file.name}** (${fileSizeStr})\n\nAnaliza detalladamente este documento y presenta un informe exhaustivo con puntos clave, metodología y conclusiones.`,
+    });
+    this.chatHistories["coco_rojo"].push({
+      id: waitingMsgId,
+      role: "assistant",
+      content: `📁 **${file.name}** (${fileSizeStr}) devorado y transferido a mi estación.\n\n*Iniciando investigación profunda con IA y lectura de secciones...*`,
+    });
+    this.saveStorage();
+
+    this.thinkingByAgent["coco_rojo"] = true;
+    this.renderTopSquadChips();
+    if (this.activeMember.id === "coco_rojo") {
+      this.renderChatMessages();
+      this.engine.setState("thinking");
+      const pulseEl = document.getElementById("header-pulse");
+      if (pulseEl) pulseEl.classList.add("thinking");
+    }
+
+    // 4. Llamada al endpoint de Red (/agente/rojo)
+    try {
+      notifyRequestStart();
+      const pureB64 = base64.includes(",") ? base64.split(",")[1] : base64;
+      const res = await fetch("http://150.136.59.173:8080/agente/rojo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: `Analiza detalladamente este documento (${file.name}) y presenta un informe exhaustivo con puntos clave, metodología y conclusiones.`,
+          chat_id: 1,
+          coco_id: "coco_rojo",
+          file: {
+            name: file.name,
+            data: pureB64,
+            base64: pureB64,
+            mime: file.type || (isPdf ? "application/pdf" : "text/plain"),
+          },
+        }),
+      });
+
+      const data = await res.json();
+      const redReply =
+        data.reply ||
+        data.respuesta ||
+        data.response ||
+        `He completado la lectura y análisis preliminar del documento **${file.name}**. Todo está archivado y disponible para consultas específicas.`;
+
+      const redHist = this.chatHistories["coco_rojo"] || [];
+      const waiting = redHist.find((m) => m.id === waitingMsgId);
+      if (waiting) {
+        waiting.content = `📁 **${file.name}** (${fileSizeStr}) analizado en profundidad:\n\n${redReply}`;
+      } else {
+        redHist.push({
+          id: Date.now(),
+          role: "assistant",
+          content: redReply,
+        });
+      }
+      this.saveStorage();
+
+      void saveDevouredFileRecord({
+        id: `${Date.now()}-${file.name}`,
+        name: file.name,
+        size: file.size,
+        sizeStr: fileSizeStr,
+        mimeType: file.type || (isPdf ? "application/pdf" : "text/plain"),
+        agentId: "coco_rojo",
+        base64,
+        dataUri,
+        timestamp: Date.now(),
+        analysis: redReply,
+      });
+
+      if (this.activeMember.id === "coco_rojo") {
+        this.renderChatMessages();
+        this.engine.setState("finished");
+        this.engine.triggerEmote("happy");
+        Sound.play("finish");
+      } else {
+        this.taskCompletedUnread["coco_rojo"] = true;
+        this.renderTopSquadChips();
+        Sound.play("finish");
+      }
+      notifyAgentCompletion("coco_rojo", "Red analizó " + file.name, redReply);
+    } catch (err: any) {
+      const redHist = this.chatHistories["coco_rojo"] || [];
+      const waiting = redHist.find((m) => m.id === waitingMsgId);
+      if (waiting) {
+        waiting.content = `⚠️ No pude conectar con el servicio de análisis de Red (150.136.59.173:8080):\n\n\`${err?.message || String(err)}\`\n\n*El documento fue devorado y está disponible en memoria.*`;
+      }
+      this.saveStorage();
+      if (this.activeMember.id === "coco_rojo") {
+        this.renderChatMessages();
+      }
+    } finally {
+      notifyRequestEnd();
+      this.thinkingByAgent["coco_rojo"] = false;
+      this.renderTopSquadChips();
+      if (this.activeMember.id === "coco_rojo") {
+        const pulseEl = document.getElementById("header-pulse");
+        if (pulseEl) pulseEl.classList.remove("thinking");
+      }
+    }
   }
 
   private async completeDevourInChat(
@@ -2465,11 +2451,6 @@ class AndroidApp {
         });
       }
       this.saveStorage();
-
-      if (targetMemberId === "coco_verde") {
-        this.greenManager.addMessage("user", `[Archivo adjunto: ${file.name}] ${promptText}`);
-        this.greenManager.addMessage("assistant", reply);
-      }
 
       // Guardar el archivo devorado de forma 100% local en IndexedDB del cliente
       void saveDevouredFileRecord({
