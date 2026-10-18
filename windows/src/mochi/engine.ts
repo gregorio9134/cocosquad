@@ -65,6 +65,8 @@ interface Particle {
 
 const EYE_W = 0.25;
 const EYE_H = 0.27;
+const EYE_SP = 0.38;
+const EYE_P = -0.10;
 const BASE_TOP: RGB = [0.929, 0.929, 0.937]; // #EDEDEF
 const BASE_BOTTOM: RGB = [0.769, 0.773, 0.792]; // #C4C5CA
 const INK = "rgb(26,20,18)"; // #1A1412
@@ -841,11 +843,11 @@ export class BotEngine {
    * `w`×`h` CSS pixels (the caller has already applied the DPR transform).
    */
   draw(x: CanvasRenderingContext2D, W: number, H: number) {
-    const R = W * 0.34;
-    const rx = R * 1.02;
-    const ry = R * 0.98;
+    const R = W * 0.31;
+    const rx = R * 1.12;
+    const ry = R * 0.88;
     const cx = W / 2 + this.ox * R;
-    const cy = H * 0.52 + this.particleOverhang / 2 + this.oy * R;
+    const cy = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06;
 
     // With an outfit on, a roll turns the whole character — hat included — as
     // one piece instead of rolling the eyes over the body (BotCanvasView, macOS).
@@ -885,8 +887,8 @@ export class BotEngine {
       x.restore();
     }
 
-    this.drawMouth(x, body, W, H, R, rx, ry);
-    this.drawEyes(x, W, H, R, rx, ry);
+    // Authentic Mochi: expressive eyes only, strictly no mouth drawn
+    this.drawEyes(x, R, rx, ry);
 
     if (head) drawOutfitFront(x, this.outfit, head, outfitState);
 
@@ -899,27 +901,16 @@ export class BotEngine {
     this.drawParticles(x, R, cx, cy);
   }
 
-  private bodyPath(rx: number, ry: number, R: number): Path2D {
+  private bodyPath(rx: number, ry: number, _R: number): Path2D {
     const n = 72;
     const expN = 2.0 / 2.7;
-    const tw = R * 1.0;
-    const th = R * 0.94;
-    const tr = R * 0.42;
     const p = new Path2D();
-    const m = this.morph;
     for (let i = 0; i <= n; i++) {
       const a = (i / n) * Math.PI * 2;
       const ca = Math.cos(a);
       const sa = Math.sin(a);
-      const px0 = rx * (ca >= 0 ? Math.pow(ca, expN) : -Math.pow(-ca, expN));
-      const py0 = ry * (sa >= 0 ? Math.pow(sa, expN) : -Math.pow(-sa, expN));
-      let px = px0;
-      let py = py0;
-      if (m >= 0.005) {
-        const rr = rrPoint(ca, sa, tw, th, tr);
-        px = lerp(px0, rr.x, m);
-        py = lerp(py0, rr.y, m);
-      }
+      const px = rx * (ca >= 0 ? Math.pow(ca, expN) : -Math.pow(-ca, expN));
+      const py = ry * (sa >= 0 ? Math.pow(sa, expN) : -Math.pow(-sa, expN));
       if (i === 0) p.moveTo(px, py);
       else p.lineTo(px, py);
     }
@@ -999,15 +990,11 @@ export class BotEngine {
     x.restore();
   }
 
-  private drawEyes(x: CanvasRenderingContext2D, W: number, H: number, R: number, _rx: number, ry: number) {
+  private drawEyes(x: CanvasRenderingContext2D, R: number, rx: number, ry: number) {
     let shape: EyeShape = this.eyeOverride ?? this.cfg.eye;
     // Dancing: happy eyes in the calm states.
     if (this.isDancing && this.dancingLevel > 0.15 && !this.isMini && (this.state === "idle" || this.state === "finished")) {
       shape = "happy";
-    }
-    if (this.morph > 0.5) {
-      if (this.isChewing) shape = "happy";
-      else if (this.slotHTarget > 0.05 || this.slotH > 0.1) shape = "cup";
     }
 
     x.save();
@@ -1015,30 +1002,28 @@ export class BotEngine {
     x.fillStyle = ink;
     x.strokeStyle = ink;
 
-    // Guaranteed two separated, symmetrical eyes at exactly 32% and 68% of width, vertically centered around 52%
+    // Guaranteed two separated, symmetrical, expressive eyes - never disappearing, never culled
     for (const sd of [-1, 1]) {
-      // In local coordinates centered at cx = W / 2:
-      // sd = -1 -> -0.18 * W -> absolute canvas X = W * 0.50 - 0.18 * W = 0.32 * W (32% width)
-      // sd = +1 -> +0.18 * W -> absolute canvas X = W * 0.50 + 0.18 * W = 0.68 * W (68% width)
-      const baseEyeX = sd * (W * 0.18);
-      const gazeX = Math.max(-0.02 * W, Math.min(0.02 * W, this.yaw * 0.03 * W));
-      const ex = baseEyeX + gazeX;
+      const eyeYaw = sd * EYE_SP + this.yaw * 0.26;
+      let eyePitch = EYE_P + this.pitch * 0.28 + (this.rigidRoll ? 0 : this.roll);
+      eyePitch = (((eyePitch + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+      const cp = Math.cos(eyePitch);
 
-      // Base eye Y: aligned with facial vertical center (cy = 52% of H)
-      const baseEyeY = ry * 0.02;
-      const gazeY = Math.max(-0.025 * H, Math.min(0.025 * H, -this.pitch * 0.035 * H));
-      let ey = baseEyeY + gazeY;
-      if (this.morph > 0) {
-        ey += ry * 0.12 * this.morph;
-      }
+      // In local coordinates centered at (cx, cy):
+      const ex = Math.sin(eyeYaw) * cp * rx;
+      const ey = -Math.sin(eyePitch) * ry;
 
-      const eyeMult = this.isMini ? 1.4 : 1.0;
+      // Keep eyes charmingly visible and never distorted or squashed by perspective
+      const fx = Math.max(0.75, Math.min(1.15, Math.cos(eyeYaw)));
+      const fy = Math.max(0.78, Math.min(1.15, cp));
+
+      const eyeMult = this.isMini ? 1.5 : 1.0;
       const ew = R * EYE_W * this.es * eyeMult;
       const eh = R * EYE_H * this.es * eyeMult;
 
       x.save();
       x.translate(ex, ey);
-      x.scale(1.0, 1.0);
+      x.scale(fx, fy);
       this.drawEyeShape(x, shape, ew, eh, sd, ink);
       x.restore();
     }
@@ -1153,81 +1138,6 @@ export class BotEngine {
     }
   }
 
-  /** Standard cute smiling mouth when idle/happy, or suction mailbox slot when morphing/devouring. */
-  private drawMouth(x: CanvasRenderingContext2D, body: Path2D, _W: number, _H: number, R: number, _rx: number, ry: number) {
-    const m = this.morph;
-    if (m > 0.05) {
-      this.drawDevourMouthSlot(x, body, R);
-      return;
-    }
-
-    // Boca estándar simétrica y tierna (centrada debajo de los ojos)
-    x.save();
-    const ink = this.isMini ? MINI_INK : INK;
-    x.strokeStyle = ink;
-    x.fillStyle = ink;
-    x.lineCap = "round";
-
-    const mouthX = 0;
-    const mouthY = ry * 0.36;
-    const mW = R * 0.28;
-
-    if (this.eyeOverride === "happy" || this.state === "finished") {
-      // Sonrisa feliz y abierta
-      x.lineWidth = Math.max(1.3, R * 0.065);
-      x.beginPath();
-      x.arc(mouthX, mouthY - R * 0.03, mW * 0.52, Math.PI * 0.12, Math.PI * 0.88);
-      x.stroke();
-    } else {
-      // Boquita sonriente tierna estándar
-      x.lineWidth = Math.max(1.2, R * 0.06);
-      x.beginPath();
-      x.arc(mouthX, mouthY - R * 0.04, mW * 0.44, Math.PI * 0.15, Math.PI * 0.85);
-      x.stroke();
-    }
-    x.restore();
-  }
-
-  private drawDevourMouthSlot(x: CanvasRenderingContext2D, body: Path2D, R: number) {
-    const m = this.morph;
-    const hW = R * 1.45 * m;
-    const hH = this.slotH * R * 0.75 * m;
-    const hX = -hW / 2;
-    const mouthTop = R * 0.05 * m;
-    const hY = mouthTop;
-
-    x.save();
-    x.clip(body);
-
-    if (hH > 0.8) {
-      x.strokeStyle = `rgba(255,255,255,${0.45 * m})`;
-      x.lineWidth = 1;
-      x.lineCap = "round";
-      x.beginPath();
-      x.moveTo(-hW * 0.4, mouthTop - 0.5);
-      x.lineTo(hW * 0.4, mouthTop - 0.5);
-      x.stroke();
-    }
-
-    if (hH > 0.8) {
-      const hR = Math.min(hW / 2, hH / 2);
-      const g = x.createLinearGradient(0, hY, 0, hY + hH);
-      g.addColorStop(0, "rgb(7,8,10)");
-      g.addColorStop(1, "rgb(16,19,26)");
-      roundRectPath(x, hX, hY, hW, hH, hR);
-      x.fillStyle = g;
-      x.fill();
-      if (hH > 4) {
-        const lipR = Math.min(hR, (hW - 2) / 2);
-        x.strokeStyle = `rgba(255,255,255,${0.28 * m})`;
-        x.beginPath();
-        x.moveTo(hX + lipR, hY + hH - 0.5);
-        x.lineTo(hX + hW - lipR, hY + hH - 0.5);
-        x.stroke();
-      }
-    }
-    x.restore();
-  }
 
   /** Hands sit behind the body — drawn before it, in world coordinates. */
   private drawHandsBehind(
@@ -1425,39 +1335,4 @@ export class BotEngine {
       x.restore();
     }
   }
-}
-
-/** Ray → rounded-rect boundary intersection, for the mailbox morph. */
-function rrPoint(ca: number, sa: number, W: number, H: number, cr: number): { x: number; y: number } {
-  const eps = 1e-6;
-  const kx = ca >= 0 ? 1 : -1;
-  const ky = sa >= 0 ? 1 : -1;
-  const cx = kx * (W - cr);
-  const cy = ky * (H - cr);
-
-  const dot = ca * cx + sa * cy;
-  const disc = dot * dot - (cx * cx + cy * cy - cr * cr);
-  if (disc >= 0) {
-    const t = dot + Math.sqrt(disc);
-    if (t > eps) {
-      const px = ca * t;
-      const py = sa * t;
-      if (Math.abs(px) >= W - cr - eps && Math.abs(py) >= H - cr - eps) return { x: px, y: py };
-    }
-  }
-  if (Math.abs(sa) > eps) {
-    const t = (ky * H) / sa;
-    if (t > eps) {
-      const px = ca * t;
-      if (Math.abs(px) <= W - cr + eps) return { x: px, y: ky * H };
-    }
-  }
-  if (Math.abs(ca) > eps) {
-    const t = (kx * W) / ca;
-    if (t > eps) {
-      const py = sa * t;
-      if (Math.abs(py) <= H - cr + eps) return { x: kx * W, y: py };
-    }
-  }
-  return { x: kx * W, y: ky * H };
 }

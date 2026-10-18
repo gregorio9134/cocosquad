@@ -2124,14 +2124,11 @@ class AndroidApp {
 
     Sound.play("attach");
 
-    // Mochi spots the card, gets excited, morphs body and opens mouth wide
+    // Mochi spots the card: gentle gaze tracking, strictly no morph or face alteration
     if (this.activeMember.id === targetMember.id) {
       this.engine.isUserTracking = false;
-      this.engine.lookY = 0.5;
+      this.engine.lookY = 0.25;
       this.engine.lookX = 0;
-      this.engine.animateMorph(1, 320);
-      this.engine.slotHTarget = 0.65;
-      this.engine.eyeOverride = "cup";
     }
     Sound.play("open");
 
@@ -2175,8 +2172,8 @@ class AndroidApp {
         if (this.activeMember.id === targetMember.id) {
           const dx = (curX - targetX) / appRect.width;
           const dy = (curY - targetY) / appRect.height;
-          this.engine.lookX = Math.max(-0.35, Math.min(0.35, dx));
-          this.engine.lookY = Math.max(-0.4, Math.min(0.6, dy));
+          this.engine.lookX = Math.max(-0.25, Math.min(0.25, dx));
+          this.engine.lookY = Math.max(-0.25, Math.min(0.35, dy));
         }
 
         if (rawP >= 0.72 && !gulped) {
@@ -2188,7 +2185,7 @@ class AndroidApp {
         if (rawP < 1) {
           requestAnimationFrame(flightStep);
         } else {
-          // Card has completely entered the mouth
+          // Card has completely reached the avatar
           card.remove();
           this.executeDevourChewingAndFeedback(targetMember, file, fileSizeStr, isImage, isVideo, base64, dataUri);
         }
@@ -2209,40 +2206,29 @@ class AndroidApp {
   ) {
     void requestNotificationPermission();
 
+    // 1. Elastic squash & stretch bounce of the entire container ONLY:
+    // transform: scale(1.15, 0.85) al recibir el archivo y rebote a scale(1) con curva de amortiguación
+    const avatarWrapper = document.getElementById("avatar-btn");
+    if (avatarWrapper && this.activeMember.id === targetMember.id) {
+      avatarWrapper.classList.remove("devour-elastic-bounce");
+      void avatarWrapper.offsetWidth; // Force reflow
+      avatarWrapper.classList.add("devour-elastic-bounce");
+      setTimeout(() => {
+        avatarWrapper.classList.remove("devour-elastic-bounce");
+      }, 700);
+    }
+
+    Sound.play("gulp");
+    if (navigator.vibrate) navigator.vibrate([25, 45, 25]);
+
+    // Las caras y los dos ojos no se tocan ni se alteran bajo ningún concepto
     if (this.activeMember.id === targetMember.id) {
-      // 1. Snap mouth shut tight with squash & stretch bounce
-      this.engine.slotHTarget = 0;
-      this.engine.squash();
-
-      // 2. Satisfied chewing cycle with happy eyes and sound
-      this.engine.isChewing = true;
-      this.engine.eyeOverride = "happy";
-
-      // Rhythmic chewing squash & stretch
-      this.engine.anim("sy", [
-        [0.85, 110, Ease.out],
-        [1.15, 110, Ease.inOut],
-        [0.90, 110, Ease.out],
-        [1.10, 110, Ease.inOut],
-        [1.0, 150, Ease.back],
-      ]);
-      this.engine.anim("sx", [
-        [1.15, 110, Ease.out],
-        [0.85, 110, Ease.inOut],
-        [1.10, 110, Ease.out],
-        [0.90, 110, Ease.inOut],
-        [1.0, 150, Ease.back],
-      ]);
+      this.resetMochiToBase();
     }
     Sound.play("approve");
 
-    // 3. Chewing finishes after 900ms -> FORCED EXPLICIT RESET to baseline idle!
+    // After container bounce finishes, process delegation or chat reply
     setTimeout(() => {
-      if (this.activeMember.id === targetMember.id) {
-        this.resetMochiToBase();
-        this.engine.triggerEmote("happy");
-      }
-
       // Check if this devoured file needs to be delegated to Red
       const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
       const isTechnicalDoc = isPdf || /\.(doc|docx|txt|md|csv|xlsx?|pptx?|epub|tex)$/i.test(file.name);
@@ -2253,7 +2239,7 @@ class AndroidApp {
       } else {
         void this.completeDevourInChat(targetMember, file, fileSizeStr, isImage, isVideo, base64, dataUri);
       }
-    }, 900);
+    }, 700);
   }
 
   private async handleDevouredFileDelegationToRed(
