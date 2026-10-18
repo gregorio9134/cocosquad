@@ -1267,16 +1267,37 @@ class AndroidApp {
     }
   }
 
-  public async executeSquadIntervention(intervention: SquadIntervention): Promise<void> {
-    const container = document.getElementById("chat-history");
-    const emptyState = document.getElementById("chat-empty-state");
-    if (emptyState) emptyState.style.display = "none";
-    if (container) container.style.display = "flex";
+  public setAgentThinking(agentId: string, isThinking: boolean) {
+    this.thinkingByAgent[agentId] = isThinking;
+    const pulseEl = document.getElementById("header-pulse");
+    if (this.activeMember.id === agentId) {
+      if (pulseEl) {
+        if (isThinking) pulseEl.classList.add("thinking");
+        else pulseEl.classList.remove("thinking");
+      }
+      this.engine.setState(isThinking ? "thinking" : "idle");
+      // Formally purge any typing indicator pill from the DOM when thinking finishes
+      if (!isThinking) {
+        document.querySelectorAll(".typing-pill, .thinking-indicator-row").forEach((el) => {
+          el.closest(".chat-bubble-row")?.remove();
+        });
+      }
+      this.renderChatMessages();
+    }
+    this.renderTopSquadChips();
+  }
 
-    // 1. Locate summoned agent's header icon
+  public async executeEphemeralSquadAssist(
+    summonedAgentId: 'coco_blanco' | 'coco_verde' | 'coco_rojo' | 'coco_azul',
+    speechText: string = "¡Yo me encargo!"
+  ): Promise<void> {
+    const summonedMember = SQUAD.find((s) => s.id === summonedAgentId);
+    if (!summonedMember) return;
+
+    // 1. Localizar icono del agente convocado en la cabecera
     const headerTargetEl =
-      document.querySelector<HTMLElement>(`#top-squad-chips [data-agent-id="${intervention.from_coco_id}"]`) ||
-      document.getElementById(`squad-chip-${intervention.from_coco_id}`) ||
+      document.querySelector<HTMLElement>(`#top-squad-chips [data-agent-id="${summonedAgentId}"]`) ||
+      document.getElementById(`squad-chip-${summonedAgentId}`) ||
       document.getElementById("avatar-btn");
 
     if (headerTargetEl) {
@@ -1285,126 +1306,148 @@ class AndroidApp {
       Sound.play("tap");
     }
 
-    // 2. Wait delay_ms (default 1000ms)
-    const delay = intervention.delay_ms ?? 1000;
-    await new Promise((resolve) => setTimeout(resolve, delay));
+    // 2. Ubicar la última burbuja del agente que delega en el chat
+    const chatHistory = document.getElementById("chat-history");
+    const lastRow =
+      chatHistory?.querySelector<HTMLElement>(".chat-bubble-row.assistant:last-child") ||
+      chatHistory?.querySelector<HTMLElement>(".chat-bubble-row:last-child");
 
-    // 3. Insert tactical micro-bubble of summoned agent into current chat
-    const microText = intervention.micro_reply || "¡Entendido! Me llevo el caso a mi estación.";
-    const row = document.createElement("div");
-    row.className = "chat-bubble-row assistant squad-assist-row";
+    const appEl = document.getElementById("app") || document.body;
+    const appRect = appEl.getBoundingClientRect();
 
-    const badge = document.createElement("div");
-    badge.className = "chat-agent-badge squad-assist-badge";
-    badge.style.setProperty("--agent-badge-color", intervention.badge_color);
+    const startRect = headerTargetEl
+      ? headerTargetEl.getBoundingClientRect()
+      : { left: appRect.left + appRect.width / 2, top: appRect.top + 50, width: 36, height: 36 };
 
-    const avatarEl = document.createElement("div");
-    avatarEl.className = "squad-assist-avatar-circle";
-    avatarEl.style.borderColor = `${intervention.badge_color}66`;
-    avatarEl.style.boxShadow = `0 0 10px ${intervention.badge_color}66`;
+    const startCenterX = startRect.left + startRect.width / 2;
+    const startCenterY = startRect.top + startRect.height / 2;
+
+    let targetLeft: number;
+    let targetTop: number;
+
+    if (lastRow) {
+      const rowRect = lastRow.getBoundingClientRect();
+      targetLeft = Math.max(appRect.left + 30, rowRect.left + 24);
+      targetTop = Math.min(rowRect.bottom + 16, appRect.bottom - 130);
+    } else {
+      targetLeft = appRect.left + 40;
+      targetTop = appRect.top + appRect.height * 0.45;
+    }
+
+    // 3. Crear actor flotante efímero (avatar 3D de Red / convocado)
+    const actor = document.createElement("div");
+    actor.className = "squad-ephemeral-actor";
+    actor.style.left = `${startCenterX}px`;
+    actor.style.top = `${startCenterY}px`;
+    actor.style.setProperty("--agent-color", summonedMember.color);
 
     const miniCanvas = document.createElement("canvas");
-    miniCanvas.width = 36;
-    miniCanvas.height = 36;
-    miniCanvas.style.width = "18px";
-    miniCanvas.style.height = "18px";
-    miniCanvas.className = "squad-assist-avatar-canvas";
+    miniCanvas.width = 68;
+    miniCanvas.height = 68;
+    miniCanvas.style.width = "34px";
+    miniCanvas.style.height = "34px";
+    miniCanvas.className = "squad-ephemeral-canvas";
     const miniCtx = miniCanvas.getContext("2d");
     if (miniCtx) {
-      const assistingMember = SQUAD.find((s) => s.id === intervention.from_coco_id);
       const eng = new BotEngine();
-      eng.setCocoSquadRole(assistingMember ? assistingMember.squadRole : "white");
+      eng.setCocoSquadRole(summonedMember.squadRole);
       eng.eyeOverride = "happy";
-      eng.draw(miniCtx, 18, 18);
+      eng.draw(miniCtx, 34, 34);
     }
-    avatarEl.appendChild(miniCanvas);
+    actor.appendChild(miniCanvas);
 
-    const nameSpan = document.createElement("span");
-    nameSpan.className = "coco-name-animated";
-    nameSpan.textContent = intervention.from_name;
-    nameSpan.style.color = intervention.badge_color;
+    // 4. Crear globo de diálogo flotante efímero ("¡Yo me encargo!")
+    const balloon = document.createElement("div");
+    balloon.className = "squad-ephemeral-speech-balloon";
+    balloon.style.setProperty("--agent-color", summonedMember.color);
+    balloon.innerHTML = `
+      <span class="speech-agent-tag">${summonedMember.name}</span>
+      <span class="speech-text">${speechText}</span>
+    `;
 
-    const assistTag = document.createElement("span");
-    assistTag.className = "squad-assist-tag";
-    assistTag.textContent = "Squad Assist";
-    assistTag.style.color = intervention.badge_color;
-    assistTag.style.borderColor = `${intervention.badge_color}55`;
+    document.body.appendChild(actor);
+    document.body.appendChild(balloon);
 
-    badge.appendChild(avatarEl);
-    badge.appendChild(nameSpan);
-    badge.appendChild(assistTag);
-    row.appendChild(badge);
+    // Forzar reflujo inicial
+    void actor.offsetWidth;
 
-    const bubble = document.createElement("div");
-    bubble.className = "chat-bubble squad-assist-bubble squad-assist-micro-bubble";
-    bubble.style.setProperty("--agent-badge-color", intervention.badge_color);
-    bubble.innerHTML = `<div class="message-content">${marked.parse(microText, { async: false }) as string}</div>`;
+    // 5. Salto de descenso: el avatar salta desde la cabecera hacia el mensaje
+    Sound.play("open");
+    const deltaX = targetLeft - startCenterX;
+    const deltaY = targetTop - startCenterY;
+    actor.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.15)`;
 
-    const footerEl = document.createElement("div");
-    footerEl.className = "squad-assist-footer";
-    footerEl.style.display = "none";
-    bubble.appendChild(footerEl);
+    balloon.style.left = `${targetLeft + 36}px`;
+    balloon.style.top = `${targetTop - 18}px`;
 
-    row.appendChild(bubble);
-    container?.appendChild(row);
+    setTimeout(() => {
+      balloon.classList.add("visible");
+      Sound.play("pop");
+      if (navigator.vibrate) navigator.vibrate([15, 30, 20]);
+    }, 280);
 
-    // Save tactical micro-bubble into current agent's chat history
-    this.messages.push({
-      id: Date.now(),
-      role: "assistant",
-      content: microText,
-      intervention: {
-        from_coco_id: intervention.from_coco_id,
-        from_name: intervention.from_name,
-        badge_color: intervention.badge_color,
-        returned: true,
-      },
-    });
-    this.saveStorage();
-
-    container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-    Sound.play("receive");
-
-    // 4. Wait reading time: 1.2s (1200ms)
+    // 6. Tiempo de lectura: 1.2 segundos (1200 ms)
     await new Promise((resolve) => setTimeout(resolve, 1200));
 
-    // 5. Fly back to header in 650ms
+    // 7. El globo flotante desaparece
+    balloon.classList.remove("visible");
+    balloon.classList.add("fade-out");
+
+    // 8. Salto de retorno: el avatar regresa a su posición en la barra superior
+    actor.style.transition = "transform 480ms cubic-bezier(0.25, 1, 0.5, 1), opacity 450ms ease";
+    actor.style.transform = `translate(0px, 0px) scale(1)`;
+
+    await new Promise((resolve) => setTimeout(resolve, 480));
+
+    // 9. Limpieza completa de los nodos efímeros
+    actor.remove();
+    balloon.remove();
+
     if (headerTargetEl) {
-      await this.flyBackToHeader(avatarEl, headerTargetEl, intervention.from_name, intervention.badge_color, footerEl);
+      headerTargetEl.classList.remove("mochi-calling");
+      headerTargetEl.style.opacity = "";
+      headerTargetEl.classList.remove("mochi-returned-pulse");
+      void headerTargetEl.offsetWidth; // force reflow
+      headerTargetEl.classList.add("mochi-returned-pulse");
+      setTimeout(() => headerTargetEl.classList.remove("mochi-returned-pulse"), 900);
+      Sound.play("finish");
     }
 
-    // 6. Transición Automática al Chat del Especialista convocado
+    // 10. Conmutación automática: llevar al usuario a la vista del especialista
+    this.selectSquadMember(summonedMember);
+  }
+
+  public async executeSquadIntervention(intervention: SquadIntervention): Promise<void> {
+    // Interacción estrictamente efímera: ¡NUNCA agregar mensajes permanentes en el chat del agente que delega!
+    await this.executeEphemeralSquadAssist(intervention.from_coco_id, "¡Yo me encargo!");
+
+    // Si viene la respuesta para el especialista, cargarla ÚNICAMENTE en su estación
     const targetMember = SQUAD.find((s) => s.id === intervention.from_coco_id);
-    if (targetMember) {
-      this.selectSquadMember(targetMember);
-
-      // Si se proveyó la respuesta completa del especialista, registrarla en su chat
-      if (intervention.reply) {
-        if (!this.chatHistories[targetMember.id]) {
-          this.chatHistories[targetMember.id] = [];
-        }
-
-        if (intervention.user_prompt) {
-          this.chatHistories[targetMember.id].push({
-            id: Date.now(),
-            role: "user",
-            content: intervention.user_prompt,
-          });
-        }
-
-        this.chatHistories[targetMember.id].push({
-          id: Date.now() + 1,
-          role: "assistant",
-          content: intervention.reply,
-        });
-
-        this.saveStorage();
-        this.renderChatMessages();
-        this.engine.setState("finished");
-        this.engine.triggerEmote("happy");
-        Sound.play("finish");
-        notifyAgentCompletion(targetMember.id, targetMember.name, intervention.reply);
+    if (targetMember && intervention.reply) {
+      if (!this.chatHistories[targetMember.id]) {
+        this.chatHistories[targetMember.id] = [];
       }
+
+      if (intervention.user_prompt) {
+        this.chatHistories[targetMember.id].push({
+          id: Date.now(),
+          role: "user",
+          content: intervention.user_prompt,
+        });
+      }
+
+      this.chatHistories[targetMember.id].push({
+        id: Date.now() + 1,
+        role: "assistant",
+        content: intervention.reply,
+      });
+
+      this.saveStorage();
+      this.setAgentThinking(targetMember.id, false);
+      this.engine.setState("finished");
+      this.engine.triggerEmote("happy");
+      Sound.play("finish");
+      notifyAgentCompletion(targetMember.id, targetMember.name, intervention.reply);
     }
   }
 
@@ -1747,14 +1790,8 @@ class AndroidApp {
       this.renderAttachedFileChip();
     }
 
-    this.thinkingByAgent[targetMemberId] = true;
-    this.renderTopSquadChips();
-
+    this.setAgentThinking(targetMemberId, true);
     if (this.activeMember.id === targetMemberId) {
-      this.renderChatMessages();
-      this.engine.setState("thinking");
-      const pulseEl = document.getElementById("header-pulse");
-      if (pulseEl) pulseEl.classList.add("thinking");
       Sound.play("send");
       triggerHapticFeedback(12);
     }
@@ -1825,6 +1862,7 @@ class AndroidApp {
         content: reply,
       });
       this.saveStorage();
+      this.setAgentThinking(targetMemberId, false);
 
       if (this.activeMember.id === targetMemberId) {
         this.renderChatMessages();
@@ -1860,6 +1898,7 @@ class AndroidApp {
         content: `⚠️ No pude conectar con el servidor Oracle de Staging (150.136.59.173:8080):\n\n\`${err?.message || String(err)}\`\n\n*Asegurate de que el servidor esté activo o verificá la conexión.*`,
       });
       this.saveStorage();
+      this.setAgentThinking(targetMemberId, false);
       if (this.activeMember.id === targetMemberId) {
         this.engine.setState("error");
         Sound.play("error");
@@ -1871,13 +1910,7 @@ class AndroidApp {
       notifyAgentCompletion(targetMemberId, `${agentName} · Error`, "No se pudo conectar con el servidor de Staging");
     } finally {
       notifyRequestEnd();
-      this.thinkingByAgent[targetMemberId] = false;
-      if (this.activeMember.id === targetMemberId) {
-        const pulseEl = document.getElementById("header-pulse");
-        if (pulseEl) pulseEl.classList.remove("thinking");
-        this.renderChatMessages();
-      }
-      this.renderTopSquadChips();
+      this.setAgentThinking(targetMemberId, false);
     }
   }
 
@@ -2030,7 +2063,7 @@ class AndroidApp {
     // Mochi spots the card, gets excited, morphs body and opens mouth wide
     if (this.activeMember.id === targetMember.id) {
       this.engine.isUserTracking = false;
-      this.engine.lookY = 0.85;
+      this.engine.lookY = 0.5;
       this.engine.lookX = 0;
       this.engine.animateMorph(1, 320);
       this.engine.slotHTarget = 0.65;
@@ -2074,12 +2107,12 @@ class AndroidApp {
         card.style.opacity = `${opacity}`;
         card.style.filter = blur > 0 ? `blur(${blur}px)` : "none";
 
-        // Mochi's head & eyes track the card precisely if active
+        // Mochi's head & eyes track the card smoothly without eye distortion or culling
         if (this.activeMember.id === targetMember.id) {
           const dx = (curX - targetX) / appRect.width;
           const dy = (curY - targetY) / appRect.height;
-          this.engine.lookX = Math.max(-1, Math.min(1, dx * 2));
-          this.engine.lookY = Math.max(-1, Math.min(1, dy * 2));
+          this.engine.lookX = Math.max(-0.35, Math.min(0.35, dx));
+          this.engine.lookY = Math.max(-0.4, Math.min(0.6, dy));
         }
 
         if (rawP >= 0.72 && !gulped) {
@@ -2203,17 +2236,11 @@ class AndroidApp {
       Sound.play("send");
     }
 
-    // 2. Coreografía Squad Assist: Red aparece con micro-burbuja táctica, espera 1.2s, vuela a cabecera en 650ms y conmuta a Red
-    await this.executeSquadIntervention({
-      from_coco_id: "coco_rojo",
-      from_name: "Red",
-      badge_color: "#FF2D55",
-      reply: "", // se cargará de forma asíncrona en el chat de Red
-      micro_reply: "¡Entendido! Me llevo el caso a mi estación.",
-      delay_ms: 600,
-    });
+    // 2. Coreografía visual de Squad Assist (efímera, sin mensajes cruzados en el chat de origen)
+    // Red salta desde la cabecera hacia el mensaje de Green con "¡Yo me encargo!", regresa y conmuta
+    await this.executeEphemeralSquadAssist("coco_rojo", "¡Yo me encargo!");
 
-    // 3. Ya estamos en el chat de Red (selectSquadMember fue llamado en executeSquadIntervention)
+    // 3. Ya estamos en el chat de Red (selectSquadMember fue llamado en executeEphemeralSquadAssist)
     if (!this.chatHistories["coco_rojo"]) {
       this.chatHistories["coco_rojo"] = [];
     }
@@ -2231,14 +2258,7 @@ class AndroidApp {
     });
     this.saveStorage();
 
-    this.thinkingByAgent["coco_rojo"] = true;
-    this.renderTopSquadChips();
-    if (this.activeMember.id === "coco_rojo") {
-      this.renderChatMessages();
-      this.engine.setState("thinking");
-      const pulseEl = document.getElementById("header-pulse");
-      if (pulseEl) pulseEl.classList.add("thinking");
-    }
+    this.setAgentThinking("coco_rojo", true);
 
     // 4. Llamada al endpoint de Red (/agente/rojo)
     try {
@@ -2293,6 +2313,8 @@ class AndroidApp {
         analysis: redReply,
       });
 
+      this.setAgentThinking("coco_rojo", false);
+
       if (this.activeMember.id === "coco_rojo") {
         this.renderChatMessages();
         this.engine.setState("finished");
@@ -2311,17 +2333,10 @@ class AndroidApp {
         waiting.content = `⚠️ No pude conectar con el servicio de análisis de Red (150.136.59.173:8080):\n\n\`${err?.message || String(err)}\`\n\n*El documento fue devorado y está disponible en memoria.*`;
       }
       this.saveStorage();
-      if (this.activeMember.id === "coco_rojo") {
-        this.renderChatMessages();
-      }
+      this.setAgentThinking("coco_rojo", false);
     } finally {
       notifyRequestEnd();
-      this.thinkingByAgent["coco_rojo"] = false;
-      this.renderTopSquadChips();
-      if (this.activeMember.id === "coco_rojo") {
-        const pulseEl = document.getElementById("header-pulse");
-        if (pulseEl) pulseEl.classList.remove("thinking");
-      }
+      this.setAgentThinking("coco_rojo", false);
     }
   }
 
@@ -2361,15 +2376,7 @@ class AndroidApp {
     this.saveStorage();
 
     // 2. Set thinking state for target agent and re-render top chips & chat if active
-    this.thinkingByAgent[targetMemberId] = true;
-    this.renderTopSquadChips();
-
-    if (this.activeMember.id === targetMemberId) {
-      this.engine.setState("thinking");
-      const pulseEl = document.getElementById("header-pulse");
-      if (pulseEl) pulseEl.classList.add("thinking");
-      this.renderChatMessages();
-    }
+    this.setAgentThinking(targetMemberId, true);
 
     // 3. Initiate analysis with Oracle staging backend
     try {
@@ -2469,6 +2476,8 @@ class AndroidApp {
       const agent = SQUAD.find((s) => s.id === targetMemberId);
       const agentName = agent ? agent.name : "Coco";
 
+      this.setAgentThinking(targetMemberId, false);
+
       if (this.activeMember.id === targetMemberId) {
         this.resetMochiToBase();
         this.engine.setState("finished");
@@ -2490,6 +2499,7 @@ class AndroidApp {
         target.content = `⚠️ No pude completar el análisis de **${file.name}** en el servidor de Staging (150.136.59.173:8080):\n\n\`${err?.message || String(err)}\`\n\n*El archivo fue devorado y está almacenado en memoria activa.*`;
       }
       this.saveStorage();
+      this.setAgentThinking(targetMemberId, false);
       if (this.activeMember.id === targetMemberId) {
         this.resetMochiToBase();
         this.engine.setState("error");
@@ -2502,13 +2512,7 @@ class AndroidApp {
       notifyAgentCompletion(targetMemberId, `${agentName} · Error al analizar`, `No se pudo procesar ${file.name}`);
     } finally {
       notifyRequestEnd();
-      this.thinkingByAgent[targetMemberId] = false;
-      if (this.activeMember.id === targetMemberId) {
-        const pulseEl = document.getElementById("header-pulse");
-        if (pulseEl) pulseEl.classList.remove("thinking");
-        this.renderChatMessages();
-      }
-      this.renderTopSquadChips();
+      this.setAgentThinking(targetMemberId, false);
     }
   }
 

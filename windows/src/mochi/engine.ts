@@ -879,8 +879,8 @@ export class BotEngine {
       x.restore();
     }
 
-    this.drawEyes(x, body, R, rx, ry);
     if (this.morph > 0.05) this.drawMouth(x, body, R);
+    this.drawEyes(x, body, R, rx, ry);
 
     if (head) drawOutfitFront(x, this.outfit, head, outfitState);
 
@@ -1011,9 +1011,14 @@ export class BotEngine {
       let eyePitch = EYE_P + this.pitch + (this.rigidRoll ? 0 : this.roll);
       eyePitch = (((eyePitch + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
       const cp = Math.cos(eyePitch);
-      if (Math.cos(eyeYaw) * cp <= 0.04) continue;
+      if (this.morph <= 0.05 && Math.cos(eyeYaw) * cp <= 0.04) continue;
 
-      const ex = Math.sin(eyeYaw) * cp * rx;
+      let ex = Math.sin(eyeYaw) * cp * rx;
+      if (this.morph > 0.05) {
+        // En modo devorar: mantener ojos perfectamente simétricos a ambos lados del centro
+        const symX = sd * rx * 0.38;
+        ex = lerp(ex, symX, Math.min(1, this.morph * 0.85));
+      }
       const ey = -Math.sin(eyePitch) * ry + (this.morph > 0 ? ry * 0.14 * this.morph : 0);
       const fx = lerp(Math.max(0.18, Math.cos(eyeYaw)), 1, this.morph * 0.7);
       const fy = lerp(Math.max(0.18, cp), 1, this.morph * 0.7);
@@ -1141,22 +1146,24 @@ export class BotEngine {
   /** Mailbox slot: dark pill cut into the box face, with rim and lip highlights. */
   private drawMouth(x: CanvasRenderingContext2D, body: Path2D, R: number) {
     const m = this.morph;
-    const hW = R * 1.8 * m;
-    const hH = this.slotH * R * m;
+    const hW = R * 1.45 * m;
+    const hH = this.slotH * R * 0.75 * m;
     const hX = -hW / 2;
-    const boxTop = -R * (0.88 + 0.06 * m);
-    const hY = boxTop + R * 0.08 * m;
+    const mouthTop = R * 0.05 * m;
+    const hY = mouthTop;
 
     x.save();
     x.clip(body);
 
-    x.strokeStyle = `rgba(255,255,255,${0.55 * m})`;
-    x.lineWidth = 1;
-    x.lineCap = "round";
-    x.beginPath();
-    x.moveTo(-R * 0.9 * m, boxTop + 1);
-    x.lineTo(R * 0.9 * m, boxTop + 1);
-    x.stroke();
+    if (hH > 0.8) {
+      x.strokeStyle = `rgba(255,255,255,${0.45 * m})`;
+      x.lineWidth = 1;
+      x.lineCap = "round";
+      x.beginPath();
+      x.moveTo(-hW * 0.4, mouthTop - 0.5);
+      x.lineTo(hW * 0.4, mouthTop - 0.5);
+      x.stroke();
+    }
 
     if (hH > 0.8) {
       const hR = Math.min(hW / 2, hH / 2);
