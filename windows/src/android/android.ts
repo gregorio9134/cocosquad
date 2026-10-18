@@ -42,6 +42,20 @@ interface SquadMember {
   sendTextColor?: string;
 }
 
+export interface SquadIntervention {
+  from_coco_id: 'coco_blanco' | 'coco_verde' | 'coco_rojo' | 'coco_azul';
+  from_name: string;
+  badge_color: string;
+  reply: string;
+  delay_ms?: number;
+}
+
+declare global {
+  interface Window {
+    testSquadAssist?: () => Promise<void>;
+  }
+}
+
 interface QuickToolItem {
   icon: string;
   title: string;
@@ -559,9 +573,36 @@ class AndroidApp {
       if (urlParams.get("sheet") === "green") {
         setTimeout(() => this.greenManager.openSheet(), 150);
       }
+      if (urlParams.get("test") === "squad_assist") {
+        setTimeout(() => window.testSquadAssist?.(), 600);
+      }
     } catch {
       // ignore
     }
+
+    // Expose test trigger in console
+    window.testSquadAssist = async () => {
+      this.switchToChatView();
+
+      const blu = SQUAD.find((s) => s.id === "coco_azul") || SQUAD[3];
+      this.selectSquadMember(blu);
+
+      this.messages.push({
+        id: Date.now(),
+        role: "assistant",
+        content: "Detecté una consulta entrante de un paciente sobre confirmación de turnos y reprogramaciones por WhatsApp. Nuestro especialista en comunicaciones es Green, así que le doy paso de inmediato...",
+      });
+      this.saveStorage();
+      this.renderChatMessages();
+
+      await this.executeSquadIntervention({
+        from_coco_id: "coco_verde",
+        from_name: "Green",
+        badge_color: "#00E676",
+        reply: "¡Hola! 💬 Ya revisé el hilo de WhatsApp con el paciente: confirmó el turno de mañana a las 15:30 hs y ya registré la respuesta en el sistema. ¡Todo listo!",
+        delay_ms: 1000,
+      });
+    };
   }
 
   private initMascotCanvas() {
@@ -778,6 +819,8 @@ class AndroidApp {
       const hasUnread = !isThinking && !!this.taskCompletedUnread[m.id];
       const btn = document.createElement("button");
       btn.className = `squad-mochi-chip ${isThinking ? "thinking" : ""} ${hasUnread ? "has-unread" : ""}`;
+      btn.dataset.agentId = m.id;
+      btn.id = `squad-chip-${m.id}`;
       btn.style.setProperty("--chip-accent", m.color);
       btn.title = isThinking
         ? `${m.name} está procesando con IA...`
@@ -1061,10 +1104,29 @@ class AndroidApp {
 
       if (msg.role === "assistant") {
         const badge = document.createElement("div");
-        badge.className = "chat-agent-badge";
-        badge.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${this.activeMember.color};"></span> <span class="coco-name-animated">${this.activeMember.name}</span>`;
-        row.appendChild(badge);
-        bubble.innerHTML = `<div class="message-content">${marked.parse(msg.content, { async: false }) as string}</div>`;
+        if (msg.intervention) {
+          badge.className = "chat-agent-badge squad-assist-badge";
+          badge.style.setProperty("--agent-badge-color", msg.intervention.badge_color);
+          badge.innerHTML = `
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${msg.intervention.badge_color};box-shadow:0 0 8px ${msg.intervention.badge_color};"></span>
+            <span class="coco-name-animated" style="color:${msg.intervention.badge_color};">${msg.intervention.from_name}</span>
+            <span class="squad-assist-tag" style="color:${msg.intervention.badge_color};border-color:${msg.intervention.badge_color}55;">Squad Assist</span>
+          `;
+          row.appendChild(badge);
+          bubble.className = "chat-bubble squad-assist-bubble";
+          bubble.style.setProperty("--agent-badge-color", msg.intervention.badge_color);
+          bubble.innerHTML = `
+            <div class="message-content">${marked.parse(msg.content, { async: false }) as string}</div>
+            <div class="squad-assist-footer" style="display:flex;">
+              <span class="squad-returned-indicator">↩ <strong>${msg.intervention.from_name}</strong> volvió a su puesto</span>
+            </div>
+          `;
+        } else {
+          badge.className = "chat-agent-badge";
+          badge.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${this.activeMember.color};"></span> <span class="coco-name-animated">${this.activeMember.name}</span>`;
+          row.appendChild(badge);
+          bubble.innerHTML = `<div class="message-content">${marked.parse(msg.content, { async: false }) as string}</div>`;
+        }
       } else {
         bubble.innerHTML = `<div class="message-content user">${marked.parse(msg.content, { async: false }) as string}</div>`;
       }
@@ -1087,6 +1149,183 @@ class AndroidApp {
     }
 
     container.scrollTop = container.scrollHeight;
+  }
+
+  public async flyBackToHeader(
+    avatarEl: HTMLElement,
+    headerTargetEl: HTMLElement,
+    fromName: string,
+    badgeColor: string,
+    footerEl?: HTMLElement
+  ): Promise<void> {
+    const startRect = avatarEl.getBoundingClientRect();
+    const targetRect = headerTargetEl.getBoundingClientRect();
+
+    // 1. Create floating clone
+    const clone = document.createElement("div");
+    clone.className = "squad-flying-clone";
+    clone.style.left = `${startRect.left}px`;
+    clone.style.top = `${startRect.top}px`;
+    clone.style.width = `${startRect.width}px`;
+    clone.style.height = `${startRect.height}px`;
+    clone.style.boxShadow = `0 0 16px ${badgeColor}, 0 0 8px #ffffff`;
+
+    // Copy inner HTML (including canvas if present)
+    clone.innerHTML = avatarEl.innerHTML;
+    const origCanvas = avatarEl.querySelector("canvas");
+    const cloneCanvas = clone.querySelector("canvas");
+    if (origCanvas && cloneCanvas) {
+      const cloneCtx = cloneCanvas.getContext("2d");
+      if (cloneCtx) cloneCtx.drawImage(origCanvas, 0, 0);
+    }
+
+    document.body.appendChild(clone);
+    Sound.play("blip");
+
+    // Force reflow
+    void clone.offsetWidth;
+
+    // 2. Vector distance from start center to target center
+    const startCenterX = startRect.left + startRect.width / 2;
+    const startCenterY = startRect.top + startRect.height / 2;
+    const targetCenterX = targetRect.left + targetRect.width / 2;
+    const targetCenterY = targetRect.top + targetRect.height / 2;
+    const deltaX = targetCenterX - startCenterX;
+    const deltaY = targetCenterY - startCenterY;
+    const scale = targetRect.width > 0 ? targetRect.width / startRect.width : 1.35;
+
+    clone.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${scale})`;
+
+    // Fly in 650ms with cubic-bezier(0.25, 1, 0.5, 1)
+    await new Promise((resolve) => setTimeout(resolve, 650));
+
+    // 3. Docking: remove clone
+    clone.remove();
+
+    // Restore opacity and remove calling state
+    headerTargetEl.classList.remove("mochi-calling");
+    headerTargetEl.style.opacity = "";
+
+    // Light pulse burst on seat
+    headerTargetEl.classList.remove("mochi-returned-pulse");
+    void headerTargetEl.offsetWidth; // force reflow
+    headerTargetEl.classList.add("mochi-returned-pulse");
+    setTimeout(() => headerTargetEl.classList.remove("mochi-returned-pulse"), 900);
+
+    Sound.play("pop");
+    if (navigator.vibrate) navigator.vibrate([15, 30, 20]);
+
+    // Place discrete footer below bubble
+    if (footerEl) {
+      footerEl.innerHTML = `<span class="squad-returned-indicator">↩ <strong>${fromName}</strong> volvió a su puesto</span>`;
+      footerEl.style.display = "flex";
+    }
+  }
+
+  public async executeSquadIntervention(intervention: SquadIntervention): Promise<void> {
+    const container = document.getElementById("chat-history");
+    const emptyState = document.getElementById("chat-empty-state");
+    if (emptyState) emptyState.style.display = "none";
+    if (container) container.style.display = "flex";
+
+    // 1. Locate summoned agent's header icon
+    const headerTargetEl =
+      document.querySelector<HTMLElement>(`#top-squad-chips [data-agent-id="${intervention.from_coco_id}"]`) ||
+      document.getElementById(`squad-chip-${intervention.from_coco_id}`) ||
+      document.getElementById("avatar-btn");
+
+    if (headerTargetEl) {
+      headerTargetEl.classList.add("mochi-calling");
+      headerTargetEl.style.opacity = "0.35";
+      Sound.play("tap");
+    }
+
+    // 2. Wait delay_ms (default 1000ms)
+    const delay = intervention.delay_ms ?? 1000;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+
+    // 3. Insert assistant agent's bubble in chat with thematic color and name
+    const row = document.createElement("div");
+    row.className = "chat-bubble-row assistant squad-assist-row";
+
+    const badge = document.createElement("div");
+    badge.className = "chat-agent-badge squad-assist-badge";
+    badge.style.setProperty("--agent-badge-color", intervention.badge_color);
+
+    const avatarEl = document.createElement("div");
+    avatarEl.className = "squad-assist-avatar-circle";
+    avatarEl.style.borderColor = `${intervention.badge_color}66`;
+    avatarEl.style.boxShadow = `0 0 10px ${intervention.badge_color}66`;
+
+    const miniCanvas = document.createElement("canvas");
+    miniCanvas.width = 36;
+    miniCanvas.height = 36;
+    miniCanvas.style.width = "18px";
+    miniCanvas.style.height = "18px";
+    miniCanvas.className = "squad-assist-avatar-canvas";
+    const miniCtx = miniCanvas.getContext("2d");
+    if (miniCtx) {
+      const assistingMember = SQUAD.find((s) => s.id === intervention.from_coco_id);
+      const eng = new BotEngine();
+      eng.setCocoSquadRole(assistingMember ? assistingMember.squadRole : "white");
+      eng.eyeOverride = "happy";
+      eng.draw(miniCtx, 18, 18);
+    }
+    avatarEl.appendChild(miniCanvas);
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "coco-name-animated";
+    nameSpan.textContent = intervention.from_name;
+    nameSpan.style.color = intervention.badge_color;
+
+    const assistTag = document.createElement("span");
+    assistTag.className = "squad-assist-tag";
+    assistTag.textContent = "Squad Assist";
+    assistTag.style.color = intervention.badge_color;
+    assistTag.style.borderColor = `${intervention.badge_color}55`;
+
+    badge.appendChild(avatarEl);
+    badge.appendChild(nameSpan);
+    badge.appendChild(assistTag);
+    row.appendChild(badge);
+
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble squad-assist-bubble";
+    bubble.style.setProperty("--agent-badge-color", intervention.badge_color);
+    bubble.innerHTML = `<div class="message-content">${marked.parse(intervention.reply, { async: false }) as string}</div>`;
+
+    const footerEl = document.createElement("div");
+    footerEl.className = "squad-assist-footer";
+    footerEl.style.display = "none";
+    bubble.appendChild(footerEl);
+
+    row.appendChild(bubble);
+    container?.appendChild(row);
+
+    // Save message with intervention metadata
+    this.messages.push({
+      id: Date.now(),
+      role: "assistant",
+      content: intervention.reply,
+      intervention: {
+        from_coco_id: intervention.from_coco_id,
+        from_name: intervention.from_name,
+        badge_color: intervention.badge_color,
+        returned: true,
+      },
+    });
+    this.saveStorage();
+
+    container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    Sound.play("receive");
+
+    // 4. Wait 1500ms reading time
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // 5. Fly back to header
+    if (headerTargetEl) {
+      await this.flyBackToHeader(avatarEl, headerTargetEl, intervention.from_name, intervention.badge_color, footerEl);
+    }
   }
 
   private renderTasks() {

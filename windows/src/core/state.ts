@@ -32,6 +32,12 @@ export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  intervention?: {
+    from_coco_id: 'coco_blanco' | 'coco_verde' | 'coco_rojo' | 'coco_azul';
+    from_name: string;
+    badge_color: string;
+    returned?: boolean;
+  };
 }
 
 export type PromptContext =

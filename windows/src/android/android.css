@@ -2067,4 +2067,168 @@ html, body {
   }
 }
 
+/* ── SQUAD ASSIST INTERVENTION & RETURN ANIMATIONS ── */
+.squad-mochi-chip.mochi-calling {
+  opacity: 0.35 !important;
+  animation: mochiCallingSeatPulse 0.55s infinite alternate ease-in-out !important;
+  position: relative;
+}
+
+.squad-mochi-chip.mochi-calling::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px dashed var(--chip-accent, #ffffff);
+  box-shadow: 0 0 12px var(--chip-accent, #ffffff);
+  animation: mochiCallingRingRotate 1.1s infinite linear;
+  pointer-events: none;
+}
+
+@keyframes mochiCallingSeatPulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.35;
+    filter: drop-shadow(0 0 2px var(--chip-accent, #ffffff));
+  }
+  100% {
+    transform: scale(1.08);
+    opacity: 0.55;
+    filter: drop-shadow(0 0 10px var(--chip-accent, #ffffff));
+  }
+}
+
+@keyframes mochiCallingRingRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.squad-mochi-chip.mochi-returned-pulse,
+.avatar-wrapper.mochi-returned-pulse {
+  animation: mochiDockedBurst 0.75s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards !important;
+}
+
+@keyframes mochiDockedBurst {
+  0% {
+    transform: scale(0.85);
+    box-shadow: 0 0 0 0 var(--chip-accent, #ffffff);
+    filter: brightness(2.2);
+  }
+  45% {
+    transform: scale(1.32);
+    box-shadow: 0 0 22px 6px var(--chip-accent, #ffffff);
+    filter: brightness(1.6);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+    filter: brightness(1);
+  }
+}
+
+/* Flying clone for Squad Assist */
+.squad-flying-clone {
+  box-sizing: border-box;
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 650ms cubic-bezier(0.25, 1, 0.5, 1), opacity 650ms ease, box-shadow 650ms ease;
+  transform-origin: center center;
+}
+
+/* Squad assist chat bubble */
+.squad-assist-row {
+  margin-top: 6px;
+  animation: squadAssistSlideIn 0.38s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+@keyframes squadAssistSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.squad-assist-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 5px;
+}
+
+.squad-assist-avatar-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 8px var(--agent-badge-color, #ffffff);
+  flex-shrink: 0;
+  background: #11141a;
+}
+
+.squad-assist-avatar-canvas {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+  display: block;
+}
+
+.squad-assist-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  border: 1px solid currentColor;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.88;
+}
+
+.squad-assist-bubble {
+  border-left: 2.5px solid var(--agent-badge-color, #00E676) !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%) !important;
+}
+
+.squad-assist-footer {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  animation: squadFooterFade 0.4s ease forwards;
+}
+
+@keyframes squadFooterFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 0.85; transform: translateY(0); }
+}
+
+.squad-returned-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-style: italic;
+  letter-spacing: 0.2px;
+}
+
+.squad-returned-indicator strong {
+  color: #f1f5f9;
+  font-style: normal;
+}
+
 
