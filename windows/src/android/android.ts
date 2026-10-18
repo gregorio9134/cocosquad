@@ -21,8 +21,17 @@ import {
 } from "./notifications";
 import {
   formatFileSize,
-  saveDevouredFileRecord,
+  evaluateCocoDocumentThreshold,
+  getDocumentPageCount,
+  COCO_DELEGATION_MESSAGE,
 } from "./fileGuard";
+import {
+  saveToVault,
+  getAllFromVault,
+  deleteFromVault,
+  computeFileHash,
+  type VaultRecord,
+} from "./vault";
 
 marked.setOptions({
   gfm: true,
@@ -62,7 +71,7 @@ interface QuickToolItem {
   title: string;
   desc: string;
   prompt?: string;
-  actionType?: "todo" | "note";
+  actionType?: "todo" | "note" | "vault";
 }
 
 const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
@@ -90,6 +99,12 @@ const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
       title: "Guardar nota rápida",
       desc: "Crear una nota en Taby",
       actionType: "note",
+    },
+    {
+      icon: "🔒",
+      title: "Bóveda Local",
+      desc: "Archivos devorados con privacidad total",
+      actionType: "vault",
     },
   ],
   coco_verde: [
@@ -355,7 +370,9 @@ class AndroidApp {
       if (typeof window !== "undefined" && window.indexedDB && window.indexedDB.databases) {
         window.indexedDB.databases().then((dbs) => {
           for (const db of dbs) {
-            if (db.name) window.indexedDB.deleteDatabase(db.name);
+            if (db.name && db.name !== "CocoVaultDB") {
+              window.indexedDB.deleteDatabase(db.name);
+            }
           }
         }).catch(() => {});
       }
@@ -523,6 +540,16 @@ class AndroidApp {
                   <button class="card-action-chip" id="btn-add-note">+ Nueva Nota</button>
                 </div>
                 <div id="notes-container" style="display:flex; flex-direction:column; gap:8px;"></div>
+              </div>
+
+              <!-- Bóveda Local Card -->
+              <div class="card-box" id="card-vault-box">
+                <div class="card-box-header">
+                  <span>Bóveda Local (Zero-Storage)</span>
+                  <span class="vault-badge" id="vault-count-badge">0 archivos</span>
+                </div>
+                <p class="vault-privacy-notice">Almacenamiento 100% privado en tu navegador (IndexedDB). El servidor Oracle nunca guarda tus archivos.</p>
+                <div id="vault-files-list" class="vault-files-container"></div>
               </div>
             </div>
           </div>
@@ -1155,6 +1182,11 @@ class AndroidApp {
             this.renderTasks();
             Sound.play("tick");
           }
+        } else if (t.actionType === "vault") {
+          this.switchTab("tasks");
+          const vaultCard = document.getElementById("card-vault-box");
+          vaultCard?.scrollIntoView({ behavior: "smooth" });
+          Sound.play("tick");
         }
       });
 
@@ -1543,6 +1575,101 @@ class AndroidApp {
         });
       }
     }
+
+    void this.renderVaultDocuments();
+  }
+
+  private async renderVaultDocuments() {
+    const listEl = document.getElementById("vault-files-list");
+    const countBadge = document.getElementById("vault-count-badge");
+    if (!listEl) return;
+
+    try {
+      const records = await getAllFromVault();
+      if (countBadge) {
+        countBadge.textContent = records.length === 1 ? "1 archivo" : `${records.length} archivos`;
+      }
+
+      if (records.length === 0) {
+        listEl.innerHTML = `
+          <div class="vault-empty-box">
+            <span class="vault-empty-icon">📂</span>
+            <div class="vault-empty-text">Bóveda vacía</div>
+            <div class="vault-empty-hint">Los documentos y fotos que devores se guardarán aquí con cifrado hash y privacidad total (Zero-Storage en servidor).</div>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = "";
+      records.forEach((rec) => {
+        const card = document.createElement("div");
+        card.className = "vault-file-card";
+
+        const isImg = rec.mimeType?.startsWith("image/");
+        const isVid = rec.mimeType?.startsWith("video/");
+        const icon = isImg ? "🖼️" : isVid ? "🎬" : "📄";
+
+        const shortHash = rec.hash ? `${rec.hash.slice(0, 8)}...${rec.hash.slice(-6)}` : "sha256-local";
+        const pagesInfo = rec.pageCount ? ` · ${rec.pageCount} ${rec.pageCount === 1 ? "pág" : "págs"}` : "";
+
+        const agent = SQUAD.find((s) => s.id === rec.agentId) || SQUAD[0];
+
+        card.innerHTML = `
+          <div class="vault-file-header-row">
+            <div class="vault-file-icon">${icon}</div>
+            <div class="vault-file-info">
+              <div class="vault-file-name" title="${rec.name}">${rec.name}</div>
+              <div class="vault-file-meta">
+                <span>${rec.sizeStr || formatFileSize(rec.size)}</span>
+                ${pagesInfo}
+                <span>·</span>
+                <span class="vault-agent-tag" style="color:${agent.color};">${rec.agentName || agent.name}</span>
+                <span>·</span>
+                <span>${rec.dateStr || new Date(rec.timestamp).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+          <div class="vault-file-bottom-row">
+            <span class="vault-hash-badge" title="Hash SHA-256: ${rec.hash}">🔒 ${shortHash}</span>
+            <div class="vault-actions-row">
+              <button class="vault-btn-consult" data-id="${rec.id}">
+                <span>💬</span>
+                <span>Consultar</span>
+              </button>
+              <button class="vault-btn-delete" data-id="${rec.id}" title="Eliminar de la bóveda">
+                <span>🗑️</span>
+              </button>
+            </div>
+          </div>
+        `;
+
+        const consultBtn = card.querySelector(".vault-btn-consult");
+        consultBtn?.addEventListener("click", () => {
+          this.switchTab("chat");
+          const targetAgentId = rec.agentId || "coco_blanco";
+          this.switchAgent(targetAgentId);
+          const chatInput = document.getElementById("chat-input") as HTMLInputElement;
+          if (chatInput) {
+            chatInput.value = `¿Qué podés decirme sobre el documento ${rec.name} guardado en la bóveda?`;
+            chatInput.focus();
+          }
+          Sound.play("tick");
+        });
+
+        const deleteBtn = card.querySelector(".vault-btn-delete");
+        deleteBtn?.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          await deleteFromVault(rec.id);
+          Sound.play("tick");
+          void this.renderVaultDocuments();
+        });
+
+        listEl.appendChild(card);
+      });
+    } catch (err) {
+      console.warn("[Vault] Error rendering vault documents:", err);
+    }
   }
 
   private bindEvents() {
@@ -1593,22 +1720,7 @@ class AndroidApp {
       btn.addEventListener("click", (e) => {
         const target = e.currentTarget as HTMLElement;
         const tab = target.dataset.tab as "chat" | "devour" | "tasks";
-
-        if (tab === "devour") {
-          // Devour action: show Bottom Sheet so user can choose Cámara or Archivos / Galería
-          this.openDevourSheet();
-          return;
-        }
-
-        if (tab === this.activeTab) return;
-
-        document.querySelectorAll(".nav-item-btn").forEach((b) => b.classList.remove("active"));
-        target.classList.add("active");
-
-        document.querySelectorAll(".view-page").forEach((p) => p.classList.remove("active"));
-        document.getElementById(`page-${tab}`)?.classList.add("active");
-
-        this.activeTab = tab;
+        this.switchTab(tab);
         Sound.play("open");
       });
     });
@@ -1973,14 +2085,28 @@ class AndroidApp {
     }
   }
 
-  private switchToChatView() {
-    this.activeTab = "chat";
+  public switchTab(tab: "chat" | "devour" | "tasks") {
+    if (tab === "devour") {
+      this.openDevourSheet();
+      return;
+    }
+
+    this.activeTab = tab;
     document.querySelectorAll(".nav-item-btn").forEach((b) => {
-      const isChat = (b as HTMLElement).dataset.tab === "chat";
-      b.classList.toggle("active", isChat);
+      const isMatch = (b as HTMLElement).dataset.tab === tab;
+      b.classList.toggle("active", isMatch);
     });
     document.querySelectorAll(".view-page").forEach((p) => p.classList.remove("active"));
-    document.getElementById("page-chat")?.classList.add("active");
+    document.getElementById(`page-${tab}`)?.classList.add("active");
+
+    if (tab === "tasks") {
+      this.renderTasks();
+      void this.renderVaultDocuments();
+    }
+  }
+
+  private switchToChatView() {
+    this.switchTab("chat");
   }
 
   public openDevourSheet() {
@@ -2195,7 +2321,7 @@ class AndroidApp {
     }, 320);
   }
 
-  private executeDevourChewingAndFeedback(
+  private async executeDevourChewingAndFeedback(
     targetMember: SquadMember,
     file: File,
     fileSizeStr: string,
@@ -2227,17 +2353,83 @@ class AndroidApp {
     }
     Sound.play("approve");
 
+    // Guardar registro en CocoVaultDB (100% Client-Side, Zero-Storage)
+    let vaultRecord: VaultRecord | undefined;
+    try {
+      const fileHash = await computeFileHash(file);
+      const pageCount = await getDocumentPageCount(file);
+      const recordId = `${fileHash.slice(0, 16)}_${Date.now()}`;
+      vaultRecord = {
+        id: recordId,
+        hash: fileHash,
+        name: file.name,
+        size: file.size,
+        sizeStr: fileSizeStr,
+        mimeType: file.type || (isImage ? "image/jpeg" : isVideo ? "video/mp4" : "application/pdf"),
+        pageCount,
+        agentId: targetMember.id,
+        agentName: targetMember.name,
+        base64,
+        dataUri,
+        timestamp: Date.now(),
+        dateStr: new Date().toLocaleDateString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+        analysis: "Procesando en memoria...",
+      };
+      await saveToVault(vaultRecord);
+      void this.renderVaultDocuments();
+    } catch (err) {
+      console.warn("[Vault] Error guardando archivo en CocoVaultDB:", err);
+    }
+
     // After container bounce finishes, process delegation or chat reply
-    setTimeout(() => {
+    setTimeout(async () => {
       // Check if this devoured file needs to be delegated to Red
       const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
       const isTechnicalDoc = isPdf || /\.(doc|docx|txt|md|csv|xlsx?|pptx?|epub|tex)$/i.test(file.name);
-      const requiresRedDelegation = isTechnicalDoc && targetMember.id !== "coco_rojo";
+
+      let requiresRedDelegation = false;
+      let delegationReason = "Ese documento requiere análisis profundo. Se lo derivo a Red.";
+
+      if (isTechnicalDoc) {
+        if (targetMember.id === "coco_blanco") {
+          // Evaluar umbral de lectura de Coco Blanco: <= 2 MB y <= 4 páginas
+          const thresholdResult = await evaluateCocoDocumentThreshold(file);
+          if (thresholdResult.exceedsThreshold) {
+            requiresRedDelegation = true;
+            delegationReason = COCO_DELEGATION_MESSAGE;
+          } else {
+            // Documento dentro del umbral: Coco Blanco lo procesa de forma directa
+            requiresRedDelegation = false;
+          }
+        } else if (targetMember.id !== "coco_rojo") {
+          // Green y Blu delegan documentos técnicos a Red
+          requiresRedDelegation = true;
+          delegationReason = "Ese documento requiere análisis profundo. Se lo derivo a Red.";
+        }
+      }
 
       if (requiresRedDelegation) {
-        void this.handleDevouredFileDelegationToRed(targetMember, file, fileSizeStr, isPdf, base64, dataUri);
+        void this.handleDevouredFileDelegationToRed(
+          targetMember,
+          file,
+          fileSizeStr,
+          isPdf,
+          base64,
+          dataUri,
+          delegationReason,
+          vaultRecord
+        );
       } else {
-        void this.completeDevourInChat(targetMember, file, fileSizeStr, isImage, isVideo, base64, dataUri);
+        void this.completeDevourInChat(
+          targetMember,
+          file,
+          fileSizeStr,
+          isImage,
+          isVideo,
+          base64,
+          dataUri,
+          vaultRecord
+        );
       }
     }, 700);
   }
@@ -2248,28 +2440,16 @@ class AndroidApp {
     fileSizeStr: string,
     isPdf: boolean,
     base64: string,
-    dataUri: string
+    _dataUri: string,
+    delegationReason: string = "Ese documento requiere análisis profundo. Se lo derivo a Red.",
+    vaultRecord?: VaultRecord
   ) {
     const activeMemberId = activeMember.id;
     if (!this.chatHistories[activeMemberId]) {
       this.chatHistories[activeMemberId] = [];
     }
 
-    // Guardar registro inicial en el vault local
-    void saveDevouredFileRecord({
-      id: `${Date.now()}-${file.name}`,
-      name: file.name,
-      size: file.size,
-      sizeStr: fileSizeStr,
-      mimeType: file.type || (isPdf ? "application/pdf" : "text/plain"),
-      agentId: activeMemberId,
-      base64,
-      dataUri,
-      timestamp: Date.now(),
-      analysis: "Delegado a Red para análisis exhaustivo",
-    });
-
-    // 1. Mensaje en el chat del agente activo (ej. Green)
+    // 1. Mensaje en el chat del agente activo (ej. Coco Blanco o Green)
     this.chatHistories[activeMemberId].push({
       id: Date.now(),
       role: "user",
@@ -2278,7 +2458,7 @@ class AndroidApp {
     this.chatHistories[activeMemberId].push({
       id: Date.now() + 1,
       role: "assistant",
-      content: `Ese documento requiere análisis profundo. Se lo derivo a Red.`,
+      content: delegationReason,
     });
     this.saveStorage();
     if (this.activeMember.id === activeMemberId) {
@@ -2287,7 +2467,7 @@ class AndroidApp {
     }
 
     // 2. Coreografía visual de Squad Assist (efímera, sin mensajes cruzados en el chat de origen)
-    // Red salta desde la cabecera hacia el mensaje de Green con "¡Yo me encargo!", regresa y conmuta
+    // Red salta desde la cabecera hacia el mensaje de origen con "¡Yo me encargo!", regresa y conmuta
     await this.executeEphemeralSquadAssist("coco_rojo", "¡Yo me encargo!");
 
     // 3. Ya estamos en el chat de Red (selectSquadMember fue llamado en executeEphemeralSquadAssist)
@@ -2350,18 +2530,13 @@ class AndroidApp {
       }
       this.saveStorage();
 
-      void saveDevouredFileRecord({
-        id: `${Date.now()}-${file.name}`,
-        name: file.name,
-        size: file.size,
-        sizeStr: fileSizeStr,
-        mimeType: file.type || (isPdf ? "application/pdf" : "text/plain"),
-        agentId: "coco_rojo",
-        base64,
-        dataUri,
-        timestamp: Date.now(),
-        analysis: redReply,
-      });
+      if (vaultRecord) {
+        vaultRecord.analysis = redReply;
+        vaultRecord.agentId = "coco_rojo";
+        vaultRecord.agentName = "Red";
+        await saveToVault(vaultRecord);
+        void this.renderVaultDocuments();
+      }
 
       this.setAgentThinking("coco_rojo", false);
 
@@ -2403,7 +2578,8 @@ class AndroidApp {
     isImage: boolean,
     isVideo: boolean,
     base64: string,
-    dataUri?: string
+    _dataUri?: string,
+    vaultRecord?: VaultRecord
   ) {
     const targetMemberId = targetMember.id;
 
@@ -2515,19 +2691,11 @@ class AndroidApp {
       }
       this.saveStorage();
 
-      // Guardar el archivo devorado de forma 100% local en IndexedDB del cliente
-      void saveDevouredFileRecord({
-        id: `${Date.now()}-${file.name}`,
-        name: file.name,
-        size: file.size,
-        sizeStr: fileSizeStr,
-        mimeType: mimeType,
-        agentId: targetMemberId,
-        base64,
-        dataUri,
-        timestamp: Date.now(),
-        analysis: reply,
-      });
+      if (vaultRecord) {
+        vaultRecord.analysis = reply;
+        await saveToVault(vaultRecord);
+        void this.renderVaultDocuments();
+      }
 
       const agent = SQUAD.find((s) => s.id === targetMemberId);
       const agentName = agent ? agent.name : "Coco";

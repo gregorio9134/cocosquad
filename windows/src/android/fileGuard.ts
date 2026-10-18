@@ -1,10 +1,12 @@
 // Coco Squad Mobile — File Guard & Large File Delegation
-// Enforces modular guardrails: delegates large PDFs (>5 pages or >5 MB) from Coco to Red
+// Enforces modular guardrails: Coco Blanco handles files <= 2MB and <= 4 pages.
+// Documents exceeding 2MB or 4 pages are delegated to Red (coco_rojo).
 
-import { saveDevouredFileRecord, type DevouredRecord } from "./localVault";
+import { saveToVault, type VaultRecord } from "./vault";
 
 export interface FileGuardDecision {
   allowed: boolean;
+  shouldDelegateToRed: boolean;
   reason?: string;
   suggestedAgent?: string;
   pageCount?: number;
@@ -12,63 +14,66 @@ export interface FileGuardDecision {
   sizeStr: string;
 }
 
-const MAX_COCO_PDF_PAGES = 5;
-const MAX_COCO_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+export const COCO_MAX_PAGES = 4;
+export const COCO_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
-export const COCO_LARGE_FILE_REJECTION_MESSAGE =
-  "¡Uff, este documento es gigante para mí! 📚 Mi compañero Red es el especialista en investigar libros, papers y archivos extensos. Arrastralo o subilo en su pestaña para que lo analice a fondo.";
+export const COCO_DELEGATION_MESSAGE =
+  "Ese documento supera mi límite de lectura rápida (máx. 2 MB o 4 págs). Se lo derivo a Red para un análisis exhaustivo.";
 
 /**
- * Parses page count from a PDF file in browser memory without external dependencies.
+ * Parses or estimates page count from a PDF or text file in browser memory without external server.
  */
-export async function getPdfPageCount(file: File): Promise<number> {
-  try {
-    const buffer = await file.arrayBuffer();
-    const text = new TextDecoder("latin1").decode(buffer);
+export async function getDocumentPageCount(file: File): Promise<number> {
+  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 
-    // 1. Match /Type /Pages ... /Count N
-    const pagesCountRegex = /\/Type\s*\/Pages[\s\S]*?\/Count\s+(\d+)/gi;
-    let match: RegExpExecArray | null;
-    let maxPages = 0;
-    while ((match = pagesCountRegex.exec(text)) !== null) {
-      const count = parseInt(match[1], 10);
-      if (!isNaN(count) && count > maxPages) {
-        maxPages = count;
+  if (isPdf) {
+    try {
+      const buffer = await file.arrayBuffer();
+      const text = new TextDecoder("latin1").decode(buffer);
+
+      // 1. Match /Type /Pages ... /Count N
+      const pagesCountRegex = /\/Type\s*\/Pages[\s\S]*?\/Count\s+(\d+)/gi;
+      let match: RegExpExecArray | null;
+      let maxPages = 0;
+      while ((match = pagesCountRegex.exec(text)) !== null) {
+        const count = parseInt(match[1], 10);
+        if (!isNaN(count) && count > maxPages) {
+          maxPages = count;
+        }
       }
-    }
 
-    if (maxPages > 0) {
-      return maxPages;
-    }
+      if (maxPages > 0) return maxPages;
 
-    // 2. Reverse order: /Count N ... /Type /Pages
-    const reverseRegex = /\/Count\s+(\d+)[\s\S]*?\/Type\s*\/Pages/gi;
-    while ((match = reverseRegex.exec(text)) !== null) {
-      const count = parseInt(match[1], 10);
-      if (!isNaN(count) && count > maxPages) {
-        maxPages = count;
+      // 2. Reverse order: /Count N ... /Type /Pages
+      const reverseRegex = /\/Count\s+(\d+)[\s\S]*?\/Type\s*\/Pages/gi;
+      while ((match = reverseRegex.exec(text)) !== null) {
+        const count = parseInt(match[1], 10);
+        if (!isNaN(count) && count > maxPages) {
+          maxPages = count;
+        }
       }
-    }
 
-    if (maxPages > 0) {
-      return maxPages;
-    }
+      if (maxPages > 0) return maxPages;
 
-    // 3. Fallback: Count /Type /Page (excluding /Type /Pages)
-    const pageObjects = text.match(/\/Type\s*\/Page\b/g);
-    if (pageObjects && pageObjects.length > 0) {
-      return pageObjects.length;
-    }
+      // 3. Fallback: Count /Type /Page (excluding /Type /Pages)
+      const pageObjects = text.match(/\/Type\s*\/Page\b/g);
+      if (pageObjects && pageObjects.length > 0) {
+        return pageObjects.length;
+      }
 
-    return 1;
-  } catch (err) {
-    console.warn("[FileGuard] Error analyzing PDF page count:", err);
-    return 1;
+      return 1;
+    } catch (err) {
+      console.warn("[FileGuard] Error analyzing PDF page count:", err);
+      return 1;
+    }
   }
+
+  // Non-PDF documents: estimate 1 page per 3 KB of text (approx 500 words per page)
+  return Math.max(1, Math.ceil(file.size / (1024 * 3)));
 }
 
 /**
- * Format file size into human-readable string
+ * Format file size into human-readable string.
  */
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -77,62 +82,32 @@ export function formatFileSize(bytes: number): string {
 }
 
 /**
- * Evaluates whether the file can be processed by the given agent,
- * or whether it should be delegated to Red (coco_rojo).
+ * Evaluates whether a document received by Coco Blanco exceeds the 2 MB / 4 page threshold.
  */
-export async function evaluateFileForAgent(file: File, agentId: string): Promise<FileGuardDecision> {
+export async function evaluateCocoDocumentThreshold(file: File): Promise<{
+  exceedsThreshold: boolean;
+  pageCount: number;
+  sizeBytes: number;
+  reason?: string;
+}> {
   const sizeBytes = file.size;
-  const sizeStr = formatFileSize(sizeBytes);
-  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  const pageCount = await getDocumentPageCount(file);
+  const exceedsSize = sizeBytes > COCO_MAX_BYTES;
+  const exceedsPages = pageCount > COCO_MAX_PAGES;
 
-  // Red (coco_rojo) has no size or page count restrictions: specialist in deep research
-  if (agentId === "coco_rojo") {
-    let pageCount: number | undefined;
-    if (isPdf) {
-      pageCount = await getPdfPageCount(file);
-    }
-    return {
-      allowed: true,
-      pageCount,
-      sizeBytes,
-      sizeStr,
-    };
+  const exceedsThreshold = exceedsSize || exceedsPages;
+
+  let reason: string | undefined;
+  if (exceedsThreshold) {
+    reason = COCO_DELEGATION_MESSAGE;
   }
 
-  // Coco Blanco restriction: max 5 pages or max 5 MB for PDFs, or max 5MB for large docs
-  if (agentId === "coco_blanco") {
-    let pageCount: number | undefined;
-
-    if (isPdf) {
-      pageCount = await getPdfPageCount(file);
-      if (pageCount > MAX_COCO_PDF_PAGES || sizeBytes > MAX_COCO_FILE_SIZE_BYTES) {
-        return {
-          allowed: false,
-          reason: COCO_LARGE_FILE_REJECTION_MESSAGE,
-          suggestedAgent: "coco_rojo",
-          pageCount,
-          sizeBytes,
-          sizeStr,
-        };
-      }
-    } else if (sizeBytes > MAX_COCO_FILE_SIZE_BYTES) {
-      return {
-        allowed: false,
-        reason: COCO_LARGE_FILE_REJECTION_MESSAGE,
-        suggestedAgent: "coco_rojo",
-        pageCount,
-        sizeBytes,
-        sizeStr,
-      };
-    }
-  }
-
-  // All other agents/files within limits
   return {
-    allowed: true,
+    exceedsThreshold,
+    pageCount,
     sizeBytes,
-    sizeStr,
+    reason,
   };
 }
 
-export { saveDevouredFileRecord, type DevouredRecord };
+export { saveToVault, type VaultRecord };
