@@ -621,8 +621,8 @@ class AndroidApp {
     }
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = 44;
-    const h = 44;
+    const w = 40;
+    const h = 40;
     this.mascotCanvas.width = Math.round(w * dpr);
     this.mascotCanvas.height = Math.round(h * dpr);
     this.mascotCanvas.style.width = `${w}px`;
@@ -745,82 +745,65 @@ class AndroidApp {
 
     switch (action) {
       case 0: {
-        // 1. Guiñar los ojos (wink) + micro-tilt
-        engine.triggerEmote("wink", isMini ? 0.9 : 1.2);
+        // 1. Doble pestañeo simétrico (ambos ojos parpadean juntos) + micro-tilt
+        engine.blink();
         engine.anim("tilt", [
-          [0.12 * mult, 140, Ease.out],
-          [0.12 * mult, isMini ? 500 : 700, Ease.lin],
+          [0.10 * mult, 140, Ease.out],
+          [0.10 * mult, isMini ? 400 : 600, Ease.lin],
           [0, 180, Ease.inOut],
         ]);
         if (!isMini) Sound.play("blip");
         break;
       }
       case 1: {
-        // 2. Saludar con un rebote alegre (bounce)
+        // 2. Saludar con un rebote alegre y ojos felices ^^
         engine.eyeOverride = "happy";
         engine.eyeOverrideUntil = (performance.now() / 1000) + (isMini ? 0.7 : 0.9);
         engine.anim("oy", [
-          [-0.26 * mult, 130, Ease.out],
+          [-0.20 * mult, 130, Ease.out],
           [0.05 * mult, 150, Ease.inOut],
-          [-0.10 * mult, 110, Ease.out],
+          [-0.08 * mult, 110, Ease.out],
           [0, 130, Ease.back],
         ]);
         engine.anim("sy", [
-          [1.22 * mult, 130, Ease.out],
-          [0.88, 150, Ease.inOut],
-          [1.08, 110, Ease.out],
+          [1.18 * mult, 130, Ease.out],
+          [0.90, 150, Ease.inOut],
+          [1.06, 110, Ease.out],
           [1, 130, Ease.back],
         ]);
         engine.anim("sx", [
-          [0.86, 130, Ease.out],
-          [1.12, 150, Ease.inOut],
+          [0.88, 130, Ease.out],
+          [1.08, 150, Ease.inOut],
           [0.94, 110, Ease.out],
           [1, 130, Ease.back],
         ]);
-        if (!isMini) Sound.play("blip");
+        if (!isMini) Sound.play("pop");
         break;
       }
       case 2: {
-        // 3. Vuelta rápida / giro elástico 360° (spin/flip)
-        const dir = Math.random() < 0.5 ? 1 : -1;
-        engine.anim("oy", [
-          [-0.22 * mult, 160, Ease.out],
-          [0, 220, Ease.back],
-        ]);
-        engine.anim("tilt", [
-          [Math.PI * 2 * dir, 380, Ease.inOut],
-          [0, 1, Ease.lin],
-        ]);
-        engine.anim("sy", [
-          [1.16, 140, Ease.out],
-          [0.90, 160, Ease.inOut],
-          [1, 120, Ease.back],
-        ]);
+        // 3. Pequeña compresión esponjosa (squash) elástica
+        engine.squash();
+        if (!isMini) Sound.play("tap");
         break;
       }
       case 3:
       default: {
-        // 4. Inclinación de curiosidad de lado con mirada atenta (curiosity tilt)
+        // 4. Inclinación de curiosidad tierna con mirada atenta y simétrica
         const side = Math.random() < 0.5 ? 1 : -1;
         engine.anim("tilt", [
-          [0.24 * side * mult, 180, Ease.out],
-          [0.24 * side * mult, isMini ? 600 : 850, Ease.lin],
-          [0, 220, Ease.inOut],
-        ]);
-        engine.anim("yaw", [
-          [0.55 * side * mult, 200, Ease.out],
-          [0.55 * side * mult, isMini ? 600 : 850, Ease.lin],
-          [0, 220, Ease.inOut],
+          [0.12 * side * mult, 160, Ease.out],
+          [0.12 * side * mult, isMini ? 500 : 700, Ease.lin],
+          [0, 180, Ease.inOut],
         ]);
         engine.anim("pitch", [
-          [-0.18 * mult, 180, Ease.out],
-          [-0.18 * mult, isMini ? 600 : 850, Ease.lin],
-          [0, 220, Ease.inOut],
+          [-0.14 * mult, 160, Ease.out],
+          [-0.14 * mult, isMini ? 500 : 700, Ease.lin],
+          [0, 180, Ease.inOut],
         ]);
         engine.anim("es", [
-          [1.24, 160, Ease.out],
-          [1.24, isMini ? 650 : 900, Ease.lin],
-          [1, 200, Ease.inOut],
+          [1.15, 140, Ease.out],
+          [1.15, isMini ? 500 : 700, Ease.lin],
+          [1, 180, Ease.inOut],
         ]);
         break;
       }
@@ -1011,13 +994,13 @@ class AndroidApp {
     // Render Attached File Chip for this specific Coco
     this.renderAttachedFileChip();
 
-    // Update Mascot in mini canvas with correct state
+    // Update Mascot in mini canvas with guaranteed clean baseline face (both eyes & cute smile)
+    this.resetMochiToBase();
     this.engine.setCocoSquadRole(m.squadRole);
     if (this.thinkingByAgent[m.id]) {
       this.engine.setState("thinking");
     } else {
       this.engine.setState("idle");
-      this.triggerPlayfulAction(this.engine, false);
     }
     Sound.play("blip");
     this.initDevourCanvas();
@@ -1518,8 +1501,8 @@ class AndroidApp {
         const cy = rect.top + rect.height / 2;
         const dx = (clientX - cx) / (window.innerWidth / 2);
         const dy = (clientY - cy) / (window.innerHeight / 2);
-        this.engine.lookX = Math.max(-1, Math.min(1, dx));
-        this.engine.lookY = Math.max(-1, Math.min(1, dy));
+        this.engine.lookX = Math.max(-0.35, Math.min(0.35, dx * 0.35));
+        this.engine.lookY = Math.max(-0.3, Math.min(0.3, dy * 0.3));
 
         if (userTrackingTimer) window.clearTimeout(userTrackingTimer);
         userTrackingTimer = window.setTimeout(() => {
@@ -1878,9 +1861,15 @@ class AndroidApp {
         const agentName = agent ? agent.name : "Coco";
 
         if (this.activeMember.id === targetMemberId) {
+          this.resetMochiToBase();
           this.engine.setState("finished");
           this.engine.triggerEmote("happy");
           Sound.play("finish");
+          setTimeout(() => {
+            if (this.activeMember.id === targetMemberId && this.engine.state === "finished") {
+              this.resetMochiToBase();
+            }
+          }, 2200);
         } else {
           // Notificación persistente viva para el Coco que terminó en background
           this.taskCompletedUnread[targetMemberId] = true;
@@ -2317,9 +2306,15 @@ class AndroidApp {
 
       if (this.activeMember.id === "coco_rojo") {
         this.renderChatMessages();
+        this.resetMochiToBase();
         this.engine.setState("finished");
         this.engine.triggerEmote("happy");
         Sound.play("finish");
+        setTimeout(() => {
+          if (this.activeMember.id === "coco_rojo" && this.engine.state === "finished") {
+            this.resetMochiToBase();
+          }
+        }, 2200);
       } else {
         this.taskCompletedUnread["coco_rojo"] = true;
         this.renderTopSquadChips();
@@ -2483,6 +2478,11 @@ class AndroidApp {
         this.engine.setState("finished");
         this.engine.triggerEmote("happy");
         Sound.play("finish");
+        setTimeout(() => {
+          if (this.activeMember.id === targetMemberId && this.engine.state === "finished") {
+            this.resetMochiToBase();
+          }
+        }, 2200);
       } else {
         // Notificación persistente viva para el Coco en segundo plano
         this.taskCompletedUnread[targetMemberId] = true;
