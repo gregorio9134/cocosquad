@@ -20,8 +20,7 @@ import {
   requestNotificationPermission,
 } from "./notifications";
 import {
-  evaluateFileForAgent,
-  COCO_LARGE_FILE_REJECTION_MESSAGE,
+  formatFileSize,
   saveDevouredFileRecord,
 } from "./fileGuard";
 
@@ -250,6 +249,10 @@ class AndroidApp {
   private nextIdleActionTime: number = performance.now() + 3000;
   private miniMochis: MiniMochiChip[] = [];
   private swipeController: SwipeController | null = null;
+  private devourCanvas: HTMLCanvasElement | null = null;
+  private devourCtx: CanvasRenderingContext2D | null = null;
+  private devourEngine: BotEngine = new BotEngine();
+  private devourAnimId: number = 0;
 
   private chatHistories: Record<string, ChatMessage[]> = {
     coco_blanco: [],
@@ -532,6 +535,7 @@ class AndroidApp {
     document.documentElement.style.setProperty("--coco-send-color", this.activeMember.sendTextColor || "#000000");
 
     this.initMascotCanvas();
+    this.initDevourCanvas();
     this.renderTopSquadChips();
     this.renderChatMessages();
     this.renderAttachedFileChip();
@@ -677,6 +681,58 @@ class AndroidApp {
     };
 
     this.animId = requestAnimationFrame(loop);
+  }
+
+  public initDevourCanvas() {
+    this.devourCanvas = document.getElementById("devour-canvas") as HTMLCanvasElement | null;
+    if (!this.devourCanvas) return;
+    this.devourCtx = this.devourCanvas.getContext("2d");
+    if (!this.devourCtx) return;
+
+    if (this.devourAnimId) {
+      cancelAnimationFrame(this.devourAnimId);
+      this.devourAnimId = 0;
+    }
+
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const rect = this.devourCanvas.getBoundingClientRect();
+    const w = rect.width > 0 ? rect.width : (this.devourCanvas.parentElement?.clientWidth || 280);
+    const h = rect.height > 0 ? rect.height : (this.devourCanvas.parentElement?.clientHeight || 180);
+
+    this.devourCanvas.width = Math.round(w * dpr);
+    this.devourCanvas.height = Math.round(h * dpr);
+    this.devourCanvas.style.width = `${w}px`;
+    this.devourCanvas.style.height = `${h}px`;
+
+    // 1. Limpieza total y reinicio de matriz para descartar cualquier desfasaje previo o restos de animación
+    this.devourCtx.resetTransform();
+    this.devourCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.devourCtx.clearRect(0, 0, w, h);
+
+    // 2. Sincronizar el motor del Mochi devorador con el rol y postura del agente activo
+    this.devourEngine.resetToBase();
+    this.devourEngine.setCocoSquadRole(this.activeMember.squadRole);
+    this.devourEngine.setState("idle");
+
+    let last = performance.now();
+    const loop = (now: number) => {
+      if (this.devourCanvas && this.devourCtx) {
+        const dt = Math.min((now - last) / 1000, 0.05);
+        last = now;
+
+        this.devourEngine.update(dt);
+
+        this.devourCtx.resetTransform();
+        this.devourCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        this.devourCtx.clearRect(0, 0, w, h);
+
+        // Reposicionamiento simétrico y proporcional de cuerpo, ambos ojos y boca del Mochi
+        this.devourEngine.draw(this.devourCtx, w, h);
+      }
+      this.devourAnimId = requestAnimationFrame(loop);
+    };
+
+    this.devourAnimId = requestAnimationFrame(loop);
   }
 
   private triggerPlayfulAction(engine: BotEngine, isMini = false) {
@@ -976,6 +1032,7 @@ class AndroidApp {
       this.triggerPlayfulAction(this.engine, false);
     }
     Sound.play("blip");
+    this.initDevourCanvas();
 
     if (navigator.vibrate) navigator.vibrate(12);
   }
@@ -1730,6 +1787,10 @@ class AndroidApp {
 
         this.greenManager.addMessage("assistant", reply);
 
+        if (data.intervention) {
+          await this.executeSquadIntervention(data.intervention);
+        }
+
         if (this.activeMember.id === "coco_verde") {
           this.engine.setState("finished");
           this.engine.triggerEmote("happy");
@@ -1855,6 +1916,14 @@ class AndroidApp {
       });
       this.saveStorage();
 
+      if (this.activeMember.id === targetMemberId) {
+        this.renderChatMessages();
+      }
+
+      if (data.intervention) {
+        await this.executeSquadIntervention(data.intervention);
+      }
+
       const agent = SQUAD.find((s) => s.id === targetMemberId);
       const agentName = agent ? agent.name : "Coco";
 
@@ -1953,57 +2022,119 @@ class AndroidApp {
     }
   }
 
+  public async handleFileUpload(file: File) {
+    await this.processFileToDevour(file);
+  }
+
   private async processFileToDevour(file: File) {
     const targetMember = this.activeMember;
     try {
-      // ─── FileGuard Evaluation: Delegate large files from Coco to Red ───
-      const decision = await evaluateFileForAgent(file, targetMember.id);
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      const isTechnicalDoc = isPdf || /\.(doc|docx|txt|md|csv|xlsx?|pptx?|epub|tex)$/i.test(file.name);
+      const fileSizeStr = formatFileSize(file.size);
 
-      if (!decision.allowed) {
-        // Read file to store in local vault
+      // ─── 1. INTERCEPTACIÓN: PDF / DOCUMENTO TÉCNICO CUANDO EL AGENTE ACTIVO NO ES RED ───
+      if (isTechnicalDoc && targetMember.id !== "coco_rojo") {
         const { base64, dataUri } = await this.readFileAsBase64(file);
+
+        // Guardar registro en el vault local
         void saveDevouredFileRecord({
           id: `${Date.now()}-${file.name}`,
           name: file.name,
           size: file.size,
-          sizeStr: decision.sizeStr,
-          mimeType: file.type || "application/pdf",
-          pageCount: decision.pageCount,
+          sizeStr: fileSizeStr,
+          mimeType: file.type || (isPdf ? "application/pdf" : "text/plain"),
           agentId: targetMember.id,
           base64,
           dataUri,
           timestamp: Date.now(),
-          analysis: "Delegado a Red por extensión/páginas",
+          analysis: "Delegado a Red para análisis exhaustivo",
         });
 
-        // Insert directly in Coco's chat
+        // Asegurar que la vista esté en chat
         this.switchToChatView();
-        const hist = this.chatHistories[targetMember.id] || (this.chatHistories[targetMember.id] = []);
-        hist.push({
+
+        // 1. Burbuja del usuario indicando el documento adjunto
+        this.messages.push({
           id: Date.now(),
           role: "user",
-          content: `📚 **${file.name}** (${decision.sizeStr}${decision.pageCount ? ` · ${decision.pageCount} págs` : ""})`,
+          content: `📄 **${file.name}** (${fileSizeStr})`,
         });
-        hist.push({
+
+        // 2. Mensaje inmediato del agente activo indicando la derivación a Red
+        this.messages.push({
           id: Date.now() + 1,
           role: "assistant",
-          content: decision.reason || COCO_LARGE_FILE_REJECTION_MESSAGE,
+          content: `Ese documento lo analiza Red, nuestro especialista en investigaciones profundas, papers y archivos técnicos. Ya se lo derivo para que te brinde un informe detallado...`,
         });
         this.saveStorage();
         this.renderChatMessages();
+        Sound.play("send");
 
-        // Mochi surprised emote and audio feedback
-        this.engine.setState("idle");
-        this.engine.triggerEmote("surprised", 1.2);
-        Sound.play("blip");
-        triggerHapticFeedback(15);
+        // 3. Animación de llamada en el header hacia Red (.mochi-calling / opacity: 0.35)
+        const redTargetEl =
+          document.querySelector<HTMLElement>('#top-squad-chips [data-agent-id="coco_rojo"]') ||
+          document.getElementById("squad-chip-coco_rojo");
+        if (redTargetEl) {
+          redTargetEl.classList.add("mochi-calling");
+          redTargetEl.style.opacity = "0.35";
+        }
+
+        // 4. Llamada al endpoint de Red (/agente/rojo)
+        try {
+          notifyRequestStart();
+          const res = await fetch("http://150.136.59.173:8080/agente/rojo", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: `Analiza detalladamente este documento (${file.name}) y presenta un informe exhaustivo con puntos clave, metodología y conclusiones.`,
+              chat_id: 1,
+              coco_id: "coco_rojo",
+              file: {
+                name: file.name,
+                data: base64,
+                base64: base64,
+                mime: file.type || (isPdf ? "application/pdf" : "text/plain"),
+              },
+            }),
+          });
+
+          const data = await res.json();
+          const redReply =
+            data.reply ||
+            data.respuesta ||
+            data.response ||
+            `He completado la lectura y análisis preliminar del documento **${file.name}**. Todo está archivado y disponible para consultas específicas.`;
+
+          // 5. Squad Assist: intromisión de Red en el chat actual y regreso a la cabecera
+          await this.executeSquadIntervention({
+            from_coco_id: "coco_rojo",
+            from_name: "Red",
+            badge_color: "#FF2D55",
+            reply: redReply,
+            delay_ms: 1000,
+          });
+        } catch (err: any) {
+          await this.executeSquadIntervention({
+            from_coco_id: "coco_rojo",
+            from_name: "Red",
+            badge_color: "#FF2D55",
+            reply: `⚠️ Ocurrió un error conectando con el servidor para que Red analice el documento: ${err?.message || String(err)}`,
+            delay_ms: 1000,
+          });
+        } finally {
+          notifyRequestEnd();
+          if (redTargetEl) {
+            redTargetEl.classList.remove("mochi-calling");
+            redTargetEl.style.opacity = "1";
+          }
+        }
         return;
       }
 
       const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|heic|heif|gif|svg|bmp)$/i.test(file.name);
       const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv|3gp|avi)$/i.test(file.name);
       const fileExt = (file.name.split(".").pop() || "FILE").toUpperCase().slice(0, 4);
-      const fileSizeStr = decision.sizeStr;
 
       // Read file to Base64 and Data URL before launching animation
       const { base64, dataUri } = await this.readFileAsBase64(file);
@@ -2491,7 +2622,19 @@ function initApp() {
     }, 1200);
   }
 
-  if (window.location.search.includes("test_pdf_large=1")) {
+  if (window.location.search.includes("test_pdf_delegation=1")) {
+    setTimeout(() => {
+      app.testDevour("analisis_investigacion_clinica.pdf", { pages: 4 });
+    }, 450);
+  } else if (window.location.search.includes("tab=devour")) {
+    setTimeout(() => {
+      document.querySelectorAll(".nav-item-btn").forEach((b) => b.classList.remove("active"));
+      document.querySelector('.nav-item-btn[data-tab="devour"]')?.classList.add("active");
+      document.querySelectorAll(".view-page").forEach((p) => p.classList.remove("active"));
+      document.getElementById("page-devour")?.classList.add("active");
+      app.initDevourCanvas();
+    }, 400);
+  } else if (window.location.search.includes("test_pdf_large=1")) {
     setTimeout(() => {
       app.testDevour("investigacion_clinica_extensa.pdf", { pages: 18 });
     }, 450);
