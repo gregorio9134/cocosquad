@@ -294,8 +294,12 @@ class AndroidApp {
   private todos: TodoItem[] = [];
   private notes: QuickNote[] = [];
   private greenManager: GreenManager = new GreenManager();
+  private isAssisting = false;
+  private assistTimers: number[] = [];
 
   constructor() {
+    this.clearAllAssistSequences();
+    this.clearAllTestDataAndStorage();
     this.loadStorage();
     this.greenManager.setOnInterventionToggle((isIntervened, contact) => {
       if (this.activeMember.id === "coco_verde") {
@@ -319,25 +323,82 @@ class AndroidApp {
     });
   }
 
+  public clearAllAssistSequences() {
+    this.isAssisting = false;
+    for (const t of this.assistTimers) {
+      window.clearTimeout(t);
+    }
+    this.assistTimers = [];
+
+    // Remove any floating ephemeral DOM nodes immediately
+    document.querySelectorAll(".squad-ephemeral-actor, .squad-ephemeral-speech-balloon, .squad-flying-clone").forEach((el) => el.remove());
+
+    // Reset calling states on chips
+    document.querySelectorAll(".mochi-calling, .mochi-returned-pulse").forEach((el) => {
+      el.classList.remove("mochi-calling", "mochi-returned-pulse");
+      (el as HTMLElement).style.opacity = "";
+    });
+
+    // Hide any stuck typing / thinking indicators
+    document.querySelectorAll(".typing-pill, .thinking-indicator-row").forEach((el) => el.remove());
+    document.querySelectorAll(".thinking").forEach((el) => el.classList.remove("thinking"));
+  }
+
+  public clearAllTestDataAndStorage() {
+    try {
+      localStorage.removeItem("coco_mobile_chat_histories");
+      localStorage.removeItem("coco_mobile_attached_files");
+      localStorage.removeItem("coco_mobile_task_unread");
+      localStorage.removeItem("coco_attached_files");
+      localStorage.removeItem("coco_chat_history");
+      sessionStorage.clear();
+      if (typeof window !== "undefined" && window.indexedDB && window.indexedDB.databases) {
+        window.indexedDB.databases().then((dbs) => {
+          for (const db of dbs) {
+            if (db.name) window.indexedDB.deleteDatabase(db.name);
+          }
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.warn("Storage cleanup error:", e);
+    }
+
+    this.chatHistories = {
+      coco_blanco: [],
+      coco_verde: [],
+      coco_rojo: [],
+      coco_azul: [],
+    };
+    this.attachedFilesByAgent = {
+      coco_blanco: null,
+      coco_verde: null,
+      coco_rojo: null,
+      coco_azul: null,
+    };
+    this.taskCompletedUnread = {
+      coco_blanco: false,
+      coco_verde: false,
+      coco_rojo: false,
+      coco_azul: false,
+    };
+    this.thinkingByAgent = {
+      coco_blanco: false,
+      coco_verde: false,
+      coco_rojo: false,
+      coco_azul: false,
+    };
+  }
+
   private loadStorage() {
+    this.clearAllTestDataAndStorage();
     try {
       const t = localStorage.getItem("coco_mobile_todos");
       if (t) this.todos = JSON.parse(t);
       const n = localStorage.getItem("coco_mobile_notes");
       if (n) this.notes = JSON.parse(n);
-      const chats = localStorage.getItem("coco_mobile_chat_histories");
-      if (chats) {
-        this.chatHistories = JSON.parse(chats);
-      }
     } catch {
       this.todos = [];
       this.notes = [];
-      this.chatHistories = {
-        coco_blanco: [],
-        coco_verde: [],
-        coco_rojo: [],
-        coco_azul: [],
-      };
     }
   }
 
@@ -345,7 +406,6 @@ class AndroidApp {
     try {
       localStorage.setItem("coco_mobile_todos", JSON.stringify(this.todos));
       localStorage.setItem("coco_mobile_notes", JSON.stringify(this.notes));
-      localStorage.setItem("coco_mobile_chat_histories", JSON.stringify(this.chatHistories));
       State.todos = this.todos;
       State.quickNotes = this.notes;
     } catch {}
@@ -571,23 +631,17 @@ class AndroidApp {
           this.selectSquadMember(found);
         }
       }
-      const unreadAgent = urlParams.get("unread");
-      if (unreadAgent && Object.prototype.hasOwnProperty.call(this.taskCompletedUnread, unreadAgent)) {
-        this.taskCompletedUnread[unreadAgent] = true;
-        this.renderTopSquadChips();
-      }
-      if (urlParams.get("sheet") === "green") {
-        setTimeout(() => this.greenManager.openSheet(), 150);
-      }
-      if (urlParams.get("test") === "squad_assist") {
-        setTimeout(() => window.testSquadAssist?.(), 600);
+      if (window.location.search) {
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     } catch {
       // ignore
     }
 
-    // Expose test trigger in console
+    // Expose test trigger in console for manual execution only
     window.testSquadAssist = async () => {
+      if (this.isAssisting) return;
+      this.clearAllAssistSequences();
       this.switchToChatView();
 
       const blu = SQUAD.find((s) => s.id === "coco_azul") || SQUAD[3];
@@ -1274,130 +1328,146 @@ class AndroidApp {
     summonedAgentId: 'coco_blanco' | 'coco_verde' | 'coco_rojo' | 'coco_azul',
     speechText: string = "¡Yo me encargo!"
   ): Promise<void> {
-    const summonedMember = SQUAD.find((s) => s.id === summonedAgentId);
-    if (!summonedMember) return;
+    if (this.isAssisting) return;
+    this.isAssisting = true;
 
-    // 1. Localizar icono del agente convocado en la cabecera
-    const headerTargetEl =
-      document.querySelector<HTMLElement>(`#top-squad-chips [data-agent-id="${summonedAgentId}"]`) ||
-      document.getElementById(`squad-chip-${summonedAgentId}`) ||
-      document.getElementById("avatar-btn");
+    try {
+      const summonedMember = SQUAD.find((s) => s.id === summonedAgentId);
+      if (!summonedMember) return;
 
-    if (headerTargetEl) {
-      headerTargetEl.classList.add("mochi-calling");
-      headerTargetEl.style.opacity = "0.35";
-      Sound.play("tap");
+      // 1. Localizar icono del agente convocado en la cabecera
+      const headerTargetEl =
+        document.querySelector<HTMLElement>(`#top-squad-chips [data-agent-id="${summonedAgentId}"]`) ||
+        document.getElementById(`squad-chip-${summonedAgentId}`) ||
+        document.getElementById("avatar-btn");
+
+      if (headerTargetEl) {
+        headerTargetEl.classList.add("mochi-calling");
+        headerTargetEl.style.opacity = "0.35";
+        Sound.play("tap");
+      }
+
+      // 2. Ubicar la última burbuja del agente que delega en el chat
+      const chatHistory = document.getElementById("chat-history");
+      const lastRow =
+        chatHistory?.querySelector<HTMLElement>(".chat-bubble-row.assistant:last-child") ||
+        chatHistory?.querySelector<HTMLElement>(".chat-bubble-row:last-child");
+
+      const appEl = document.getElementById("app") || document.body;
+      const appRect = appEl.getBoundingClientRect();
+
+      const startRect = headerTargetEl
+        ? headerTargetEl.getBoundingClientRect()
+        : { left: appRect.left + appRect.width / 2, top: appRect.top + 50, width: 36, height: 36 };
+
+      const startCenterX = startRect.left + startRect.width / 2;
+      const startCenterY = startRect.top + startRect.height / 2;
+
+      let targetLeft: number;
+      let targetTop: number;
+
+      if (lastRow) {
+        const rowRect = lastRow.getBoundingClientRect();
+        targetLeft = Math.max(appRect.left + 30, rowRect.left + 24);
+        targetTop = Math.min(rowRect.bottom + 16, appRect.bottom - 130);
+      } else {
+        targetLeft = appRect.left + 40;
+        targetTop = appRect.top + appRect.height * 0.45;
+      }
+
+      // 3. Crear actor flotante efímero (avatar 3D de Red / convocado)
+      const actor = document.createElement("div");
+      actor.className = "squad-ephemeral-actor";
+      actor.style.left = `${startCenterX}px`;
+      actor.style.top = `${startCenterY}px`;
+      actor.style.setProperty("--agent-color", summonedMember.color);
+
+      const miniCanvas = document.createElement("canvas");
+      miniCanvas.width = 68;
+      miniCanvas.height = 68;
+      miniCanvas.style.width = "34px";
+      miniCanvas.style.height = "34px";
+      miniCanvas.className = "squad-ephemeral-canvas";
+      const miniCtx = miniCanvas.getContext("2d");
+      if (miniCtx) {
+        miniCtx.scale(2, 2);
+        const eng = new BotEngine();
+        eng.setCocoSquadRole(summonedMember.squadRole);
+        eng.eyeOverride = "happy";
+        eng.draw(miniCtx, 34, 34);
+      }
+      actor.appendChild(miniCanvas);
+
+      // 4. Crear globo de diálogo flotante efímero ("¡Yo me encargo!")
+      const balloon = document.createElement("div");
+      balloon.className = "squad-ephemeral-speech-balloon";
+      balloon.style.setProperty("--agent-color", summonedMember.color);
+      balloon.innerHTML = `
+        <span class="speech-agent-tag">${summonedMember.name}</span>
+        <span class="speech-text">${speechText}</span>
+      `;
+
+      document.body.appendChild(actor);
+      document.body.appendChild(balloon);
+
+      // Forzar reflujo inicial
+      void actor.offsetWidth;
+
+      // 5. Salto de descenso: el avatar salta desde la cabecera hacia el mensaje
+      Sound.play("open");
+      const deltaX = targetLeft - startCenterX;
+      const deltaY = targetTop - startCenterY;
+      actor.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.15)`;
+
+      balloon.style.left = `${targetLeft + 36}px`;
+      balloon.style.top = `${targetTop - 18}px`;
+
+      const t1 = window.setTimeout(() => {
+        balloon.classList.add("visible");
+        Sound.play("pop");
+        if (navigator.vibrate) navigator.vibrate([15, 30, 20]);
+      }, 280);
+      this.assistTimers.push(t1);
+
+      // 6. Tiempo de lectura: 1.2 segundos (1200 ms)
+      await new Promise((resolve) => {
+        const t2 = window.setTimeout(resolve, 1200);
+        this.assistTimers.push(t2);
+      });
+
+      // 7. El globo flotante desaparece
+      balloon.classList.remove("visible");
+      balloon.classList.add("fade-out");
+
+      // 8. Salto de retorno: el avatar regresa a su posición en la barra superior
+      actor.style.transition = "transform 480ms cubic-bezier(0.25, 1, 0.5, 1), opacity 450ms ease";
+      actor.style.transform = `translate(0px, 0px) scale(1)`;
+
+      await new Promise((resolve) => {
+        const t3 = window.setTimeout(resolve, 480);
+        this.assistTimers.push(t3);
+      });
+
+      // 9. Limpieza completa de los nodos efímeros
+      actor.remove();
+      balloon.remove();
+
+      if (headerTargetEl) {
+        headerTargetEl.classList.remove("mochi-calling");
+        headerTargetEl.style.opacity = "";
+        headerTargetEl.classList.remove("mochi-returned-pulse");
+        void headerTargetEl.offsetWidth; // force reflow
+        headerTargetEl.classList.add("mochi-returned-pulse");
+        const t4 = window.setTimeout(() => headerTargetEl.classList.remove("mochi-returned-pulse"), 900);
+        this.assistTimers.push(t4);
+        Sound.play("finish");
+      }
+
+      // 10. Conmutación automática: llevar al usuario a la vista del especialista
+      this.selectSquadMember(summonedMember);
+    } finally {
+      this.isAssisting = false;
     }
-
-    // 2. Ubicar la última burbuja del agente que delega en el chat
-    const chatHistory = document.getElementById("chat-history");
-    const lastRow =
-      chatHistory?.querySelector<HTMLElement>(".chat-bubble-row.assistant:last-child") ||
-      chatHistory?.querySelector<HTMLElement>(".chat-bubble-row:last-child");
-
-    const appEl = document.getElementById("app") || document.body;
-    const appRect = appEl.getBoundingClientRect();
-
-    const startRect = headerTargetEl
-      ? headerTargetEl.getBoundingClientRect()
-      : { left: appRect.left + appRect.width / 2, top: appRect.top + 50, width: 36, height: 36 };
-
-    const startCenterX = startRect.left + startRect.width / 2;
-    const startCenterY = startRect.top + startRect.height / 2;
-
-    let targetLeft: number;
-    let targetTop: number;
-
-    if (lastRow) {
-      const rowRect = lastRow.getBoundingClientRect();
-      targetLeft = Math.max(appRect.left + 30, rowRect.left + 24);
-      targetTop = Math.min(rowRect.bottom + 16, appRect.bottom - 130);
-    } else {
-      targetLeft = appRect.left + 40;
-      targetTop = appRect.top + appRect.height * 0.45;
-    }
-
-    // 3. Crear actor flotante efímero (avatar 3D de Red / convocado)
-    const actor = document.createElement("div");
-    actor.className = "squad-ephemeral-actor";
-    actor.style.left = `${startCenterX}px`;
-    actor.style.top = `${startCenterY}px`;
-    actor.style.setProperty("--agent-color", summonedMember.color);
-
-    const miniCanvas = document.createElement("canvas");
-    miniCanvas.width = 68;
-    miniCanvas.height = 68;
-    miniCanvas.style.width = "34px";
-    miniCanvas.style.height = "34px";
-    miniCanvas.className = "squad-ephemeral-canvas";
-    const miniCtx = miniCanvas.getContext("2d");
-    if (miniCtx) {
-      const eng = new BotEngine();
-      eng.setCocoSquadRole(summonedMember.squadRole);
-      eng.eyeOverride = "happy";
-      eng.draw(miniCtx, 34, 34);
-    }
-    actor.appendChild(miniCanvas);
-
-    // 4. Crear globo de diálogo flotante efímero ("¡Yo me encargo!")
-    const balloon = document.createElement("div");
-    balloon.className = "squad-ephemeral-speech-balloon";
-    balloon.style.setProperty("--agent-color", summonedMember.color);
-    balloon.innerHTML = `
-      <span class="speech-agent-tag">${summonedMember.name}</span>
-      <span class="speech-text">${speechText}</span>
-    `;
-
-    document.body.appendChild(actor);
-    document.body.appendChild(balloon);
-
-    // Forzar reflujo inicial
-    void actor.offsetWidth;
-
-    // 5. Salto de descenso: el avatar salta desde la cabecera hacia el mensaje
-    Sound.play("open");
-    const deltaX = targetLeft - startCenterX;
-    const deltaY = targetTop - startCenterY;
-    actor.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.15)`;
-
-    balloon.style.left = `${targetLeft + 36}px`;
-    balloon.style.top = `${targetTop - 18}px`;
-
-    setTimeout(() => {
-      balloon.classList.add("visible");
-      Sound.play("pop");
-      if (navigator.vibrate) navigator.vibrate([15, 30, 20]);
-    }, 280);
-
-    // 6. Tiempo de lectura: 1.2 segundos (1200 ms)
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-
-    // 7. El globo flotante desaparece
-    balloon.classList.remove("visible");
-    balloon.classList.add("fade-out");
-
-    // 8. Salto de retorno: el avatar regresa a su posición en la barra superior
-    actor.style.transition = "transform 480ms cubic-bezier(0.25, 1, 0.5, 1), opacity 450ms ease";
-    actor.style.transform = `translate(0px, 0px) scale(1)`;
-
-    await new Promise((resolve) => setTimeout(resolve, 480));
-
-    // 9. Limpieza completa de los nodos efímeros
-    actor.remove();
-    balloon.remove();
-
-    if (headerTargetEl) {
-      headerTargetEl.classList.remove("mochi-calling");
-      headerTargetEl.style.opacity = "";
-      headerTargetEl.classList.remove("mochi-returned-pulse");
-      void headerTargetEl.offsetWidth; // force reflow
-      headerTargetEl.classList.add("mochi-returned-pulse");
-      setTimeout(() => headerTargetEl.classList.remove("mochi-returned-pulse"), 900);
-      Sound.play("finish");
-    }
-
-    // 10. Conmutación automática: llevar al usuario a la vista del especialista
-    this.selectSquadMember(summonedMember);
   }
 
   public async executeSquadIntervention(intervention: SquadIntervention): Promise<void> {
@@ -1948,11 +2018,16 @@ class AndroidApp {
   private resetMochiToBase() {
     // 1. Full engine reset: clearing all tweens, locks, morph, slotH, scales, gaze, and reverting to idle
     this.engine.resetToBase();
+    this.engine.setCocoSquadRole(this.activeMember.squadRole);
 
-    // 2. Reset canvas transformation matrix
-    if (this.ctx) {
+    // 2. Reset canvas transformation matrix and immediately redraw a clean, symmetrical face
+    if (this.ctx && this.mascotCanvas) {
       try {
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
         this.ctx.resetTransform();
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        this.ctx.clearRect(0, 0, 40, 40);
+        this.engine.draw(this.ctx, 40, 40);
       } catch {}
     }
   }
@@ -2607,119 +2682,13 @@ function initApp() {
     }, 1200);
   }
 
-  if (window.location.search.includes("test_pdf_delegation=1")) {
-    setTimeout(() => {
-      app.testDevour("analisis_investigacion_clinica.pdf", { pages: 4 });
-    }, 450);
-  } else if (window.location.search.includes("tab=devour")) {
-    setTimeout(() => {
-      document.querySelectorAll(".nav-item-btn").forEach((b) => b.classList.remove("active"));
-      document.querySelector('.nav-item-btn[data-tab="devour"]')?.classList.add("active");
-      document.querySelectorAll(".view-page").forEach((p) => p.classList.remove("active"));
-      document.getElementById("page-devour")?.classList.add("active");
-      app.initDevourCanvas();
-    }, 400);
-  } else if (window.location.search.includes("test_pdf_large=1")) {
-    setTimeout(() => {
-      app.testDevour("investigacion_clinica_extensa.pdf", { pages: 18 });
-    }, 450);
-  } else if (window.location.search.includes("sheet=1") || window.location.search.includes("devour_sheet=1")) {
-    window.history.replaceState(null, "", window.location.pathname);
-    setTimeout(() => {
-      app.openDevourSheet();
-    }, 400);
-  } else if (window.location.search.includes("devour=1")) {
-    window.history.replaceState(null, "", window.location.pathname);
-    setTimeout(() => {
-      app.testDevour("informe_clinico.pdf");
-    }, 500);
-  } else if (window.location.search.includes("devour_img=1")) {
-    window.history.replaceState(null, "", window.location.pathname);
-    setTimeout(() => {
-      app.testDevour("captura_ecografia.png");
-    }, 500);
-  } else if (window.location.search.includes("test_parallel=1")) {
-    window.history.replaceState(null, "", window.location.pathname);
-    setTimeout(() => {
-      // 1. Coco Blanco devours file
-      app.testDevour("captura_ecografia.png");
-      // 2. Once devoured and in background Oracle processing, switch immediately to Green
-      setTimeout(() => {
-        app.switchAgent("coco_verde");
-      }, 2100);
-    }, 500);
-  } else if (window.location.search.includes("switch_coco=1")) {
-    window.history.replaceState(null, "", window.location.pathname);
-    setTimeout(() => {
-      app.switchAgent("coco_blanco");
-    }, 300);
-  } else if (window.location.search.includes("test_swipe=1")) {
-    window.history.replaceState(null, "", window.location.pathname);
-    setTimeout(() => {
-      const target = document.getElementById("page-chat") || document.body;
-      const startTouch = new Touch({
-        identifier: 1,
-        target: target,
-        clientX: 300,
-        clientY: 300,
-      });
-      const endTouch = new Touch({
-        identifier: 1,
-        target: target,
-        clientX: 180, // dx = -120px (swipe left -> next agent)
-        clientY: 305,
-      });
-
-      target.dispatchEvent(new TouchEvent("touchstart", {
-        touches: [startTouch],
-        targetTouches: [startTouch],
-        changedTouches: [startTouch],
-        bubbles: true,
-      }));
-
-      setTimeout(() => {
-        target.dispatchEvent(new TouchEvent("touchend", {
-          touches: [],
-          targetTouches: [],
-          changedTouches: [endTouch],
-          bubbles: true,
-        }));
-      }, 80);
-    }, 600);
-  } else if (window.location.search.includes("test_swipe_prev=1")) {
-    window.history.replaceState(null, "", window.location.pathname);
-    setTimeout(() => {
-      const target = document.getElementById("page-chat") || document.body;
-      const startTouch = new Touch({
-        identifier: 1,
-        target: target,
-        clientX: 150,
-        clientY: 300,
-      });
-      const endTouch = new Touch({
-        identifier: 1,
-        target: target,
-        clientX: 280, // dx = +130px (swipe right -> prev agent)
-        clientY: 302,
-      });
-
-      target.dispatchEvent(new TouchEvent("touchstart", {
-        touches: [startTouch],
-        targetTouches: [startTouch],
-        changedTouches: [startTouch],
-        bubbles: true,
-      }));
-
-      setTimeout(() => {
-        target.dispatchEvent(new TouchEvent("touchend", {
-          touches: [],
-          targetTouches: [],
-          changedTouches: [endTouch],
-          bubbles: true,
-        }));
-      }, 80);
-    }, 600);
+  // Sanitize URL immediately so page refresh never re-executes tests
+  if (window.location.search) {
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
+
+  // Ensure all assist loops, ghost timers, and test data are cleaned up
+  app.clearAllAssistSequences();
 }
 
 if (document.readyState === "loading") {
@@ -2727,4 +2696,11 @@ if (document.readyState === "loading") {
 } else {
   initApp();
 }
+
+window.addEventListener("load", () => {
+  const app = (window as any).__cocoApp as AndroidApp | undefined;
+  if (app) {
+    app.clearAllAssistSequences();
+  }
+});
 

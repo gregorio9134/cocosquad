@@ -175,11 +175,11 @@ html, body {
 #mascot-mini-canvas {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
   position: relative;
   z-index: 1;
   pointer-events: none;
   display: block;
+  overflow: visible;
 }
 
 .agent-meta-info {
@@ -2170,24 +2170,25 @@ html, body {
 }
 
 .squad-assist-avatar-circle {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   border: 1.5px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 0 8px var(--agent-badge-color, #ffffff);
   flex-shrink: 0;
-  background: #11141a;
+  background: transparent;
 }
 
 .squad-assist-avatar-canvas {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   pointer-events: none;
   display: block;
+  overflow: visible;
 }
 
 .squad-assist-tag {

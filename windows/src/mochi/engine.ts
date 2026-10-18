@@ -540,6 +540,14 @@ export class BotEngine {
     this.eyeOverride = null;
     this.eyeOverrideUntil = 0;
     this.isUserTracking = false;
+    this.hands = 0;
+    this.waveStart = 0;
+    this.waveUntil = 0;
+    this.blush = 0;
+    this.tint = 0;
+    this.badgeS = 0;
+    this.isDancing = false;
+    this.dancingLevel = 0;
     this.setState("idle", true);
   }
 
@@ -833,11 +841,11 @@ export class BotEngine {
    * `w`×`h` CSS pixels (the caller has already applied the DPR transform).
    */
   draw(x: CanvasRenderingContext2D, W: number, H: number) {
-    const R = W * 0.3;
-    const rx = R * 1.14;
-    const ry = R * 0.88;
+    const R = W * 0.34;
+    const rx = R * 1.02;
+    const ry = R * 0.98;
     const cx = W / 2 + this.ox * R;
-    const cy = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06;
+    const cy = H * 0.52 + this.particleOverhang / 2 + this.oy * R;
 
     // With an outfit on, a roll turns the whole character — hat included — as
     // one piece instead of rolling the eyes over the body (BotCanvasView, macOS).
@@ -877,8 +885,8 @@ export class BotEngine {
       x.restore();
     }
 
-    this.drawMouth(x, body, R, rx, ry);
-    this.drawEyes(x, R, rx, ry);
+    this.drawMouth(x, body, W, H, R, rx, ry);
+    this.drawEyes(x, W, H, R, rx, ry);
 
     if (head) drawOutfitFront(x, this.outfit, head, outfitState);
 
@@ -925,7 +933,7 @@ export class BotEngine {
     return Math.min(1, this.outfitPresence * 2.5) * (1 - this.morph);
   }
 
-  private drawBody(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
+  private drawBody(x: CanvasRenderingContext2D, body: Path2D, R: number, _rx: number, ry: number) {
     const pumpkin = this.pumpkinAlpha;
     if (this.bodyColor) {
       // Mini bots: flat solid fill — no gradient, no reflection, no highlight
@@ -933,16 +941,20 @@ export class BotEngine {
       x.fill(body);
       if (pumpkin <= 0.001) return;
     } else {
-      const g = x.createLinearGradient(rx * 0.7, -ry * 0.85, -rx * 0.8, ry * 0.9);
+      // Symmetrical top-to-bottom subtle gradient so neither cheek is washed out or truncated
+      const g = x.createLinearGradient(0, -ry * 0.88, 0, ry * 0.92);
       if (this.cocoSquadRole === "green") {
-        g.addColorStop(0, "#d1fae5");
-        g.addColorStop(1, "#00e676");
+        g.addColorStop(0, "#a7f3d0");
+        g.addColorStop(0.35, "#10b981");
+        g.addColorStop(1, "#059669");
       } else if (this.cocoSquadRole === "red") {
-        g.addColorStop(0, "#ffe4e8");
-        g.addColorStop(1, "#ff2d55");
+        g.addColorStop(0, "#fecdd3");
+        g.addColorStop(0.35, "#ff2d55");
+        g.addColorStop(1, "#dc2626");
       } else if (this.cocoSquadRole === "blue") {
-        g.addColorStop(0, "#e0f2fe");
-        g.addColorStop(1, "#0084ff");
+        g.addColorStop(0, "#93c5fd");
+        g.addColorStop(0.35, "#3b82f6");
+        g.addColorStop(1, "#0066cc");
       } else {
         g.addColorStop(0, rgba(BASE_TOP));
         g.addColorStop(1, rgba(BASE_BOTTOM));
@@ -953,7 +965,7 @@ export class BotEngine {
 
     x.save();
     if (pumpkin > 0.001) {
-      const pg = x.createLinearGradient(rx * 0.7, -ry * 0.85, -rx * 0.8, ry * 0.9);
+      const pg = x.createLinearGradient(0, -ry * 0.85, 0, ry * 0.9);
       pg.addColorStop(0, PUMPKIN_BODY[0]);
       pg.addColorStop(1, PUMPKIN_BODY[1]);
       x.globalAlpha = pumpkin;
@@ -974,19 +986,20 @@ export class BotEngine {
     const sh = x.createRadialGradient(0, 0, R * 0.15, 0, 0, R * 1.25);
     sh.addColorStop(0, "rgba(0,0,0,0)");
     sh.addColorStop(0.6, "rgba(0,0,0,0)");
-    sh.addColorStop(1, "rgba(0,0,0,0.2)");
+    sh.addColorStop(1, "rgba(0,0,0,0.18)");
     x.fillStyle = sh;
     x.fill(body);
 
-    const hl = x.createRadialGradient(rx * 0.34, -ry * 0.46, 0, rx * 0.34, -ry * 0.46, R * 0.42);
-    hl.addColorStop(0, "rgba(255,255,255,0.55)");
+    // Symmetrically centered forehead highlight
+    const hl = x.createRadialGradient(0, -ry * 0.35, 0, 0, -ry * 0.35, R * 0.45);
+    hl.addColorStop(0, "rgba(255,255,255,0.42)");
     hl.addColorStop(1, "rgba(255,255,255,0)");
     x.fillStyle = hl;
     x.fill(body);
     x.restore();
   }
 
-  private drawEyes(x: CanvasRenderingContext2D, R: number, rx: number, ry: number) {
+  private drawEyes(x: CanvasRenderingContext2D, W: number, H: number, R: number, _rx: number, ry: number) {
     let shape: EyeShape = this.eyeOverride ?? this.cfg.eye;
     // Dancing: happy eyes in the calm states.
     if (this.isDancing && this.dancingLevel > 0.15 && !this.isMini && (this.state === "idle" || this.state === "finished")) {
@@ -1002,27 +1015,30 @@ export class BotEngine {
     x.fillStyle = ink;
     x.strokeStyle = ink;
 
-    // Guaranteed two symmetrical, well-separated eyes (x ≈ 34% and 66% of body width, y ≈ 52%)
+    // Guaranteed two separated, symmetrical eyes at exactly 32% and 68% of width, vertically centered around 52%
     for (const sd of [-1, 1]) {
-      const baseEyeX = sd * rx * 0.38;
-      const gazeX = Math.max(-0.12, Math.min(0.12, this.yaw * 0.28)) * rx;
+      // In local coordinates centered at cx = W / 2:
+      // sd = -1 -> -0.18 * W -> absolute canvas X = W * 0.50 - 0.18 * W = 0.32 * W (32% width)
+      // sd = +1 -> +0.18 * W -> absolute canvas X = W * 0.50 + 0.18 * W = 0.68 * W (68% width)
+      const baseEyeX = sd * (W * 0.18);
+      const gazeX = Math.max(-0.02 * W, Math.min(0.02 * W, this.yaw * 0.03 * W));
       const ex = baseEyeX + gazeX;
 
-      const baseEyeY = ry * 0.04;
-      const gazeY = Math.max(-0.14, Math.min(0.14, -this.pitch * 0.32)) * ry;
+      // Base eye Y: aligned with facial vertical center (cy = 52% of H)
+      const baseEyeY = ry * 0.02;
+      const gazeY = Math.max(-0.025 * H, Math.min(0.025 * H, -this.pitch * 0.035 * H));
       let ey = baseEyeY + gazeY;
       if (this.morph > 0) {
         ey += ry * 0.12 * this.morph;
       }
 
-      const eyeMult = this.isMini ? 1.6 : 1.0;
+      const eyeMult = this.isMini ? 1.4 : 1.0;
       const ew = R * EYE_W * this.es * eyeMult;
       const eh = R * EYE_H * this.es * eyeMult;
 
       x.save();
       x.translate(ex, ey);
-      const eyeScaleX = Math.max(0.88, Math.min(1.08, 1 - sd * this.yaw * 0.12));
-      x.scale(eyeScaleX, 1.0);
+      x.scale(1.0, 1.0);
       this.drawEyeShape(x, shape, ew, eh, sd, ink);
       x.restore();
     }
@@ -1138,7 +1154,7 @@ export class BotEngine {
   }
 
   /** Standard cute smiling mouth when idle/happy, or suction mailbox slot when morphing/devouring. */
-  private drawMouth(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
+  private drawMouth(x: CanvasRenderingContext2D, body: Path2D, _W: number, _H: number, R: number, _rx: number, ry: number) {
     const m = this.morph;
     if (m > 0.05) {
       this.drawDevourMouthSlot(x, body, R);
@@ -1152,8 +1168,7 @@ export class BotEngine {
     x.fillStyle = ink;
     x.lineCap = "round";
 
-    const gazeX = Math.max(-0.12, Math.min(0.12, this.yaw * 0.28)) * rx;
-    const mouthX = gazeX * 0.4;
+    const mouthX = 0;
     const mouthY = ry * 0.36;
     const mW = R * 0.28;
 
@@ -1161,13 +1176,13 @@ export class BotEngine {
       // Sonrisa feliz y abierta
       x.lineWidth = Math.max(1.3, R * 0.065);
       x.beginPath();
-      x.arc(mouthX, mouthY - R * 0.04, mW * 0.52, Math.PI * 0.12, Math.PI * 0.88);
+      x.arc(mouthX, mouthY - R * 0.03, mW * 0.52, Math.PI * 0.12, Math.PI * 0.88);
       x.stroke();
     } else {
       // Boquita sonriente tierna estándar
       x.lineWidth = Math.max(1.2, R * 0.06);
       x.beginPath();
-      x.arc(mouthX, mouthY - R * 0.05, mW * 0.44, Math.PI * 0.15, Math.PI * 0.85);
+      x.arc(mouthX, mouthY - R * 0.04, mW * 0.44, Math.PI * 0.15, Math.PI * 0.85);
       x.stroke();
     }
     x.restore();
@@ -1265,16 +1280,16 @@ export class BotEngine {
       x.save();
       x.translate(worldX, worldY);
       if (handRot !== 0) x.rotate(handRot);
-      const g = x.createLinearGradient(hew * 0.7, -heh * 0.85, -hew * 0.8, heh * 0.9);
+      const g = x.createLinearGradient(0, -heh * 0.85, 0, heh * 0.9);
       if (this.cocoSquadRole === "green") {
-        g.addColorStop(0, "#d1fae5");
+        g.addColorStop(0, "#a7f3d0");
         g.addColorStop(1, "#00e676");
       } else if (this.cocoSquadRole === "red") {
-        g.addColorStop(0, "#ffe4e8");
+        g.addColorStop(0, "#fecdd3");
         g.addColorStop(1, "#ff2d55");
       } else if (this.cocoSquadRole === "blue") {
-        g.addColorStop(0, "#e0f2fe");
-        g.addColorStop(1, "#0084ff");
+        g.addColorStop(0, "#93c5fd");
+        g.addColorStop(1, "#0066cc");
       } else if (this.bodyColor) {
         g.addColorStop(0, rgba(mix3(this.bodyColor, [1, 1, 1], 0.35)));
         g.addColorStop(1, rgba(this.bodyColor));
