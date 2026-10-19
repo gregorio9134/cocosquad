@@ -2772,3 +2772,35 @@ html, body {
 .pwa-update-close-btn:hover {
   color: #ffffff;
 }
+
+/* ── 7. Founder Mode (God Mode / Tenant #1) ───────────────────────────────── */
+.founder-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 215, 0, 0.12);
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  border-radius: 10px;
+  padding: 1.5px 7px;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.18);
+  white-space: nowrap;
+  vertical-align: middle;
+  user-select: none;
+  animation: founderGlow 3s ease-in-out infinite;
+}
+
+@keyframes founderGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.18);
+    border-color: rgba(255, 215, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(255, 215, 0, 0.38);
+    border-color: rgba(255, 215, 0, 0.65);
+  }
+}
+

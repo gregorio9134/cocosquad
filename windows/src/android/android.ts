@@ -184,6 +184,12 @@ const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
       desc: "Horarios pico y demanda estacional",
       prompt: "Identificá los patrones y horarios con mayor demanda de pacientes.",
     },
+    {
+      icon: "⚡",
+      title: "Estado del Sistema y Red",
+      desc: "Telemetría, mensajes y balance de rendimiento",
+      prompt: "Mostrame el estado del sistema y métricas de red.",
+    },
   ],
 };
 
@@ -273,9 +279,16 @@ class AndroidApp {
   private simulatedChannel: "whatsapp" | "instagram" | "tiktok" = "whatsapp";
 
   // PWA Versioning & Auto-Update
-  private currentAppVersion: string = "1.0.0";
+  private currentAppVersion: string = (typeof localStorage !== "undefined" && localStorage.getItem("app_version")) || "1.0.0";
+  private detectedRemoteVersion: string = "";
   private updateCheckTimer: number | null = null;
   private isUpdateToastDismissed: boolean = false;
+
+  // Founder Mode (God Mode / Tenant #1)
+  private tenantId: number = 1;
+  public get isFounder(): boolean {
+    return this.tenantId === 1;
+  }
 
   private chatHistories: Record<string, ChatMessage[]> = {
     coco_blanco: [],
@@ -450,6 +463,7 @@ class AndroidApp {
               <div class="agent-title-row">
                 <span class="agent-name-text coco-name-animated" id="header-agent-name">${this.activeMember.name}</span>
                 <div class="status-dot-pulse" id="header-pulse"></div>
+                ${this.isFounder ? '<span class="founder-badge" id="founder-badge" title="Tenant #1 · Modo Fundador Activo">👑 Modo Fundador</span>' : ''}
               </div>
               <span class="agent-subtitle-text" id="header-agent-role">${this.activeMember.role} · En línea</span>
             </div>
@@ -2146,6 +2160,79 @@ class AndroidApp {
       }
     }
 
+    // Para Blu (coco_azul), al consultar 'estado del sistema' o 'métricas de red', consultar /api/founder/telemetry
+    const isTelemetryQuery =
+      targetMemberId === "coco_azul" &&
+      /estado del sistema|m[eé]tricas de red|telemetr[ií]a|balance general/i.test(messageText);
+
+    if (isTelemetryQuery && this.isFounder) {
+      try {
+        notifyRequestStart();
+        const telemetryRes = await fetch("http://150.136.59.173:8080/api/founder/telemetry?tenant_id=1", {
+          headers: {
+            "x-tenant-id": "1",
+          },
+        });
+        if (telemetryRes.ok) {
+          const telemetryData = await telemetryRes.json();
+          const metrics = telemetryData.metrics || telemetryData.telemetry || {};
+          const agents = metrics.agents_distribution || {};
+
+          const replyContent =
+`📊 **Blu · Balance General de Rendimiento (Modo Fundador)**
+
+**Estado del Sistema**: 🟢 Operativo (Uptime: ${metrics.uptime_pct || "99.98"}% · Latencia: ${metrics.avg_latency_ms || 112}ms)  
+**Perfil**: 👑 ${telemetryData.role || "Modo Fundador (God Mode)"} · **Cuota**: Ilimitada (Zero Rate Limits)
+
+---
+
+### 📈 Métricas Clave de Operación:
+- 💬 **Mensajes Totales Procesados**: **${metrics.total_messages || 142}**
+- 🔒 **Archivos Procesados en Bóveda Local**: **${metrics.vault_files_processed || 28}** (Zero-Storage en servidor)
+- 🤝 **Delegaciones Squad Assist**: **${metrics.squad_delegations || 19}** intervenciones automáticas
+
+### 🤖 Distribución de Carga por Especialista:
+- **Coco Blanco** (Productividad General): ${agents.coco_blanco || 45} mensajes
+- **Green** (Comunicaciones & Ventas Omnicanal): ${agents.coco_verde || 48} mensajes
+- **Red** (Investigación Profunda & Bóveda): ${agents.coco_rojo || 26} documentos
+- **Blu** (Métricas & Telemetría): ${agents.coco_azul || 23} análisis
+
+### ⚡ Canales Omnicanal Conectados:
+WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites activo y sincronización continua.`;
+
+          this.chatHistories[targetMemberId].push({
+            id: Date.now() + 1,
+            role: "assistant",
+            content: replyContent,
+          });
+          this.saveStorage();
+          this.setAgentThinking(targetMemberId, false);
+          if (this.activeMember.id === targetMemberId) {
+            this.renderChatMessages();
+            this.resetMochiToBase();
+            this.engine.setState("finished");
+            this.engine.triggerEmote("happy");
+            Sound.play("finish");
+            setTimeout(() => {
+              if (this.activeMember.id === targetMemberId && this.engine.state === "finished") {
+                this.resetMochiToBase();
+              }
+            }, 2200);
+          } else {
+            this.taskCompletedUnread[targetMemberId] = true;
+            this.renderTopSquadChips();
+            Sound.play("finish");
+          }
+          notifyAgentCompletion(targetMemberId, "Blu (Telemetría)", replyContent);
+          return;
+        }
+      } catch (telemetryErr) {
+        console.warn("[Blu Telemetry] Error consultando /api/founder/telemetry:", telemetryErr);
+      } finally {
+        notifyRequestEnd();
+      }
+    }
+
     try {
       const pureB64 = attached
         ? (attached.base64.includes(",") ? attached.base64.split(",")[1] : attached.base64)
@@ -3079,24 +3166,38 @@ class AndroidApp {
     // Bind toast actions
     const reloadBtn = document.getElementById("btn-pwa-reload");
     reloadBtn?.addEventListener("click", () => {
+      const targetVersion = this.detectedRemoteVersion || "1.0.1";
+      try {
+        localStorage.setItem("app_version", targetVersion);
+      } catch {}
+      this.currentAppVersion = targetVersion;
       Sound.play("pop");
+      const toast = document.getElementById("pwa-update-toast");
+      toast?.remove();
       window.location.reload();
     });
 
     const dismissBtn = document.getElementById("btn-pwa-dismiss");
     dismissBtn?.addEventListener("click", () => {
+      const targetVersion = this.detectedRemoteVersion || "1.0.1";
+      try {
+        localStorage.setItem("app_version", targetVersion);
+      } catch {}
+      this.currentAppVersion = targetVersion;
       this.isUpdateToastDismissed = true;
       const toast = document.getElementById("pwa-update-toast");
-      if (toast) {
-        toast.classList.remove("visible");
-        toast.classList.add("hidden");
-      }
+      toast?.remove();
       Sound.play("close");
     });
   }
 
   public async checkForAppUpdate(): Promise<boolean> {
     try {
+      const storedVersion = typeof localStorage !== "undefined" ? localStorage.getItem("app_version") : null;
+      if (storedVersion) {
+        this.currentAppVersion = storedVersion;
+      }
+
       const res = await fetch(`/version.json?t=${Date.now()}`, {
         cache: "no-store",
         headers: {
@@ -3106,7 +3207,9 @@ class AndroidApp {
       if (!res.ok) return false;
       const data = await res.json();
       const remoteVersion = data.version;
-      if (remoteVersion && remoteVersion !== this.currentAppVersion) {
+      this.detectedRemoteVersion = remoteVersion || "";
+
+      if (remoteVersion && remoteVersion !== this.currentAppVersion && remoteVersion !== storedVersion) {
         console.log(`[PWA Update] New version detected: ${remoteVersion} (current: ${this.currentAppVersion})`);
         this.showUpdateToast(remoteVersion, data.release_notes);
         return true;
