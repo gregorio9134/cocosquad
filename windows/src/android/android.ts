@@ -439,7 +439,7 @@ class AndroidApp {
         <header class="compact-top-bar">
           <div class="top-bar-left">
             <div class="avatar-wrapper" id="avatar-btn" title="Tocar a Mochi">
-              <canvas id="mascot-mini-canvas"></canvas>
+              <canvas id="mascot-mini-canvas" class="mascot-canvas" width="80" height="80" style="width: 40px; height: 40px;"></canvas>
             </div>
             <div class="agent-meta-info">
               <div class="agent-title-row">
@@ -518,7 +518,7 @@ class AndroidApp {
                 <p class="devour-header-desc">Subí fotos, documentos o capturas. Coco los absorberá con su boca de succión y los analizará con IA.</p>
 
                 <div class="devour-stage-box">
-                  <canvas id="devour-canvas"></canvas>
+                  <canvas id="devour-canvas" width="560" height="360" style="width: 280px; height: 180px;"></canvas>
                 </div>
 
                 <div class="devour-button-row">
@@ -706,24 +706,35 @@ class AndroidApp {
   }
 
   private initMascotCanvas() {
-    this.mascotCanvas = document.getElementById("mascot-mini-canvas") as HTMLCanvasElement;
+    this.mascotCanvas = (document.getElementById("mascot-mini-canvas") ||
+      document.querySelector("#avatar-btn canvas") ||
+      document.querySelector(".mascot-canvas")) as HTMLCanvasElement;
     if (!this.mascotCanvas) return;
     this.ctx = this.mascotCanvas.getContext("2d")!;
 
     if (this.animId) {
       cancelAnimationFrame(this.animId);
+      this.animId = 0;
     }
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = 40;
     const h = 40;
-    this.mascotCanvas.width = Math.round(w * dpr);
-    this.mascotCanvas.height = Math.round(h * dpr);
+
+    // Strict fixed dimension initialization fallback: 80x80 buffer, 40x40 CSS
+    const bufferW = Math.max(80, Math.round(w * dpr));
+    const bufferH = Math.max(80, Math.round(h * dpr));
+    this.mascotCanvas.width = bufferW;
+    this.mascotCanvas.height = bufferH;
     this.mascotCanvas.style.width = `${w}px`;
     this.mascotCanvas.style.height = `${h}px`;
 
     this.engine.setState("idle");
     this.engine.setCocoSquadRole(this.activeMember.squadRole);
+
+    // CRITICAL: Synchronously render the baseline idle state immediately on frame 0
+    // so both symmetrical eyes are guaranteed before any drop or interaction occurs
+    this.resetMochiToBase();
 
     let last = performance.now();
     const loop = (now: number) => {
@@ -740,8 +751,10 @@ class AndroidApp {
 
       this.engine.update(dt);
 
+      // Safe transform with fallback to prevent any right-eye culling or clipping
+      const effectiveDpr = this.mascotCanvas && this.mascotCanvas.width > 0 ? (this.mascotCanvas.width / w) : dpr;
       this.ctx.resetTransform();
-      this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      this.ctx.setTransform(effectiveDpr, 0, 0, effectiveDpr, 0, 0);
       this.ctx.clearRect(0, 0, w, h);
       this.engine.draw(this.ctx, w, h);
 
@@ -792,23 +805,30 @@ class AndroidApp {
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const rect = this.devourCanvas.getBoundingClientRect();
-    const w = rect.width > 0 ? rect.width : (this.devourCanvas.parentElement?.clientWidth || 280);
-    const h = rect.height > 0 ? rect.height : (this.devourCanvas.parentElement?.clientHeight || 180);
+    const w = rect.width > 20 ? rect.width : (this.devourCanvas.parentElement?.clientWidth && this.devourCanvas.parentElement.clientWidth > 20 ? this.devourCanvas.parentElement.clientWidth : 280);
+    const h = rect.height > 20 ? rect.height : (this.devourCanvas.parentElement?.clientHeight && this.devourCanvas.parentElement.clientHeight > 20 ? this.devourCanvas.parentElement.clientHeight : 180);
 
-    this.devourCanvas.width = Math.round(w * dpr);
-    this.devourCanvas.height = Math.round(h * dpr);
+    const bufferW = Math.max(560, Math.round(w * dpr));
+    const bufferH = Math.max(360, Math.round(h * dpr));
+
+    this.devourCanvas.width = bufferW;
+    this.devourCanvas.height = bufferH;
     this.devourCanvas.style.width = `${w}px`;
     this.devourCanvas.style.height = `${h}px`;
 
     // 1. Limpieza total y reinicio de matriz para descartar cualquier desfasaje previo o restos de animación
+    const effectiveDpr = this.devourCanvas.width > 0 ? (this.devourCanvas.width / w) : dpr;
     this.devourCtx.resetTransform();
-    this.devourCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.devourCtx.setTransform(effectiveDpr, 0, 0, effectiveDpr, 0, 0);
     this.devourCtx.clearRect(0, 0, w, h);
 
     // 2. Sincronizar el motor del Mochi devorador con el rol y postura del agente activo
     this.devourEngine.resetToBase();
     this.devourEngine.setCocoSquadRole(this.activeMember.squadRole);
     this.devourEngine.setState("idle");
+
+    // Inmediata renderización síncrona en reposo con ambos ojos simétricos
+    this.devourEngine.draw(this.devourCtx, w, h);
 
     let last = performance.now();
     const loop = (now: number) => {
@@ -818,8 +838,9 @@ class AndroidApp {
 
         this.devourEngine.update(dt);
 
+        const curEffDpr = this.devourCanvas.width > 0 ? (this.devourCanvas.width / w) : dpr;
         this.devourCtx.resetTransform();
-        this.devourCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        this.devourCtx.setTransform(curEffDpr, 0, 0, curEffDpr, 0, 0);
         this.devourCtx.clearRect(0, 0, w, h);
 
         // Reposicionamiento simétrico y proporcional de cuerpo, ambos ojos y boca del Mochi
@@ -1013,6 +1034,12 @@ class AndroidApp {
         nextActionTime: performance.now() + 600 + Math.random() * 800 + idx * 400,
       });
 
+      // Synchronous idle render for mini mochi chips immediately on frame 0
+      ctx.resetTransform();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      engine.draw(ctx, w, h);
+
       btn.addEventListener("click", () => {
         engine.triggerEmote("wink", 0.8);
         this.selectSquadMember(m);
@@ -1091,13 +1118,13 @@ class AndroidApp {
     this.renderAttachedFileChip();
 
     // Update Mascot in mini canvas with guaranteed clean baseline face (both eyes & cute smile)
-    this.resetMochiToBase();
     this.engine.setCocoSquadRole(m.squadRole);
     if (this.thinkingByAgent[m.id]) {
       this.engine.setState("thinking");
     } else {
       this.engine.setState("idle");
     }
+    this.resetMochiToBase();
     Sound.play("blip");
     this.initDevourCanvas();
 
@@ -2279,19 +2306,48 @@ class AndroidApp {
     this.engine.setCocoSquadRole(this.activeMember.squadRole);
 
     // 2. Reset canvas transformation matrix and immediately redraw a clean, symmetrical face
+    if (!this.mascotCanvas) {
+      this.mascotCanvas = (document.getElementById("mascot-mini-canvas") ||
+        document.querySelector("#avatar-btn canvas") ||
+        document.querySelector(".mascot-canvas")) as HTMLCanvasElement;
+      if (this.mascotCanvas) {
+        this.ctx = this.mascotCanvas.getContext("2d")!;
+      }
+    }
+
     if (this.ctx && this.mascotCanvas) {
       try {
         const dpr = Math.min(2, window.devicePixelRatio || 1);
+        let clientW = this.mascotCanvas.clientWidth;
+        let clientH = this.mascotCanvas.clientHeight;
+        if (!clientW || clientW < 20) clientW = 40;
+        if (!clientH || clientH < 20) clientH = 40;
+
+        const expectedBufferW = Math.max(80, Math.round(clientW * dpr));
+        const expectedBufferH = Math.max(80, Math.round(clientH * dpr));
+
+        if (this.mascotCanvas.width < 20 || this.mascotCanvas.height < 20) {
+          this.mascotCanvas.width = expectedBufferW;
+          this.mascotCanvas.height = expectedBufferH;
+          this.mascotCanvas.style.width = `${clientW}px`;
+          this.mascotCanvas.style.height = `${clientH}px`;
+        }
+
+        const effectiveDpr = this.mascotCanvas.width > 0 ? (this.mascotCanvas.width / clientW) : dpr;
         this.ctx.resetTransform();
-        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        this.ctx.clearRect(0, 0, 40, 40);
-        this.engine.draw(this.ctx, 40, 40);
+        this.ctx.setTransform(effectiveDpr, 0, 0, effectiveDpr, 0, 0);
+        this.ctx.clearRect(0, 0, clientW, clientH);
+        this.engine.draw(this.ctx, clientW, clientH);
       } catch {}
     }
   }
 
   public async handleFileUpload(file: File) {
     await this.processFileToDevour(file);
+  }
+
+  public triggerDevourAnimation(file: File) {
+    void this.processFileToDevour(file);
   }
 
   private async processFileToDevour(file: File) {
@@ -2340,13 +2396,23 @@ class AndroidApp {
     const avatarRect = avatarBtn.getBoundingClientRect();
     const appRect = appEl.getBoundingClientRect();
 
+    const appW = appRect.width > 20 ? appRect.width : (window.innerWidth || 360);
+    const appH = appRect.height > 20 ? appRect.height : (window.innerHeight || 640);
+    const appLeft = appRect.left || 0;
+    const appTop = appRect.top || 0;
+
+    const avLeft = avatarRect.left || (appLeft + 20);
+    const avTop = avatarRect.top || (appTop + 20);
+    const avW = avatarRect.width > 10 ? avatarRect.width : 40;
+    const avH = avatarRect.height > 10 ? avatarRect.height : 40;
+
     // Center of protagonist Mochi's mouth relative to #app
-    const targetX = avatarRect.left - appRect.left + avatarRect.width / 2;
-    const targetY = avatarRect.top - appRect.top + avatarRect.height / 2 + 3;
+    const targetX = avLeft - appLeft + avW / 2;
+    const targetY = avTop - appTop + avH / 2 + 3;
 
     // Center of app horizontally, above bottom bar vertically
-    const startX = appRect.width / 2;
-    const startY = Math.max(140, appRect.height - 210);
+    const startX = appW / 2;
+    const startY = Math.max(140, appH - 210);
 
     // Create the floating card element
     const card = document.createElement("div");
@@ -2428,10 +2494,12 @@ class AndroidApp {
 
         // Mochi's head & eyes track the card smoothly without eye distortion or culling
         if (this.activeMember.id === targetMember.id) {
-          const dx = (curX - targetX) / appRect.width;
-          const dy = (curY - targetY) / appRect.height;
-          this.engine.lookX = Math.max(-0.25, Math.min(0.25, dx));
-          this.engine.lookY = Math.max(-0.25, Math.min(0.35, dy));
+          const dx = appW > 0 ? (curX - targetX) / appW : 0;
+          const dy = appH > 0 ? (curY - targetY) / appH : 0;
+          if (!isNaN(dx) && !isNaN(dy)) {
+            this.engine.lookX = Math.max(-0.25, Math.min(0.25, dx));
+            this.engine.lookY = Math.max(-0.25, Math.min(0.35, dy));
+          }
         }
 
         if (rawP >= 0.72 && !gulped) {
@@ -2954,6 +3022,7 @@ class AndroidApp {
 function initApp() {
   const app = new AndroidApp();
   (window as any).__cocoApp = app;
+  (window as any).triggerDevourAnimation = (file: File) => app.triggerDevourAnimation(file);
   app.render();
   (window as any).__swipeController = app.getSwipeController();
 

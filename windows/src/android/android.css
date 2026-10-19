@@ -197,9 +197,11 @@ html, body {
   }
 }
 
-#mascot-mini-canvas {
-  width: 40px;
-  height: 40px;
+#mascot-mini-canvas,
+.mascot-canvas,
+#avatar-btn canvas {
+  width: 40px !important;
+  height: 40px !important;
   position: relative;
   z-index: 1;
   pointer-events: none;
