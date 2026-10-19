@@ -3220,8 +3220,17 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
     return false;
   }
 
-  public showUpdateToast(_remoteVersion?: string, _releaseNotes?: string) {
+  public showUpdateToast(remoteVersion?: string, _releaseNotes?: string) {
+    if (remoteVersion) {
+      this.detectedRemoteVersion = remoteVersion;
+    }
     if (this.isUpdateToastDismissed) return;
+
+    const storedVersion = typeof localStorage !== "undefined" ? localStorage.getItem("app_version") : null;
+    if (storedVersion && this.detectedRemoteVersion && storedVersion === this.detectedRemoteVersion) {
+      return;
+    }
+
     const toast = document.getElementById("pwa-update-toast");
     if (!toast) return;
 

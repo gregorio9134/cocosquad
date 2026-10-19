@@ -1,43 +1,19 @@
-# COCO SQUAD - AGENT ENGINE RULES & GUARDRAILS
+# COCO SQUAD - AGENT ENGINE RULES & PRE-FLIGHT CHECK
 
-## MODO DE OPERACIÓN: VERIFICACIÓN OBLIGATORIA (PRE-FLIGHT)
-Antes de proponer o aplicar cualquier cambio de código, debes evaluar:
-1. ¿Afecta la geometría o el renderizado de los Mochis? Si la respuesta es SÍ, aborta esa parte.
-2. ¿Modifica el flujo de pantallas o agrega paneles laterales? Debe mantenerse en un solo flujo vertical.
+## PROTOCOLO PRE-FLIGHT OBLIGATORIO
+Antes de generar o aplicar cualquier cambio de código, debes evaluar:
+1. ¿Afecta la geometría, el rostro o el renderizado de los Mochis? Si la respuesta es SÍ, aborta esa modificación estética.
+2. ¿Altera el flujo de navegación o añade vistas divididas/split-screen? La UI es un chat móvil vertical único.
 3. Al finalizar, debes compilar con `npx tsc --noEmit` y garantizar 0 errores.
 
----
+## REGLAS INMUTABLES DE ARQUITECTURA
+- ROSTRO Y SIMETRÍA: Todo Mochi debe tener siempre dos ojos visibles y simétricos (x=32% y x=68%). Prohibido dejar avatares tuertos, recortes por overflow o alterar medidas de canvas en caliente.
+- ANIMACIÓN DEVORAR: Es exclusivamente un squash & stretch elástico por CSS (`transform: scale(...)`). Prohibido dibujar bocas o tajos en el canvas.
+- ZERO-STORAGE PERSISTENCE: Archivos guardados 100% en IndexedDB (`CocoVaultDB`) del navegador. Cero escritura en disco o `/tmp` en el servidor Oracle.
+- DELEGACIÓN SQUAD ASSIST: Tareas derivadas a Red o Green deben mostrarse en el chat del especialista tras la intromisión efímera, no amontonadas en el chat emisor.
 
-## 1. GUARDRAIL VISUAL DE MOCHIS (INMUTABLE)
-- **Morfología:** Forma suave de cápsula/píldora gomosa con degradados y volumen nativo. Prohibido volver a pastillas rectangulares duras o cajas rígidas.
-- **Rostro Simétrico Garantizado:** 
-  - Todo Mochi tiene OBLIGATORIAMENTE dos ojos visibles y simétricos (posiciones normalizadas ~32% y ~68%).
-  - Queda TERMINANTEMENTE PROHIBIDO dejar avatares con un solo ojo, ojos desplazados al borde o tuertos.
-  - No usar `clip-path`, máscaras invasivas ni recortes por overflow sobre el contenedor del rostro.
-- **Animación 'Devorar':** 
-  - Es exclusivamente un squash & stretch elástico por CSS (`transform: scale(...)`).
-  - PROHIBIDO dibujar tajos, bocas negras o alterar los píxeles faciales durante o después del efecto.
-- **Sin bucles al recargar:** Todo estado de asistencia (`isAssisting`) inicia en `false` y cualquier temporizador huérfano se limpia de inmediato en el arranque.
-
----
-
-## 2. PRIVACIDAD & BÓVEDA (ZERO-STORAGE POLICY)
-- Almacenamiento persistente de documentos: 100% en cliente dentro de IndexedDB (`CocoVaultDB`).
-- Backend (Oracle Cloud VM): Cero escritura en disco persistente (`/tmp` debe permanecer limpio). Procesamiento exclusivamente en memoria RAM (`io.BytesIO`).
-
----
-
-## 3. ORQUESTACIÓN Y ROLES ESTRICTOS
-- **Coco Blanco:** Resuelve directo documentos <= 2 MB o <= 4 págs. Si excede, delega a Red.
-- **Green:** Atención al cliente, turnos y omnicanalidad (WhatsApp, IG, TikTok). Prohibido hacer análisis financiero o leer papers técnicos.
-- **Red:** Deep Research, lectura exhaustiva de documentos y síntesis académica.
-- **Blu:** Métricas, telemetría y balances. Prohibido coordinar turnos o pedir datos de contacto a clientes.
-- **Mecánica Squad Assist:** La interacción es una coreografía efímera (salto, diálogo temporal '¡Yo me encargo!', retorno). La tarea delegada se procesa y muestra en el chat del especialista, no amontonada en la ventana del agente derivador.
-
----
-
-## 4. APRENDIZAJE CONTINUO (SELF-UPDATE RULE)
-- Cada vez que un usuario reporte un bug o un comportamiento no deseado que requiera corrección:
-  1. Soluciona el problema de raíz sin parches superficiales.
-  2. Registra el anti-patrón y la solución en `PROJECT_MEMORY.md` bajo la sección "Lecciones Aprendidas".
-  3. Consulta obligatoriamente `.cursorrules` y `PROJECT_MEMORY.md` antes de cada iteración para garantizar no-regresión.
+## PROTOCOLO DE AUTO-APRENDIZAJE OBLIGATORIO (CLOSED-LOOP)
+Ante cualquier corrección técnica o reporte de bug:
+1. Corrige el código de raíz respetando estas reglas.
+2. Añade de forma obligatoria una nueva entrada en `PROJECT_MEMORY.md` detallando el fallo, causa y regla preventiva.
+3. Reporta explícitamente: '✓ Lección registrada en PROJECT_MEMORY.md: [Título]'.
