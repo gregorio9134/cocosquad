@@ -264,7 +264,7 @@ async def webhook_mercadopago(request: Request):
     # 1. Extraer de external_reference o data
     ext_ref = body.get("external_reference") or (body.get("data", {}).get("external_reference") if isinstance(body.get("data"), dict) else None)
     if not ext_ref:
-        ext_ref = request.query_params.get("external_reference") or request.query_params.get("tenant_id")
+        ext_ref = body.get("tenant_id") or request.query_params.get("external_reference") or request.query_params.get("tenant_id")
 
     if ext_ref:
         try:
@@ -313,7 +313,7 @@ async def webhook_stripe(request: Request):
     event_type = body.get("type", "checkout.session.completed")
     data_obj = body.get("data", {}).get("object", {})
 
-    client_ref = data_obj.get("client_reference_id") or body.get("client_reference_id") or request.query_params.get("tenant_id")
+    client_ref = data_obj.get("client_reference_id") or body.get("client_reference_id") or body.get("tenant_id") or request.query_params.get("tenant_id")
     if client_ref:
         try:
             tenant_id = int(client_ref)
@@ -321,7 +321,7 @@ async def webhook_stripe(request: Request):
             pass
 
     if not tenant_id:
-        cust_email = data_obj.get("customer_email")
+        cust_email = data_obj.get("customer_email") or body.get("payer_email") or body.get("email")
         if cust_email:
             try:
                 conn = get_db()
