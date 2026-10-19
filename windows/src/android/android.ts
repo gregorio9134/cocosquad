@@ -2095,6 +2095,17 @@ class AndroidApp {
         this.saveStorage();
         this.setAgentThinking(targetMemberId, false);
 
+        if (data.intervention) {
+          if (this.activeMember.id === targetMemberId) {
+            this.renderChatMessages();
+          }
+          await this.executeSquadIntervention({
+            ...data.intervention,
+            user_prompt: messageText,
+          });
+          return;
+        }
+
         if (this.activeMember.id === targetMemberId) {
           this.renderChatMessages();
           this.resetMochiToBase();
