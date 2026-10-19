@@ -1,6 +1,6 @@
 # COCO SQUAD - BITÁCORA DE APRENDIZAJE Y ANTI-PATRONES
 
-Este documento registra los errores históricos del proyecto para evitar que vuelvan a introducirse en futuras iteraciones. Ante cualquier modificación o reporte de error, es obligatorio consultar y actualizar esta bitácora.
+Este documento registra los errores históricos del proyecto para evitar que vuelvan a introducirse en futuras iteraciones. Ante cualquier modificación o reporte de error, es obligatorio consultar esta bitácora y reutilizar las soluciones probadas en [SUCCESS_PATTERNS.md](file:///Users/Gregorio/Desktop/coco%20squad/SUCCESS_PATTERNS.md).
 
 ---
 
@@ -11,6 +11,7 @@ Este documento registra los errores históricos del proyecto para evitar que vue
   1. Las dimensiones del canvas de los avatares deben ser explícitas y fijas desde el HTML y el constructor (`width="80" height="80"` en buffer, `style="width: 40px; height: 40px;"` en CSS).
   2. Nunca inicializar ni mutar las dimensiones del lienzo dentro de las rutinas de devorar (`triggerDevourAnimation`).
   3. Ejecutar de inmediato el renderizado síncrono del estado de reposo (Idle) en Frame 0 garantizando dos ojos separados en $x = 32\%$ y $x = 68\%$.
+- **Patrón Exitoso Asociado:** Ver *Caso 1* y *Caso 4* en `SUCCESS_PATTERNS.md`.
 
 ---
 
@@ -30,6 +31,7 @@ Este documento registra los errores históricos del proyecto para evitar que vue
   1. Toda la aplicación opera estrictamente en un único contenedor vertical de chat móvil centrado.
   2. No instanciar paneles paralelos ni vistas divididas (split-screen) bajo ningún concepto.
   3. La omnicanalidad de Green (WhatsApp, Instagram, TikTok) se resuelve mediante badges integrados en las burbujas y selectores sutiles en la barra de entrada, manteniendo el flujo conversacional 100% nativo.
+- **Patrón Exitoso Asociado:** Ver *Caso 1* en `SUCCESS_PATTERNS.md`.
 
 ---
 
@@ -39,3 +41,4 @@ Este documento registra los errores históricos del proyecto para evitar que vue
   1. La asistencia entre agentes (Squad Assist) es estrictamente una coreografía efímera: el especialista desciende, muestra un globo de diálogo flotante y temporal ("¡Yo me encargo!"), y regresa a su estación en la barra superior.
   2. Queda terminantemente prohibido inyectar burbujas de respuesta permanente del especialista dentro de la conversación del agente derivador.
   3. Tras la animación de retorno, la interfaz ejecuta de forma automática la conmutación a la vista del especialista (`selectSquadMember`), donde se presenta el informe completo.
+- **Patrón Exitoso Asociado:** Ver *Caso 2* y *Caso 3* en `SUCCESS_PATTERNS.md`.

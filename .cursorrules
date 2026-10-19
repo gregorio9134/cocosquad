@@ -1,5 +1,8 @@
 # COCO SQUAD - AGENT ENGINE RULES & PRE-FLIGHT CHECK
 
+## CONSULTA PREVIA OBLIGATORIA
+Antes de implementar cualquier nueva función, consulta `SUCCESS_PATTERNS.md` para reutilizar los patrones existentes y `PROJECT_MEMORY.md` para evitar anti-patrones conocidos.
+
 ## PROTOCOLO PRE-FLIGHT OBLIGATORIO
 Antes de generar o aplicar cualquier cambio de código, debes evaluar:
 1. ¿Afecta la geometría, el rostro o el renderizado de los Mochis? Si la respuesta es SÍ, aborta esa modificación estética.
