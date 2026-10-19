@@ -32,6 +32,8 @@ export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  channel?: "whatsapp" | "instagram" | "tiktok";
+  senderName?: string;
   intervention?: {
     from_coco_id: 'coco_blanco' | 'coco_verde' | 'coco_rojo' | 'coco_azul';
     from_name: string;

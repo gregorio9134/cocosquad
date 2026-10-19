@@ -2542,5 +2542,149 @@ html, body {
   white-space: nowrap;
 }
 
+/* ── Omnichannel Badges (WhatsApp, Instagram, TikTok) ─────────────────────── */
+.channel-bubble-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  margin-bottom: 5px;
+  width: fit-content;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.channel-bubble-badge.channel-whatsapp {
+  background: rgba(37, 211, 102, 0.14);
+  border: 1px solid rgba(37, 211, 102, 0.4);
+  color: #25D366;
+  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.2);
+}
+
+.channel-bubble-badge.channel-instagram {
+  background: linear-gradient(135deg, rgba(240, 148, 51, 0.22), rgba(220, 39, 67, 0.22), rgba(188, 24, 136, 0.22));
+  border: 1px solid rgba(225, 48, 108, 0.45);
+  color: #ff5483;
+  box-shadow: 0 2px 8px rgba(225, 48, 108, 0.25);
+}
+
+.channel-bubble-badge.channel-tiktok {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(254, 44, 85, 0.18));
+  border: 1px solid rgba(254, 44, 85, 0.45);
+  color: #00f2fe;
+  box-shadow: 0 2px 8px rgba(254, 44, 85, 0.2);
+}
+
+.channel-bubble-badge .channel-icon-svg {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.channel-bubble-badge .channel-sender-tag {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  margin-left: 2px;
+}
+
+/* ── Green Omnichannel Simulator Bar ──────────────────────────────────────── */
+.channel-sim-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px 4px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: rgba(10, 14, 22, 0.45);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.channel-sim-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.channel-sim-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-muted, rgba(255, 255, 255, 0.45));
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-right: 2px;
+  flex-shrink: 0;
+}
+
+.channel-sim-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-sub, rgba(255, 255, 255, 0.65));
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.channel-sim-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.channel-sim-chip.active[data-channel="whatsapp"] {
+  background: rgba(37, 211, 102, 0.16);
+  border-color: #25D366;
+  color: #25D366;
+  box-shadow: 0 0 10px rgba(37, 211, 102, 0.22);
+}
+
+.channel-sim-chip.active[data-channel="instagram"] {
+  background: linear-gradient(135deg, rgba(240, 148, 51, 0.2), rgba(220, 39, 67, 0.2), rgba(188, 24, 136, 0.2));
+  border-color: #e1306c;
+  color: #ff5483;
+  box-shadow: 0 0 10px rgba(225, 48, 108, 0.25);
+}
+
+.channel-sim-chip.active[data-channel="tiktok"] {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.16), rgba(254, 44, 85, 0.16));
+  border-color: #fe2c55;
+  color: #00f2fe;
+  box-shadow: 0 0 10px rgba(254, 44, 85, 0.22);
+}
+
+.channel-sim-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.channel-sim-dot.wa {
+  background: #25D366;
+  box-shadow: 0 0 6px #25D366;
+}
+
+.channel-sim-dot.ig {
+  background: linear-gradient(45deg, #f09433, #dc2743, #bc1888);
+  box-shadow: 0 0 6px #dc2743;
+}
+
+.channel-sim-dot.tt {
+  background: #fe2c55;
+  box-shadow: -1px 0 0 #00f2fe, 0 0 6px #fe2c55;
+}
+
+
 
 

@@ -270,6 +270,7 @@ class AndroidApp {
   private devourCtx: CanvasRenderingContext2D | null = null;
   private devourEngine: BotEngine = new BotEngine();
   private devourAnimId: number = 0;
+  private simulatedChannel: "whatsapp" | "instagram" | "tiktok" = "whatsapp";
 
   private chatHistories: Record<string, ChatMessage[]> = {
     coco_blanco: [],
@@ -487,7 +488,19 @@ class AndroidApp {
               </div>
 
               <div id="attached-chip-container" style="padding: 0 14px;"></div>
-              <input type="file" id="mobile-devour-input" style="display:none;" accept="image/*,video/*,application/pdf,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx,.txt" />
+              <!-- Green Omnichannel Simulator Strip -->
+              <div class="channel-sim-bar" id="green-channel-sim-bar" style="display: none;">
+                <span class="channel-sim-label">Canal:</span>
+                <button class="channel-sim-chip active" data-channel="whatsapp" title="Simular mensaje entrante de WhatsApp">
+                  <span class="channel-sim-dot wa"></span> Simular WhatsApp
+                </button>
+                <button class="channel-sim-chip" data-channel="instagram" title="Simular mensaje entrante de Instagram">
+                  <span class="channel-sim-dot ig"></span> Simular Instagram
+                </button>
+                <button class="channel-sim-chip" data-channel="tiktok" title="Simular mensaje entrante de TikTok">
+                  <span class="channel-sim-dot tt"></span> Simular TikTok
+                </button>
+              </div>
 
               <div class="chat-input-bar">
                 <button class="btn-icon-round btn-tools-trigger" id="btn-tools-plus" title="Herramientas y atajos">+</button>
@@ -1064,10 +1077,12 @@ class AndroidApp {
       this.greenManager.unmount();
     }
 
-    const chatInput = document.getElementById("chat-input") as HTMLInputElement | null;
-    if (chatInput) {
-      chatInput.placeholder = `Preguntale a ${m.name}...`;
+    // Toggle Green Omnichannel Simulator Bar
+    const simBar = document.getElementById("green-channel-sim-bar");
+    if (simBar) {
+      simBar.style.display = m.id === "coco_verde" ? "flex" : "none";
     }
+    this.updateChatInputPlaceholder();
 
     // Always render unified vertical chat for all Mochis
     this.renderChatMessages();
@@ -1087,6 +1102,31 @@ class AndroidApp {
     this.initDevourCanvas();
 
     if (navigator.vibrate) navigator.vibrate(12);
+  }
+
+  public setSimulatedChannel(channel: "whatsapp" | "instagram" | "tiktok") {
+    this.simulatedChannel = channel;
+    const chips = document.querySelectorAll(".channel-sim-chip");
+    chips.forEach((c) => {
+      c.classList.toggle("active", (c as HTMLElement).dataset.channel === channel);
+    });
+    this.updateChatInputPlaceholder();
+  }
+
+  private updateChatInputPlaceholder() {
+    const chatInput = document.getElementById("chat-input") as HTMLInputElement | null;
+    if (!chatInput) return;
+    if (this.activeMember.id === "coco_verde") {
+      if (this.simulatedChannel === "whatsapp") {
+        chatInput.placeholder = "Mensaje de cliente en WhatsApp...";
+      } else if (this.simulatedChannel === "instagram") {
+        chatInput.placeholder = "Mensaje directo en Instagram...";
+      } else {
+        chatInput.placeholder = "Consulta directa en TikTok...";
+      }
+    } else {
+      chatInput.placeholder = `Preguntale a ${this.activeMember.name}...`;
+    }
   }
 
   public switchAgent(id: string) {
@@ -1242,6 +1282,20 @@ class AndroidApp {
           bubble.innerHTML = `<div class="message-content">${marked.parse(msg.content, { async: false }) as string}</div>`;
         }
       } else {
+        const ch = msg.channel || (this.activeMember.id === "coco_verde" ? "whatsapp" : undefined);
+        if (ch) {
+          const channelBadge = document.createElement("div");
+          channelBadge.className = `channel-bubble-badge channel-${ch}`;
+          const iconSvg = ch === "whatsapp"
+            ? `<svg class="channel-icon-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.63C8.75 21.42 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.04 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 14.99 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67Z"/></svg>`
+            : ch === "instagram"
+            ? `<svg class="channel-icon-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>`
+            : `<svg class="channel-icon-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.85.12V9.41a6.34 6.34 0 0 0-.85-.06 6.34 6.34 0 1 0 6.34 6.34V8.71a8.18 8.18 0 0 0 4.77 1.52V6.78a4.85 4.85 0 0 1-1-.09z"/></svg>`;
+          const channelName = ch === "whatsapp" ? "WhatsApp" : ch === "instagram" ? "Instagram Direct" : "TikTok";
+          const sender = msg.senderName ? `<span class="channel-sender-tag">· ${msg.senderName}</span>` : "";
+          channelBadge.innerHTML = `${iconSvg} <span>${channelName}</span>${sender}`;
+          row.appendChild(channelBadge);
+        }
         bubble.innerHTML = `<div class="message-content user">${marked.parse(msg.content, { async: false }) as string}</div>`;
       }
 
@@ -1742,6 +1796,18 @@ class AndroidApp {
       if (e.key === "Enter") doSend();
     });
 
+    // Green Omnichannel Simulator channel switching chips
+    document.querySelectorAll(".channel-sim-chip").forEach((chip) => {
+      chip.addEventListener("click", (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const ch = target.dataset.channel as "whatsapp" | "instagram" | "tiktok";
+        if (ch) {
+          this.setSimulatedChannel(ch);
+          Sound.play("tap");
+        }
+      });
+    });
+
     // Tools popup (+) button trigger and overlay dismissal
     const plusBtn = document.getElementById("btn-tools-plus");
     const overlay = document.getElementById("tools-popup-overlay");
@@ -1942,10 +2008,18 @@ class AndroidApp {
     }
 
     // ─── UNIFIED SQUAD FLOW (BLANCO, VERDE, ROJO, AZUL) ───
+    const isGreen = targetMemberId === "coco_verde";
+    const channel = isGreen ? this.simulatedChannel : undefined;
+    const senderName = isGreen
+      ? (channel === "whatsapp" ? "Valeria Gómez (+54 9 11 ...)" : (channel === "instagram" ? "@valeria_salud" : "@valeria.tiktok"))
+      : undefined;
+
     this.chatHistories[targetMemberId].push({
       id: Date.now(),
       role: "user",
       content: userBubbleContent,
+      channel,
+      senderName,
     });
     this.saveStorage();
 
@@ -1953,12 +2027,70 @@ class AndroidApp {
     this.attachedFilesByAgent[targetMemberId] = null;
     if (this.activeMember.id === targetMemberId) {
       this.renderAttachedFileChip();
+      this.renderChatMessages();
     }
 
     this.setAgentThinking(targetMemberId, true);
     if (this.activeMember.id === targetMemberId) {
       Sound.play("send");
       triggerHapticFeedback(12);
+    }
+
+    // Para Green Omnicanal sin adjuntos, llamar directamente al webhook unificado
+    if (isGreen && !attached) {
+      const ch = this.simulatedChannel;
+      const senderId = ch === "whatsapp" ? "+5491144332211" : (ch === "instagram" ? "valeria_salud" : "valeria.tiktok");
+      const clientName = ch === "whatsapp" ? "Valeria Gómez" : (ch === "instagram" ? "@valeria_salud" : "@valeria.tiktok");
+
+      try {
+        notifyRequestStart();
+        const res = await fetch(`http://150.136.59.173:8080/api/webhooks/${ch}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            channel: ch,
+            sender_id: senderId,
+            sender_name: clientName,
+            text: messageText,
+            timestamp: Date.now() / 1000,
+          }),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const reply = data.reply || data.response || "¡Hola! Gracias por comunicarte con nosotros.";
+
+        this.chatHistories[targetMemberId].push({
+          id: Date.now() + 1,
+          role: "assistant",
+          content: reply,
+        });
+        this.saveStorage();
+        this.setAgentThinking(targetMemberId, false);
+
+        if (this.activeMember.id === targetMemberId) {
+          this.renderChatMessages();
+          this.resetMochiToBase();
+          this.engine.setState("finished");
+          this.engine.triggerEmote("happy");
+          Sound.play("finish");
+          setTimeout(() => {
+            if (this.activeMember.id === targetMemberId && this.engine.state === "finished") {
+              this.resetMochiToBase();
+            }
+          }, 2200);
+        } else {
+          this.taskCompletedUnread[targetMemberId] = true;
+          this.renderTopSquadChips();
+          Sound.play("finish");
+        }
+        notifyAgentCompletion(targetMemberId, `Green (${ch.toUpperCase()})`, reply);
+        return;
+      } catch (webhookErr) {
+        console.warn("[Green Omnichannel Webhook] Fallback to standard chat:", webhookErr);
+      } finally {
+        notifyRequestEnd();
+      }
     }
 
     try {
