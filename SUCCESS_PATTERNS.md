@@ -99,3 +99,40 @@ Este documento consolida la línea base arquitectónica, funcional y estética d
   - [android.ts](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.ts#L463-L466)
   - [android.css](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.css#L1070-L1085)
 
+---
+
+## Caso 8: Autenticación Multi-Tenant y Aislamiento por Token JWT
+
+- **Objetivo:** Garantizar la segregación estricta de datos entre inquilinos (tenants) mediante tokens criptográficos JWT estándar (HS256), manteniendo bypass ilimitado para el Fundador (`tenant_id = 1`) y cuotas/aislamiento para clientes externos.
+- **Implementación Técnica:**
+  - **Emisión y Validación JWT:** En `fastapi_server.py`, funciones `create_jwt_token` y `decode_jwt_token` con soporte dual (PyJWT y HMAC-SHA256 nativo).
+  - **Endpoints de Autenticación:**
+    - `POST /api/auth/login`: Autentica email, sincroniza con `database/master.db` y devuelve token firmado con `{ "tenant_id": int, "email": str, "plan": str, "is_founder": bool }`.
+    - `GET /api/auth/me`: Dependencia `get_current_tenant` valida `Authorization: Bearer <token>` y extrae el perfil del usuario autenticado.
+  - **Inyección de Dependencia:** `get_current_tenant` protege endpoints y aisla el almacenamiento, garantizando que el Fundador mantenga cuota ilimitada sin interferir con otros tenants.
+  - **Frontend UI & Tokens:** En `android.ts`, almacenamiento persistente en `localStorage` (`auth_token`, `tenant_id`, `user_email`, `user_plan`) e inclusión automática de `Authorization: Bearer <token>` y `x-tenant-id` en todas las peticiones a la API.
+- **Archivos de Referencia:**
+  - [fastapi_server.py](file:///Users/Gregorio/Desktop/coco%20squad/windows/scripts/fastapi_server.py)
+  - [android.ts](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.ts)
+  - [android.css](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.css)
+
+---
+
+## Caso 9: Pasarela de Cobros Híbrida (Mercado Pago + Stripe)
+
+- **Objetivo:** Habilitar monetización flexible con soporte de facturación local en pesos argentinos (Mercado Pago / ARS) y suscripciones internacionales recurrentes en dólares (Stripe / USD).
+- **Implementación Técnica:**
+  - **Módulo Backend (`billing.py`):**
+    - `POST /api/billing/checkout/mercadopago`: Genera preferencia de pago en Mercado Pago por $29.900 ARS/mes con `external_reference = tenant_id`.
+    - `POST /api/billing/checkout/stripe`: Genera sesión de Stripe Checkout por $29.00 USD/mes con `client_reference_id = tenant_id`.
+    - `POST /api/billing/webhook/mercadopago` y `POST /api/billing/webhook/stripe`: Receptores de confirmación de pago que actualizan inmediatamente el estado del tenant en `subscriptions` a `plan = 'pro'`.
+    - `GET /api/billing/status`: Consulta del estado actual de suscripción y precios disponibles.
+  - **Componente de Suscripción en UI:** Modal dark glassmorphism integrado (`#auth-modal-card`), selector de moneda y pasarela con pills interactivos, enlace directo que no rompe la experiencia PWA (`window.open(url, '_blank')`) y opción de simulación inmediata para pruebas.
+  - **Inmutabilidad y No-Regresión:** Morfología Mochi intacta con 2 ojos simétricos ($80\times 80$ buffer, $40\times 40$ CSS), política Zero-Storage estricta en Oracle y diseño en contenedor vertical centrado.
+- **Archivos de Referencia:**
+  - [billing.py](file:///Users/Gregorio/Desktop/coco%20squad/windows/scripts/billing.py)
+  - [fastapi_server.py](file:///Users/Gregorio/Desktop/coco%20squad/windows/scripts/fastapi_server.py)
+  - [android.ts](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.ts)
+  - [android.css](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.css)
+
+

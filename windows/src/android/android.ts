@@ -71,7 +71,7 @@ interface QuickToolItem {
   title: string;
   desc: string;
   prompt?: string;
-  actionType?: "todo" | "note" | "vault";
+  actionType?: "todo" | "note" | "vault" | "billing";
 }
 
 const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
@@ -105,6 +105,12 @@ const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
       title: "Bóveda Local",
       desc: "Archivos devorados con privacidad total",
       actionType: "vault",
+    },
+    {
+      icon: "💳",
+      title: "Cuenta & Planes PRO",
+      desc: "Mercado Pago (ARS) & Stripe (USD)",
+      actionType: "billing",
     },
   ],
   coco_verde: [
@@ -283,12 +289,16 @@ class AndroidApp {
   private detectedRemoteVersion: string = "";
   private updateCheckTimer: number | null = null;
   private isUpdateToastDismissed: boolean = false;
-
-  // Founder Mode (God Mode / Tenant #1)
+  // Founder Mode & Multi-Tenant Auth & Billing (Paso 8 & 9)
   private tenantId: number = 1;
+  private authToken: string = "";
+  private userEmail: string = "founder@cocosquad.ai";
+  private userPlan: string = "founder";
   public get isFounder(): boolean {
-    return this.tenantId === 1;
+    return this.tenantId === 1 || this.userPlan === "founder";
   }
+  private isAuthModalOpen: boolean = false;
+  private selectedBillingCurrency: "ARS" | "USD" = "ARS";
 
   private chatHistories: Record<string, ChatMessage[]> = {
     coco_blanco: [],
@@ -427,6 +437,7 @@ class AndroidApp {
 
   private loadStorage() {
     this.clearAllTestDataAndStorage();
+    this.loadAuthStorage();
     try {
       const t = localStorage.getItem("coco_mobile_todos");
       if (t) this.todos = JSON.parse(t);
@@ -436,6 +447,26 @@ class AndroidApp {
       this.todos = [];
       this.notes = [];
     }
+  }
+
+  private loadAuthStorage() {
+    this.authToken = (typeof localStorage !== "undefined" && localStorage.getItem("auth_token")) || "";
+    const savedTenant = typeof localStorage !== "undefined" ? localStorage.getItem("tenant_id") : null;
+    this.tenantId = savedTenant ? parseInt(savedTenant, 10) : 1;
+    this.userEmail = (typeof localStorage !== "undefined" && localStorage.getItem("user_email")) || (this.tenantId === 1 ? "founder@cocosquad.ai" : `cliente_${this.tenantId}@cocosquad.ai`);
+    this.userPlan = (typeof localStorage !== "undefined" && localStorage.getItem("user_plan")) || (this.tenantId === 1 ? "founder" : "free");
+  }
+
+  private getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "x-tenant-id": String(this.tenantId || 1),
+      ...extraHeaders,
+    };
+    if (this.authToken) {
+      headers["Authorization"] = `Bearer ${this.authToken}`;
+    }
+    return headers;
   }
 
   private saveStorage() {
@@ -463,7 +494,9 @@ class AndroidApp {
               <div class="agent-title-row">
                 <span class="agent-name-text coco-name-animated" id="header-agent-name">${this.activeMember.name}</span>
                 <div class="status-dot-pulse" id="header-pulse"></div>
-                ${this.isFounder ? '<span class="founder-badge" id="founder-badge" title="Tenant #1 · Modo Maestro Activo">👑 Fundador</span>' : ''}
+                <span class="founder-badge ${this.isFounder ? '' : (this.userPlan === 'pro' ? 'pro-badge' : 'client-badge')} clickable-badge" id="founder-badge" title="Tocar para gestionar cuenta y suscripción">
+                  ${this.isFounder ? '👑 Fundador' : (this.userPlan === 'pro' ? '💎 Plan PRO' : `🌱 Tenant #${this.tenantId}`)}
+                </span>
               </div>
               <span class="agent-subtitle-text" id="header-agent-role">${this.activeMember.role} · En línea</span>
             </div>
@@ -583,6 +616,15 @@ class AndroidApp {
                 <p class="vault-privacy-notice">Almacenamiento 100% privado en tu navegador (IndexedDB). El servidor Oracle nunca guarda tus archivos.</p>
                 <div id="vault-files-list" class="vault-files-container"></div>
               </div>
+
+              <!-- Suscripción & Facturación Híbrida Card -->
+              <div class="card-box" id="card-subscription-box">
+                <div class="card-box-header">
+                  <span>Suscripción & Planes</span>
+                  <button class="card-action-chip" id="btn-open-billing-from-tasks">Gestionar</button>
+                </div>
+                <div id="subscription-summary-container" style="display:flex; flex-direction:column; gap:6px;"></div>
+              </div>
             </div>
           </div>
         </main>
@@ -647,7 +689,66 @@ class AndroidApp {
         <div class="green-sheet-overlay hidden" id="green-sheet-overlay"></div>
         <div class="green-sheet-card hidden" id="green-sheet-card"></div>
 
-        <!-- 6. Floating PWA Auto-Update Toast -->
+        <!-- 6. Auth & Billing Modal (Dark Glassmorphism) -->
+        <div class="auth-modal-overlay hidden" id="auth-modal-overlay"></div>
+        <div class="auth-modal-card hidden" id="auth-modal-card">
+          <div class="auth-modal-handle"></div>
+          <div class="auth-modal-header">
+            <div class="auth-modal-title-col">
+              <div class="auth-modal-title">Gestión de Cuenta & Planes</div>
+              <div class="auth-modal-subtitle" id="auth-modal-subtitle">Tenant #${this.tenantId} · ${this.userEmail}</div>
+            </div>
+            <button class="auth-modal-close" id="btn-close-auth-modal" title="Cerrar">✕</button>
+          </div>
+
+          <div class="auth-nav-tabs">
+            <button class="auth-tab-btn active" id="tab-btn-billing" data-tab="billing">💳 Suscripción & Pagos</button>
+            <button class="auth-tab-btn" id="tab-btn-login" data-tab="login">🔐 Cambiar Usuario</button>
+          </div>
+
+          <!-- Tab 1: Billing & Subscription -->
+          <div class="auth-tab-pane active" id="pane-billing">
+            <div class="billing-current-plan-card" id="billing-current-plan-card"></div>
+
+            <div class="billing-currency-selector">
+              <span class="billing-selector-title">Seleccionar Moneda y Pasarela:</span>
+              <div class="billing-currency-pills">
+                <button class="billing-currency-pill active" id="pill-currency-ars" data-currency="ARS">
+                  🇦🇷 ARS (Mercado Pago)
+                </button>
+                <button class="billing-currency-pill" id="pill-currency-usd" data-currency="USD">
+                  🇺🇸 USD (Stripe)
+                </button>
+              </div>
+            </div>
+
+            <div class="billing-plan-offer-box" id="billing-plan-offer-box"></div>
+
+            <div class="billing-status-notice hidden" id="billing-status-notice"></div>
+          </div>
+
+          <!-- Tab 2: User Login / Multi-Tenant Switch -->
+          <div class="auth-tab-pane" id="pane-login" style="display: none;">
+            <div class="auth-login-box">
+              <p class="auth-login-desc">Ingresá tu correo electrónico para identificarte en tu tenant o crear uno nuevo.</p>
+              <div class="auth-input-group">
+                <label class="auth-input-label" for="auth-email-input">Correo Electrónico:</label>
+                <input type="email" class="auth-input-field" id="auth-email-input" placeholder="tu-empresa@correo.com" value="${this.userEmail}" />
+              </div>
+              <div class="auth-button-stack">
+                <button class="auth-submit-btn primary" id="btn-auth-login">
+                  🚀 Iniciar Sesión / Registrarse
+                </button>
+                <button class="auth-submit-btn founder-gold" id="btn-auth-quick-founder">
+                  👑 Acceder como Fundador (Tenant #1)
+                </button>
+              </div>
+              <div class="auth-status-notice hidden" id="auth-status-notice"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. Floating PWA Auto-Update Toast -->
         <div class="pwa-update-toast hidden" id="pwa-update-toast">
           <span class="pwa-update-icon">🚀</span>
           <span class="pwa-update-text">Actualización disponible.</span>
@@ -1281,6 +1382,9 @@ class AndroidApp {
           const vaultCard = document.getElementById("card-vault-box");
           vaultCard?.scrollIntoView({ behavior: "smooth" });
           Sound.play("tick");
+        } else if (t.actionType === "billing") {
+          this.openAuthModal("billing");
+          Sound.play("open");
         }
       });
 
@@ -1874,7 +1978,7 @@ class AndroidApp {
     overlay?.addEventListener("click", () => this.closeToolsMenu());
     closeToolsBtn?.addEventListener("click", () => this.closeToolsMenu());
 
-    // Dismiss tools menu or devour bottom sheet if clicking outside
+    // Dismiss tools menu, devour sheet, or auth modal if clicking outside
     document.addEventListener("click", (e) => {
       const target = e.target as HTMLElement;
       if (this.isToolsMenuOpen) {
@@ -1887,14 +1991,71 @@ class AndroidApp {
           this.closeDevourSheet();
         }
       }
+      if (this.isAuthModalOpen) {
+        if (!target.closest("#auth-modal-card") && !target.closest("#founder-badge") && !target.closest("#btn-open-billing-from-tasks") && !target.closest("#btn-tasks-open-sub")) {
+          this.closeAuthModal();
+        }
+      }
     });
 
     // Dismiss modals on Escape key
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
+        if (this.isAuthModalOpen) this.closeAuthModal();
         if (this.isDevourSheetOpen) this.closeDevourSheet();
         if (this.isToolsMenuOpen) this.closeToolsMenu();
       }
+    });
+
+    // Header badge click -> open Auth & Billing Modal
+    const founderBadge = document.getElementById("founder-badge");
+    founderBadge?.addEventListener("click", () => {
+      this.openAuthModal("billing");
+      Sound.play("tap");
+    });
+
+    // Tasks subscription manage button
+    const openBillingBtn = document.getElementById("btn-open-billing-from-tasks");
+    openBillingBtn?.addEventListener("click", () => {
+      this.openAuthModal("billing");
+      Sound.play("tap");
+    });
+
+    // Auth & Billing Modal event listeners
+    const authOverlay = document.getElementById("auth-modal-overlay");
+    const authCloseBtn = document.getElementById("btn-close-auth-modal");
+    authOverlay?.addEventListener("click", () => this.closeAuthModal());
+    authCloseBtn?.addEventListener("click", () => this.closeAuthModal());
+
+    document.getElementById("tab-btn-billing")?.addEventListener("click", () => this.switchAuthTab("billing"));
+    document.getElementById("tab-btn-login")?.addEventListener("click", () => this.switchAuthTab("login"));
+
+    document.getElementById("pill-currency-ars")?.addEventListener("click", () => {
+      this.selectedBillingCurrency = "ARS";
+      document.getElementById("pill-currency-ars")?.classList.add("active");
+      document.getElementById("pill-currency-usd")?.classList.remove("active");
+      this.renderBillingOffer("ARS");
+      Sound.play("tap");
+    });
+
+    document.getElementById("pill-currency-usd")?.addEventListener("click", () => {
+      this.selectedBillingCurrency = "USD";
+      document.getElementById("pill-currency-usd")?.classList.add("active");
+      document.getElementById("pill-currency-ars")?.classList.remove("active");
+      this.renderBillingOffer("USD");
+      Sound.play("tap");
+    });
+
+    document.getElementById("btn-auth-login")?.addEventListener("click", () => {
+      const emailInput = document.getElementById("auth-email-input") as HTMLInputElement | null;
+      const email = emailInput ? emailInput.value.trim() : "";
+      if (email) {
+        void this.loginUser(email);
+      }
+    });
+
+    document.getElementById("btn-auth-quick-founder")?.addEventListener("click", () => {
+      void this.loginUser("founder@cocosquad.ai");
     });
 
     // Global drag & drop on screen for feeding/devouring files into current Coco
@@ -2102,13 +2263,14 @@ class AndroidApp {
         notifyRequestStart();
         const res = await fetch(`http://150.136.59.173:8080/api/webhooks/${ch}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: this.getAuthHeaders(),
           body: JSON.stringify({
             channel: ch,
             sender_id: senderId,
             sender_name: clientName,
             text: messageText,
             timestamp: Date.now() / 1000,
+            tenant_id: this.tenantId,
           }),
         });
 
@@ -2169,9 +2331,9 @@ class AndroidApp {
       try {
         notifyRequestStart();
         const telemetryRes = await fetch("http://150.136.59.173:8080/api/founder/telemetry?tenant_id=1", {
-          headers: {
+          headers: this.getAuthHeaders({
             "x-tenant-id": "1",
-          },
+          }),
         });
         if (telemetryRes.ok) {
           const telemetryData = await telemetryRes.json();
@@ -2263,7 +2425,7 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
       const payload: Record<string, unknown> = {
         message: messageText,
         chat_id: 1,
-        tenant_id: 1,
+        tenant_id: this.tenantId,
         coco_id: targetMemberId,
         file: attached
           ? {
@@ -2290,7 +2452,7 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
       notifyRequestStart();
       const res = await fetch("http://150.136.59.173:8080/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this.getAuthHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -2817,11 +2979,12 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
       const pureB64 = base64.includes(",") ? base64.split(",")[1] : base64;
       const res = await fetch("http://150.136.59.173:8080/agente/rojo", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this.getAuthHeaders(),
         body: JSON.stringify({
           message: `Analiza detalladamente este documento (${file.name}) y presenta un informe exhaustivo con puntos clave, metodología y conclusiones.`,
           chat_id: 1,
           coco_id: "coco_rojo",
+          tenant_id: this.tenantId,
           file: {
             name: file.name,
             data: pureB64,
@@ -2956,7 +3119,7 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
       const payload: Record<string, unknown> = {
         message: promptText,
         chat_id: 1,
-        tenant_id: 1,
+        tenant_id: this.tenantId,
         coco_id: targetMemberId,
         attachment: pureB64,
         image: isImage ? pureB64 : undefined,
@@ -2983,7 +3146,7 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
       notifyRequestStart();
       const res = await fetch("http://150.136.59.173:8080/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this.getAuthHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -3199,6 +3362,369 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
     });
   }
 
+  // ── AUTENTICACIÓN MULTI-TENANT & PASARELA DE COBROS HÍBRIDA (PASOS 8 Y 9) ──
+
+  public async initAuth() {
+    this.loadAuthStorage();
+    if (!this.authToken) {
+      await this.loginUser(this.userEmail, true);
+    } else {
+      void this.refreshProfile();
+    }
+    this.renderSubscriptionSummary();
+  }
+
+  public async loginUser(email: string, silent: boolean = false): Promise<boolean> {
+    const statusNotice = document.getElementById("auth-status-notice");
+    if (statusNotice && !silent) {
+      statusNotice.className = "auth-status-notice";
+      statusNotice.textContent = "Autenticando inquilino...";
+      statusNotice.classList.remove("hidden");
+    }
+
+    try {
+      const res = await fetch("http://150.136.59.173:8080/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.status === "success" && data.token) {
+        this.authToken = data.token;
+        this.tenantId = data.tenant_id;
+        this.userEmail = data.email;
+        this.userPlan = data.plan;
+
+        try {
+          localStorage.setItem("auth_token", this.authToken);
+          localStorage.setItem("tenant_id", String(this.tenantId));
+          localStorage.setItem("user_email", this.userEmail);
+          localStorage.setItem("user_plan", this.userPlan);
+        } catch {}
+
+        this.updateHeaderBadge();
+        this.renderSubscriptionSummary();
+        this.renderBillingCurrentPlan();
+
+        if (statusNotice && !silent) {
+          statusNotice.className = "auth-status-notice success";
+          statusNotice.textContent = `✅ Sesión activa: ${this.userEmail} (Tenant #${this.tenantId} · ${this.userPlan.toUpperCase()})`;
+          setTimeout(() => {
+            this.closeAuthModal();
+          }, 1000);
+        }
+        Sound.play("tap");
+        return true;
+      }
+    } catch (e: any) {
+      if (!silent) {
+        if (statusNotice) {
+          statusNotice.className = "auth-status-notice error";
+          statusNotice.textContent = `⚠️ Error al iniciar sesión: ${e.message}`;
+        }
+        console.error("[Auth] Login error:", e);
+      }
+    }
+    return false;
+  }
+
+  public async refreshProfile(): Promise<void> {
+    try {
+      const res = await fetch("http://150.136.59.173:8080/api/auth/me", {
+        headers: this.getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === "success") {
+          this.tenantId = data.tenant_id;
+          this.userEmail = data.email;
+          this.userPlan = data.plan;
+          try {
+            localStorage.setItem("tenant_id", String(this.tenantId));
+            localStorage.setItem("user_email", this.userEmail);
+            localStorage.setItem("user_plan", this.userPlan);
+          } catch {}
+          this.updateHeaderBadge();
+          this.renderSubscriptionSummary();
+        }
+      }
+    } catch (err) {
+      console.warn("[Auth] Error refreshing profile:", err);
+    }
+  }
+
+  public updateHeaderBadge(): void {
+    const badgeContainer = document.querySelector(".agent-title-row");
+    const existingBadge = document.getElementById("founder-badge");
+    if (existingBadge) existingBadge.remove();
+
+    if (badgeContainer) {
+      const span = document.createElement("span");
+      span.id = "founder-badge";
+      span.className = `founder-badge ${this.isFounder ? "" : (this.userPlan === "pro" ? "pro-badge" : "client-badge")} clickable-badge`;
+      span.title = "Tocar para gestionar cuenta y suscripción";
+      span.textContent = this.isFounder ? "👑 Fundador" : (this.userPlan === "pro" ? "💎 Plan PRO" : `🌱 Tenant #${this.tenantId}`);
+      span.addEventListener("click", () => {
+        this.openAuthModal("billing");
+        Sound.play("tap");
+      });
+      badgeContainer.appendChild(span);
+    }
+  }
+
+  public renderSubscriptionSummary(): void {
+    const container = document.getElementById("subscription-summary-container");
+    if (!container) return;
+
+    const planLabel = this.isFounder ? "👑 Modo Fundador (God Mode)" : (this.userPlan === "pro" ? "💎 Plan PRO Ilimitado" : "🌱 Plan Básico Free");
+    const planQuota = this.isFounder
+      ? "Bypass total de cuotas y telemetría operativa activa"
+      : (this.userPlan === "pro" ? "Sin límites de tasa en todos los agentes" : "Límite estándar de 20 mensajes/min");
+
+    container.innerHTML = `
+      <div class="sub-summary-row">
+        <span class="sub-label">Cuenta:</span>
+        <span class="sub-val">${this.userEmail} (Tenant #${this.tenantId})</span>
+      </div>
+      <div class="sub-summary-row">
+        <span class="sub-label">Estado:</span>
+        <span class="sub-badge ${this.isFounder ? "gold" : (this.userPlan === "pro" ? "cyan" : "gray")}">${planLabel}</span>
+      </div>
+      <div class="sub-summary-desc">${planQuota}</div>
+      <div class="sub-action-row">
+        <button class="sub-manage-btn" id="btn-tasks-open-sub">
+          💳 Configurar Pasarela (Mercado Pago / Stripe)
+        </button>
+      </div>
+    `;
+
+    document.getElementById("btn-tasks-open-sub")?.addEventListener("click", () => {
+      this.openAuthModal("billing");
+      Sound.play("tap");
+    });
+  }
+
+  public openAuthModal(defaultTab: "billing" | "login" = "billing"): void {
+    this.isAuthModalOpen = true;
+    const overlay = document.getElementById("auth-modal-overlay");
+    const card = document.getElementById("auth-modal-card");
+    if (!overlay || !card) return;
+
+    const subTitle = document.getElementById("auth-modal-subtitle");
+    if (subTitle) {
+      subTitle.textContent = `Tenant #${this.tenantId} · ${this.userEmail} · Plan: ${this.userPlan.toUpperCase()}`;
+    }
+
+    const emailInput = document.getElementById("auth-email-input") as HTMLInputElement | null;
+    if (emailInput) {
+      emailInput.value = this.userEmail;
+    }
+
+    this.switchAuthTab(defaultTab);
+    this.renderBillingCurrentPlan();
+    this.renderBillingOffer(this.selectedBillingCurrency);
+
+    overlay.classList.remove("hidden");
+    card.classList.remove("hidden");
+    Sound.play("open");
+  }
+
+  public closeAuthModal(): void {
+    this.isAuthModalOpen = false;
+    const overlay = document.getElementById("auth-modal-overlay");
+    const card = document.getElementById("auth-modal-card");
+    if (overlay) overlay.classList.add("hidden");
+    if (card) card.classList.add("hidden");
+    Sound.play("close");
+  }
+
+  public switchAuthTab(tab: "billing" | "login"): void {
+    const tabBilling = document.getElementById("tab-btn-billing");
+    const tabLogin = document.getElementById("tab-btn-login");
+    const paneBilling = document.getElementById("pane-billing");
+    const paneLogin = document.getElementById("pane-login");
+
+    if (tab === "billing") {
+      tabBilling?.classList.add("active");
+      tabLogin?.classList.remove("active");
+      if (paneBilling) paneBilling.style.display = "flex";
+      if (paneLogin) paneLogin.style.display = "none";
+    } else {
+      tabLogin?.classList.add("active");
+      tabBilling?.classList.remove("active");
+      if (paneLogin) paneLogin.style.display = "flex";
+      if (paneBilling) paneBilling.style.display = "none";
+    }
+  }
+
+  public renderBillingCurrentPlan(): void {
+    const card = document.getElementById("billing-current-plan-card");
+    if (!card) return;
+
+    if (this.isFounder) {
+      card.innerHTML = `
+        <div class="billing-badge-gold">👑 Modo Fundador (God Mode)</div>
+        <div class="billing-plan-title">Tenant #1 · Rol Maestro Activo</div>
+        <p class="billing-plan-desc">Tenés acceso absoluto sin cuotas, telemetría operativa global y bypass ilimitado en todos los agentes.</p>
+      `;
+    } else if (this.userPlan === "pro") {
+      card.innerHTML = `
+        <div class="billing-badge-cyan">💎 Plan PRO Activo</div>
+        <div class="billing-plan-title">Tenant #${this.tenantId} · Suscripción al día</div>
+        <p class="billing-plan-desc">Disfrutás de velocidad máxima y sin restricciones de cuota en Coco Squad.</p>
+      `;
+    } else {
+      card.innerHTML = `
+        <div class="billing-badge-gray">🌱 Plan Básico Free</div>
+        <div class="billing-plan-title">Tenant #${this.tenantId} · 20 mensajes/minuto</div>
+        <p class="billing-plan-desc">Actualizá a PRO para desbloquear cuota ilimitada y prioridad de cómputo en todos los agentes.</p>
+      `;
+    }
+  }
+
+  public renderBillingOffer(currency: "ARS" | "USD"): void {
+    const box = document.getElementById("billing-plan-offer-box");
+    if (!box) return;
+
+    if (currency === "ARS") {
+      box.innerHTML = `
+        <div class="billing-offer-header">
+          <span class="billing-offer-price">$29.900 ARS <small>/mes</small></span>
+          <span class="billing-offer-badge">Facturación Local Argentina</span>
+        </div>
+        <ul class="billing-feature-list">
+          <li>✨ Acceso ilimitado a Coco Blanco, Green, Red y Blu</li>
+          <li>⚡ Sin límites de mensajes por minuto (Bypass total)</li>
+          <li>📱 WhatsApp, Instagram Direct y TikTok omnicanal</li>
+          <li>🔒 Bóveda Local Zero-Storage de documentos sin límites</li>
+        </ul>
+        <button class="billing-checkout-btn mp-btn" id="btn-action-checkout-mp">
+          🚀 Pagar con Mercado Pago (ARS)
+        </button>
+      `;
+      document.getElementById("btn-action-checkout-mp")?.addEventListener("click", () => {
+        void this.createCheckout("mercadopago");
+      });
+    } else {
+      box.innerHTML = `
+        <div class="billing-offer-header">
+          <span class="billing-offer-price">$29.00 USD <small>/mo</small></span>
+          <span class="billing-offer-badge">International Subscription</span>
+        </div>
+        <ul class="billing-feature-list">
+          <li>✨ Unlimited access to Coco, Green, Red & Blu</li>
+          <li>⚡ High-priority inference and Zero Rate Limits</li>
+          <li>🌍 Global card acceptance (Visa, MC, Amex, Apple Pay)</li>
+          <li>🔒 Private Zero-Storage client-side vault</li>
+        </ul>
+        <button class="billing-checkout-btn stripe-btn" id="btn-action-checkout-stripe">
+          🌐 Subscribe with Stripe (USD)
+        </button>
+      `;
+      document.getElementById("btn-action-checkout-stripe")?.addEventListener("click", () => {
+        void this.createCheckout("stripe");
+      });
+    }
+  }
+
+  public async createCheckout(provider: "mercadopago" | "stripe"): Promise<void> {
+    const noticeEl = document.getElementById("billing-status-notice");
+    if (noticeEl) {
+      noticeEl.className = "billing-status-notice";
+      noticeEl.innerHTML = `<span class="billing-spinner">⏳</span> Generando enlace de pago seguro (${provider === "mercadopago" ? "Mercado Pago" : "Stripe"})...`;
+      noticeEl.classList.remove("hidden");
+    }
+
+    try {
+      const endpoint = provider === "mercadopago"
+        ? "http://150.136.59.173:8080/api/billing/checkout/mercadopago"
+        : "http://150.136.59.173:8080/api/billing/checkout/stripe";
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          tenant_id: this.tenantId,
+          email: this.userEmail,
+          plan: "pro",
+        }),
+      });
+
+      if (!res.ok) throw new Error("Error en servidor al generar checkout");
+      const data = await res.json();
+      const checkoutUrl = data.checkout_url || data.sandbox_url;
+
+      if (noticeEl) {
+        noticeEl.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <span style="color:#00f2fe; font-weight:600;">✅ Enlace generado con éxito (${data.currency} ${data.amount})</span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <a href="${checkoutUrl}" target="_blank" rel="noopener noreferrer" class="billing-external-link-btn">
+                🔗 Abrir Pasarela ${provider === "mercadopago" ? "Mercado Pago" : "Stripe"}
+              </a>
+              <button class="billing-simulate-pay-btn" id="btn-simulate-webhook-${provider}">
+                ⚡ Confirmar Pago (Simulación)
+              </button>
+            </div>
+          </div>
+        `;
+
+        const simBtn = document.getElementById(`btn-simulate-webhook-${provider}`);
+        if (simBtn) {
+          simBtn.addEventListener("click", () => {
+            void this.simulatePaymentWebhook(provider);
+          });
+        }
+      }
+
+      window.open(checkoutUrl, "_blank");
+      Sound.play("tap");
+    } catch (err: any) {
+      if (noticeEl) {
+        noticeEl.className = "billing-status-notice error";
+        noticeEl.textContent = `⚠️ No se pudo generar el checkout: ${err.message}`;
+      }
+    }
+  }
+
+  public async simulatePaymentWebhook(provider: "mercadopago" | "stripe"): Promise<void> {
+    try {
+      const webhookEndpoint = provider === "mercadopago"
+        ? `http://150.136.59.173:8080/api/billing/webhook/mercadopago?external_reference=${this.tenantId}`
+        : "http://150.136.59.173:8080/api/billing/webhook/stripe";
+
+      const body = provider === "mercadopago"
+        ? { external_reference: String(this.tenantId) }
+        : { type: "checkout.session.completed", client_reference_id: String(this.tenantId) };
+
+      const res = await fetch(webhookEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        this.userPlan = "pro";
+        try {
+          localStorage.setItem("user_plan", "pro");
+        } catch {}
+        this.updateHeaderBadge();
+        this.renderSubscriptionSummary();
+        this.renderBillingCurrentPlan();
+        const noticeEl = document.getElementById("billing-status-notice");
+        if (noticeEl) {
+          noticeEl.className = "billing-status-notice success";
+          noticeEl.innerHTML = `🎉 <strong>¡Suscripción PRO Activada!</strong> Tu tenant #${this.tenantId} ahora tiene acceso total ilimitado.`;
+        }
+        Sound.play("chime");
+      }
+    } catch (e) {
+      console.error("[Billing] Error simulando webhook:", e);
+    }
+  }
+
   public async checkForAppUpdate(): Promise<boolean> {
     try {
       const storedVersion = typeof localStorage !== "undefined" ? localStorage.getItem("app_version") : null;
@@ -3261,6 +3787,7 @@ function initApp() {
   (window as any).checkForAppUpdate = () => app.checkForAppUpdate();
   (window as any).simulateAppUpdate = (v?: string) => app.showUpdateToast(v || "1.0.1");
   app.render();
+  void app.initAuth();
   (window as any).__swipeController = app.getSwipeController();
 
   // Smooth dismiss of the native splash screen after 1.2s

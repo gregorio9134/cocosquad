@@ -2804,3 +2804,519 @@ html, body {
   }
 }
 
+.founder-badge.clickable-badge {
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.founder-badge.clickable-badge:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.15);
+}
+.founder-badge.clickable-badge:active {
+  transform: scale(0.95);
+}
+
+.founder-badge.pro-badge {
+  background: rgba(0, 242, 254, 0.15);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.45);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.25);
+  animation: proGlow 3s ease-in-out infinite;
+}
+
+@keyframes proGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(0, 242, 254, 0.2);
+    border-color: rgba(0, 242, 254, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(0, 242, 254, 0.4);
+    border-color: rgba(0, 242, 254, 0.7);
+  }
+}
+
+.founder-badge.client-badge {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: none;
+  animation: none;
+}
+
+/* ── 8 & 9. Auth & Billing Modal (Dark Glassmorphism) ───────────────────────── */
+.auth-modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(4, 5, 10, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 90;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+.auth-modal-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.auth-modal-card {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 88vh;
+  background: rgba(18, 20, 28, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px 24px 0 0;
+  padding: 14px 18px 28px;
+  z-index: 91;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6);
+  transform: translateY(0);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.auth-modal-card.hidden {
+  transform: translateY(100%);
+  pointer-events: none;
+}
+
+.auth-modal-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 auto 4px;
+}
+
+.auth-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 10px;
+}
+
+.auth-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.2px;
+}
+
+.auth-modal-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.auth-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.auth-modal-close:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-nav-tabs {
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.auth-tab-btn {
+  flex: 1;
+  padding: 7px 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.auth-tab-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.auth-tab-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.billing-current-plan-card {
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+
+.billing-badge-gold {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(255, 215, 0, 0.15);
+  color: #ffd700;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.billing-badge-cyan {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(0, 242, 254, 0.15);
+  color: #00f2fe;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.billing-badge-gray {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.billing-plan-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.billing-plan-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.billing-currency-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.billing-selector-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.billing-currency-pills {
+  display: flex;
+  gap: 8px;
+}
+
+.billing-currency-pill {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.billing-currency-pill.active {
+  background: rgba(0, 242, 254, 0.1);
+  border-color: rgba(0, 242, 254, 0.4);
+  color: #00f2fe;
+}
+
+.billing-plan-offer-box {
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.billing-offer-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.billing-offer-price {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+.billing-offer-price small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.billing-offer-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.billing-feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.billing-feature-list li {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.35;
+}
+
+.billing-checkout-btn {
+  width: 100%;
+  padding: 11px;
+  border-radius: 12px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.billing-checkout-btn:hover {
+  filter: brightness(1.1);
+}
+.billing-checkout-btn:active {
+  transform: scale(0.98);
+}
+.billing-checkout-btn.mp-btn {
+  background: linear-gradient(135deg, #009ee3, #00b4db);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 158, 227, 0.35);
+}
+.billing-checkout-btn.stripe-btn {
+  background: linear-gradient(135deg, #635bff, #7a73ff);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(99, 91, 255, 0.35);
+}
+
+.billing-status-notice {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  color: var(--text-main);
+  line-height: 1.4;
+}
+.billing-status-notice.hidden {
+  display: none;
+}
+.billing-status-notice.error {
+  background: rgba(255, 44, 85, 0.1);
+  border-color: rgba(255, 44, 85, 0.3);
+  color: #ff6b8b;
+}
+.billing-status-notice.success {
+  background: rgba(37, 211, 102, 0.1);
+  border-color: rgba(37, 211, 102, 0.3);
+  color: #25d366;
+}
+
+.billing-external-link-btn {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.billing-simulate-pay-btn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(37, 211, 102, 0.15);
+  border: 1px dashed rgba(37, 211, 102, 0.45);
+  color: #25d366;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Auth Login Pane */
+.auth-login-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-login-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.auth-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.auth-input-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.auth-input-field {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.auth-input-field:focus {
+  border-color: var(--coco-accent);
+}
+
+.auth-button-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-submit-btn {
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.auth-submit-btn:hover {
+  filter: brightness(1.1);
+}
+.auth-submit-btn:active {
+  transform: scale(0.98);
+}
+.auth-submit-btn.primary {
+  background: linear-gradient(135deg, var(--coco-accent), #4e82f7);
+  color: #ffffff;
+}
+.auth-submit-btn.founder-gold {
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+}
+
+.auth-status-notice {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+}
+.auth-status-notice.hidden {
+  display: none;
+}
+
+/* Subscription Card in Tasks */
+.sub-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+.sub-label {
+  color: var(--text-muted);
+}
+.sub-val {
+  color: var(--text-main);
+  font-weight: 600;
+}
+.sub-badge {
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.sub-badge.gold {
+  background: rgba(255, 215, 0, 0.15);
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+}
+.sub-badge.cyan {
+  background: rgba(0, 242, 254, 0.15);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.35);
+}
+.sub-badge.gray {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+.sub-summary-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.sub-action-row {
+  margin-top: 6px;
+}
+.sub-manage-btn {
+  width: 100%;
+  padding: 7px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.sub-manage-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--coco-accent);
+}
+
+

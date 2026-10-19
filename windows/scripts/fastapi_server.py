@@ -1,11 +1,17 @@
-from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi import FastAPI, Request, Response, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from typing import Optional, Dict, Any, Literal
 import uvicorn
 import os
 import sqlite3
 import time
+import hmac
+import hashlib
+import base64
+import json
 from dotenv import load_dotenv
 load_dotenv('/home/ubuntu/agente/.env')  # Carga explícita del .env
 import sentry_sdk
@@ -33,8 +39,89 @@ app = FastAPI(title="Coco Squad API", version="1.0.0")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# ── MODO FUNDADOR (GOD MODE / TENANT_ID = 1) ──────────────────────────────────
+# ── AUTENTICACIÓN MULTI-TENANT JWT (PASO 8) & MODO FUNDADOR ──────────────────
 FOUNDER_TENANT_ID = 1
+JWT_SECRET = os.getenv("JWT_SECRET", "coco-squad-ultra-secure-jwt-2026-god-mode")
+
+def b64_url_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode('utf-8').rstrip('=')
+
+def b64_url_decode(data_str: str) -> bytes:
+    padding = '=' * ((4 - len(data_str) % 4) % 4)
+    return base64.urlsafe_b64decode(data_str + padding)
+
+def create_jwt_token(payload: dict) -> str:
+    """Emite token JWT estándar HS256 con PyJWT o fallback criptográfico hmac-sha256"""
+    try:
+        import jwt
+        token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+        if isinstance(token, bytes):
+            token = token.decode("utf-8")
+        return token
+    except Exception:
+        header = {"alg": "HS256", "typ": "JWT"}
+        h_bytes = b64_url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+        p_bytes = b64_url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+        signing_input = f"{h_bytes}.{p_bytes}".encode("utf-8")
+        sig = hmac.new(JWT_SECRET.encode("utf-8"), signing_input, hashlib.sha256).digest()
+        s_bytes = b64_url_encode(sig)
+        return f"{h_bytes}.{p_bytes}.{s_bytes}"
+
+def decode_jwt_token(token: str) -> Optional[dict]:
+    """Valida y decodifica un token JWT"""
+    try:
+        import jwt
+        return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except Exception:
+        try:
+            parts = token.split(".")
+            if len(parts) != 3:
+                return None
+            h_str, p_str, s_str = parts
+            signing_input = f"{h_str}.{p_str}".encode("utf-8")
+            sig = hmac.new(JWT_SECRET.encode("utf-8"), signing_input, hashlib.sha256).digest()
+            if b64_url_encode(sig) != s_str:
+                return None
+            return json.loads(b64_url_decode(p_str).decode("utf-8"))
+        except Exception:
+            return None
+
+async def get_current_tenant(request: Request) -> dict:
+    """
+    Dependencia FastAPI que extrae y autentica el tenant actual desde
+    la cabecera Authorization: Bearer <token>, o fallback x-tenant-id.
+    """
+    auth_hdr = request.headers.get("authorization") or request.headers.get("Authorization") or ""
+    if "Bearer " in auth_hdr:
+        token = auth_hdr.split("Bearer ", 1)[1].strip()
+        payload = decode_jwt_token(token)
+        if payload:
+            return {
+                "tenant_id": int(payload.get("tenant_id", 1)),
+                "email": payload.get("email", ""),
+                "plan": payload.get("plan", "free"),
+                "is_founder": bool(payload.get("is_founder", False))
+            }
+    tenant_hdr = request.headers.get("x-tenant-id") or request.query_params.get("tenant_id")
+    if tenant_hdr:
+        try:
+            tid = int(tenant_hdr)
+            is_f = (tid == FOUNDER_TENANT_ID)
+            return {
+                "tenant_id": tid,
+                "email": "founder@cocosquad.ai" if is_f else f"tenant_{tid}@cocosquad.ai",
+                "plan": "founder" if is_f else "free",
+                "is_founder": is_f
+            }
+        except ValueError:
+            pass
+
+    return {
+        "tenant_id": 1,
+        "email": "founder@cocosquad.ai",
+        "plan": "founder",
+        "is_founder": True
+    }
 
 def is_founder_tenant(tenant_id: int) -> bool:
     try:
@@ -43,15 +130,23 @@ def is_founder_tenant(tenant_id: int) -> bool:
         return False
 
 def check_founder_request(request: Request) -> bool:
-    """Detecta si la petición pertenece al Fundador (tenant_id = 1)"""
+    """Detecta si la petición pertenece al Fundador (tenant_id = 1) vía JWT o Headers"""
+    auth_hdr = request.headers.get("authorization") or request.headers.get("Authorization") or ""
+    if "Bearer " in auth_hdr:
+        try:
+            token = auth_hdr.split("Bearer ", 1)[1].strip()
+            payload = decode_jwt_token(token)
+            if payload and (payload.get("is_founder") or payload.get("tenant_id") == FOUNDER_TENANT_ID):
+                return True
+        except Exception:
+            pass
+    if "admin" in auth_hdr.lower() or "founder" in auth_hdr.lower():
+        return True
     tenant_hdr = request.headers.get("x-tenant-id")
     tenant_param = request.query_params.get("tenant_id")
     if tenant_hdr and str(tenant_hdr).strip() == "1":
         return True
     if tenant_param and str(tenant_param).strip() == "1":
-        return True
-    auth_hdr = request.headers.get("authorization", "")
-    if "admin" in auth_hdr.lower() or "founder" in auth_hdr.lower():
         return True
     return False
 
@@ -64,6 +159,7 @@ def founder_exempt_check_limit(request: Request, endpoint, in_middleware=False):
     return orig_check_limit(request, endpoint, in_middleware=in_middleware)
 
 limiter._check_request_limit = founder_exempt_check_limit
+
 
 # ── TELEMETRÍA AGREGADA DEL FUNDADOR ──────────────────────────────────────────
 TELEMETRY_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "conversational_memory.db")
@@ -194,27 +290,12 @@ app.add_middleware(
 
 # Endpoint de telemetría de Modo Fundador
 @app.get("/api/founder/telemetry")
-async def api_founder_telemetry(request: Request):
+async def api_founder_telemetry(request: Request, current_tenant: dict = Depends(get_current_tenant)):
     """
     Endpoint de telemetría para Modo Fundador (tenant_id = 1).
     Devuelve métricas agregadas del sistema: mensajes totales, archivos de la bóveda, delegaciones.
     """
-    tenant_hdr = request.headers.get("x-tenant-id")
-    tenant_param = request.query_params.get("tenant_id")
-    
-    tenant_id = 1
-    if tenant_param:
-        try:
-            tenant_id = int(tenant_param)
-        except ValueError:
-            tenant_id = 1
-    elif tenant_hdr:
-        try:
-            tenant_id = int(tenant_hdr)
-        except ValueError:
-            tenant_id = 1
-
-    if not is_founder_tenant(tenant_id):
+    if not current_tenant.get("is_founder") and not is_founder_tenant(current_tenant.get("tenant_id", 0)):
         raise HTTPException(
             status_code=403,
             detail="Acceso exclusivo para el Fundador (tenant_id = 1)."
@@ -231,15 +312,133 @@ async def api_record_telemetry(request: Request):
     founder_telemetry.record(evt, ag, details)
     return {"status": "ok", "recorded": True}
 
+# Master DB & Seeding
+MASTER_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database", "master.db")
+if not os.path.exists(MASTER_DB_PATH):
+    alt_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), "master.db")
+    if os.path.exists(alt_db):
+        MASTER_DB_PATH = alt_db
+
+def ensure_founder_tenant():
+    if os.path.exists(MASTER_DB_PATH):
+        try:
+            conn = sqlite3.connect(MASTER_DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT id FROM tenants WHERE id = 1")
+            if not c.fetchone():
+                c.execute("""
+                    INSERT OR REPLACE INTO tenants (id, nombre_empresa, nombre_dueno, owner_telegram_id, rubro, estado, email)
+                    VALUES (1, 'Coco Squad Global', 'Fundador', 1, 'IA & Multiagente', 'activo', 'founder@cocosquad.ai')
+                """)
+                c.execute("""
+                    INSERT OR REPLACE INTO subscriptions (id, tenant_id, plan, monto_mensual, estado, dia_cobro)
+                    VALUES (1, 1, 'founder', 0.0, 'al_dia', 10)
+                """)
+                conn.commit()
+            conn.close()
+        except Exception as e:
+            logger.warning(f"Error asegurando tenant 1 en master.db: {e}")
+
+ensure_founder_tenant()
+
+# ── ENDPOINTS DE AUTENTICACIÓN MULTI-TENANT (PASO 8) ──────────────────────────
+class LoginRequest(BaseModel):
+    email: str
+    password: Optional[str] = None
+    tenant_id: Optional[int] = None
+
+@app.post("/api/auth/login")
+async def api_auth_login(req: LoginRequest):
+    email = (req.email or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="El email es requerido")
+
+    is_founder = (email in ["founder@cocosquad.ai", "admin@cocosquad.ai"] or req.tenant_id == 1)
+    tenant_id = 1 if is_founder else (req.tenant_id or 2)
+    plan = "founder" if is_founder else "free"
+    company_name = "Coco Squad Global (Founder)" if is_founder else f"Empresa {email.split('@')[0].capitalize()}"
+
+    if os.path.exists(MASTER_DB_PATH):
+        try:
+            conn = sqlite3.connect(MASTER_DB_PATH)
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+            c.execute("SELECT id, nombre_empresa, estado FROM tenants WHERE email = ?", (email,))
+            row = c.fetchone()
+            if row:
+                tenant_id = row["id"]
+                company_name = row["nombre_empresa"]
+                is_founder = (tenant_id == 1)
+            else:
+                c.execute("""
+                    INSERT INTO tenants (nombre_empresa, nombre_dueno, owner_telegram_id, rubro, estado, email)
+                    VALUES (?, ?, ?, ?, 'activo', ?)
+                """, (company_name, email.split('@')[0], 0, "General", email))
+                tenant_id = c.lastrowid
+                conn.commit()
+
+            c.execute("SELECT plan FROM subscriptions WHERE tenant_id = ?", (tenant_id,))
+            sub_row = c.fetchone()
+            if sub_row and sub_row["plan"]:
+                plan = sub_row["plan"]
+            elif is_founder:
+                plan = "founder"
+            else:
+                c.execute("""
+                    INSERT INTO subscriptions (tenant_id, plan, monto_mensual, estado, dia_cobro)
+                    VALUES (?, 'free', 0.0, 'al_dia', 10)
+                """, (tenant_id,))
+                conn.commit()
+                plan = "free"
+            conn.close()
+        except Exception as e:
+            logger.warning(f"Error sincronizando tenant en login: {e}")
+
+    payload = {
+        "tenant_id": tenant_id,
+        "email": email,
+        "plan": plan,
+        "is_founder": is_founder,
+        "exp": int(time.time()) + (86400 * 30)
+    }
+    token = create_jwt_token(payload)
+
+    return {
+        "status": "success",
+        "token": token,
+        "tenant_id": tenant_id,
+        "email": email,
+        "plan": plan,
+        "is_founder": is_founder,
+        "nombre_empresa": company_name
+    }
+
+@app.get("/api/auth/me")
+async def api_auth_me(current_tenant: dict = Depends(get_current_tenant)):
+    return {
+        "status": "success",
+        "tenant_id": current_tenant["tenant_id"],
+        "email": current_tenant["email"],
+        "plan": current_tenant["plan"],
+        "is_founder": current_tenant["is_founder"],
+        "role": "Fundador (God Mode)" if current_tenant["is_founder"] else f"Cliente ({current_tenant['plan'].upper()})"
+    }
+
 # Import and include routers
 from api.routers import chat
-from api.routers import multinivel, webhooks, admin, auth
+from api.routers import multinivel, webhooks, admin
+try:
+    import billing
+    app.include_router(billing.router)
+    logger.info("✅ Router de Billing montado exitosamente (/api/billing)")
+except Exception as e:
+    logger.warning(f"⚠️ Error montando router de billing: {e}")
+
 app.include_router(chat.router)
 app.include_router(chat.agentes_router)
 app.include_router(multinivel.router)
 app.include_router(webhooks.router)
 app.include_router(admin.router)
-app.include_router(auth.router)
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web_chat")
 
