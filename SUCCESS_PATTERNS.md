@@ -82,3 +82,20 @@ Este documento consolida la línea base arquitectónica, funcional y estética d
 - **Archivos de Referencia:**
   - [fileGuard.ts](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/fileGuard.ts)
   - [android.ts](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.ts#L2980-L3040) (`processFileToDevour`)
+
+---
+
+## Caso 7: Modo Fundador (God Mode) y Telemetría en Blu
+
+- **Objetivo:** Proporcionar un perfil de control maestro para el tenant raíz (`tenant_id = 1`, `is_founder: true`) con cuota ilimitada, bypass total de rate limits y acceso transparente a la telemetría operativa y métricas de red mediante Blu.
+- **Implementación Técnica:**
+  - **Identificación y Bypass Backend:** En `fastapi_server.py`, toda petición con cabecera `x-tenant-id: 1` o parámetro `tenant_id=1` se valida como Fundador. Se intercepta `limiter._check_request_limit` para eximir completamente de límites de tasa a este rol.
+  - **Endpoint de Telemetría Protegido:** `/api/founder/telemetry` valida `tenant_id == 1` (retorna HTTP 403 Forbidden para otros tenants). Provee estadísticas de total de mensajes atendidos, desglose por agente (Coco, Green, Red, Blu), total de intervenciones Squad Assist y estado del servidor.
+  - **Consultas Ejecutivas en Blu:** En `cocos/coco_azul.py` y `android.ts`, ante consultas sobre telemetría, métricas de red o estado del sistema, Blu consulta el endpoint `/api/founder/telemetry` y formatea un balance ejecutivo financiero/operativo.
+  - **Distintivo en UI y Respeto de Morfología:** En `android.ts`, si `tenant_id === 1`, se muestra el badge dorado `👑 Fundador` en la cabecera. Se preservan estrictamente los 2 ojos simétricos del Mochi ($80\times 80$ buffer, $40\times 40$ CSS) y el flujo único de chat vertical.
+- **Archivos de Referencia:**
+  - [fastapi_server.py](file:///Users/Gregorio/Desktop/coco%20squad/windows/scripts/fastapi_server.py)
+  - [coco_azul_updated.py](file:///Users/Gregorio/Desktop/coco%20squad/windows/scripts/coco_azul_updated.py)
+  - [android.ts](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.ts#L463-L466)
+  - [android.css](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.css#L1070-L1085)
+

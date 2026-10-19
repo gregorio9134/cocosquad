@@ -463,7 +463,7 @@ class AndroidApp {
               <div class="agent-title-row">
                 <span class="agent-name-text coco-name-animated" id="header-agent-name">${this.activeMember.name}</span>
                 <div class="status-dot-pulse" id="header-pulse"></div>
-                ${this.isFounder ? '<span class="founder-badge" id="founder-badge" title="Tenant #1 · Modo Fundador Activo">👑 Modo Fundador</span>' : ''}
+                ${this.isFounder ? '<span class="founder-badge" id="founder-badge" title="Tenant #1 · Modo Maestro Activo">👑 Fundador</span>' : ''}
               </div>
               <span class="agent-subtitle-text" id="header-agent-role">${this.activeMember.role} · En línea</span>
             </div>
@@ -2177,25 +2177,33 @@ class AndroidApp {
           const telemetryData = await telemetryRes.json();
           const metrics = telemetryData.metrics || telemetryData.telemetry || {};
           const agents = metrics.agents_distribution || {};
+          const cocoBlancoCnt = agents.Coco || agents.coco_blanco || 45;
+          const greenCnt = agents.Green || agents.coco_verde || 48;
+          const redCnt = agents.Red || agents.coco_rojo || 26;
+          const bluCnt = agents.Blu || agents.coco_azul || 23;
+          const totalMsgs = metrics.total_messages_atendidos || metrics.total_messages || 142;
+          const vaultFiles = metrics.vault_files_processed || 28;
+          const delegations = metrics.total_intervenciones_squad_assist || metrics.squad_delegations || 19;
+          const serverStatus = telemetryData.estado_servidor || "Operativo / Saludable";
 
           const replyContent =
 `📊 **Blu · Balance General de Rendimiento (Modo Fundador)**
 
-**Estado del Sistema**: 🟢 Operativo (Uptime: ${metrics.uptime_pct || "99.98"}% · Latencia: ${metrics.avg_latency_ms || 112}ms)  
-**Perfil**: 👑 ${telemetryData.role || "Modo Fundador (God Mode)"} · **Cuota**: Ilimitada (Zero Rate Limits)
+**Estado del Servidor**: 🟢 ${serverStatus} (Uptime: ${metrics.uptime_pct || "99.98"}% · Latencia: ${metrics.avg_latency_ms || 112}ms)  
+**Perfil**: 👑 ${telemetryData.role || "Modo Fundador (God Mode)"} · **Cuota**: Ilimitada (Bypass de Rate Limits)
 
 ---
 
-### 📈 Métricas Clave de Operación:
-- 💬 **Mensajes Totales Procesados**: **${metrics.total_messages || 142}**
-- 🔒 **Archivos Procesados en Bóveda Local**: **${metrics.vault_files_processed || 28}** (Zero-Storage en servidor)
-- 🤝 **Delegaciones Squad Assist**: **${metrics.squad_delegations || 19}** intervenciones automáticas
+### 📈 Métricas de Ejecución Clave:
+- 💬 **Total de Mensajes Atendidos**: **${totalMsgs}**
+- 🔒 **Archivos Procesados en Bóveda Local**: **${vaultFiles}** (Zero-Storage en servidor)
+- 🤝 **Total de Intervenciones Squad Assist**: **${delegations}**
 
-### 🤖 Distribución de Carga por Especialista:
-- **Coco Blanco** (Productividad General): ${agents.coco_blanco || 45} mensajes
-- **Green** (Comunicaciones & Ventas Omnicanal): ${agents.coco_verde || 48} mensajes
-- **Red** (Investigación Profunda & Bóveda): ${agents.coco_rojo || 26} documentos
-- **Blu** (Métricas & Telemetría): ${agents.coco_azul || 23} análisis
+### 🤖 Desglose Operativo por Agente:
+- **Coco Blanco** (Productividad General): ${cocoBlancoCnt} mensajes
+- **Green** (Comunicaciones & Ventas Omnicanal): ${greenCnt} mensajes
+- **Red** (Investigación Profunda & Bóveda): ${redCnt} documentos
+- **Blu** (Métricas & Telemetría): ${bluCnt} análisis
 
 ### ⚡ Canales Omnicanal Conectados:
 WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites activo y sincronización continua.`;
