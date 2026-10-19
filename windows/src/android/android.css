@@ -2687,6 +2687,88 @@ html, body {
   box-shadow: -1px 0 0 #00f2fe, 0 0 6px #fe2c55;
 }
 
+/* ── 6. PWA Auto-Update Toast (Minimalist & Floating) ─────────────────────── */
+.pwa-update-toast {
+  position: fixed;
+  bottom: calc(56px + var(--safe-bottom, 0px) + 64px);
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  z-index: 99;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(18, 22, 34, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55), 0 0 14px rgba(0, 230, 118, 0.22);
+  border-radius: 20px;
+  padding: 7px 12px 7px 14px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 
+.pwa-update-toast.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
 
+.pwa-update-toast.hidden {
+  display: none !important;
+}
 
+.pwa-update-icon {
+  font-size: 14px;
+  line-height: 1;
+  display: inline-flex;
+  animation: pwaRocketPulse 2s ease infinite;
+}
+
+@keyframes pwaRocketPulse {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+.pwa-update-text {
+  color: var(--text-main, #ffffff);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.pwa-update-action-btn {
+  background: var(--coco-accent, #00E676);
+  color: #0d0d12;
+  border: none;
+  border-radius: 12px;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 230, 118, 0.35);
+}
+
+.pwa-update-action-btn:active {
+  transform: scale(0.95);
+}
+
+.pwa-update-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, rgba(255, 255, 255, 0.45));
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.pwa-update-close-btn:hover {
+  color: #ffffff;
+}

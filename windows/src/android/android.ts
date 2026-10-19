@@ -272,6 +272,11 @@ class AndroidApp {
   private devourAnimId: number = 0;
   private simulatedChannel: "whatsapp" | "instagram" | "tiktok" = "whatsapp";
 
+  // PWA Versioning & Auto-Update
+  private currentAppVersion: string = "1.0.0";
+  private updateCheckTimer: number | null = null;
+  private isUpdateToastDismissed: boolean = false;
+
   private chatHistories: Record<string, ChatMessage[]> = {
     coco_blanco: [],
     coco_verde: [],
@@ -627,6 +632,14 @@ class AndroidApp {
         <!-- 5. Green WhatsApp Contacts Bottom Sheet (Modal vertical) -->
         <div class="green-sheet-overlay hidden" id="green-sheet-overlay"></div>
         <div class="green-sheet-card hidden" id="green-sheet-card"></div>
+
+        <!-- 6. Floating PWA Auto-Update Toast -->
+        <div class="pwa-update-toast hidden" id="pwa-update-toast">
+          <span class="pwa-update-icon">🚀</span>
+          <span class="pwa-update-text">Actualización disponible.</span>
+          <button class="pwa-update-action-btn" id="btn-pwa-reload">Actualizar ahora</button>
+          <button class="pwa-update-close-btn" id="btn-pwa-dismiss" title="Cerrar">✕</button>
+        </div>
       </div>
     `;
 
@@ -1995,6 +2008,8 @@ class AndroidApp {
       directionRatio: 1.5,
       enableMouseFallback: true,
     });
+
+    this.initPwaUpdateSystem();
   }
 
   private async sendChatMessage(text: string) {
@@ -3028,12 +3043,103 @@ class AndroidApp {
   public getSwipeController(): SwipeController | null {
     return this.swipeController;
   }
+
+  private initPwaUpdateSystem() {
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((reg) => {
+            console.log("[PWA] ServiceWorker registered with scope:", reg.scope);
+          })
+          .catch((err) => {
+            console.warn("[PWA] ServiceWorker registration failed:", err);
+          });
+      });
+    }
+
+    // Check when user returns to window / focuses
+    window.addEventListener("focus", () => {
+      void this.checkForAppUpdate();
+    });
+
+    // Check periodically every 10 minutes
+    if (this.updateCheckTimer) {
+      window.clearInterval(this.updateCheckTimer);
+    }
+    this.updateCheckTimer = window.setInterval(() => {
+      void this.checkForAppUpdate();
+    }, 10 * 60 * 1000);
+
+    // Initial check after warm-up (2.5s)
+    setTimeout(() => {
+      void this.checkForAppUpdate();
+    }, 2500);
+
+    // Bind toast actions
+    const reloadBtn = document.getElementById("btn-pwa-reload");
+    reloadBtn?.addEventListener("click", () => {
+      Sound.play("pop");
+      window.location.reload();
+    });
+
+    const dismissBtn = document.getElementById("btn-pwa-dismiss");
+    dismissBtn?.addEventListener("click", () => {
+      this.isUpdateToastDismissed = true;
+      const toast = document.getElementById("pwa-update-toast");
+      if (toast) {
+        toast.classList.remove("visible");
+        toast.classList.add("hidden");
+      }
+      Sound.play("close");
+    });
+  }
+
+  public async checkForAppUpdate(): Promise<boolean> {
+    try {
+      const res = await fetch(`/version.json?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      const remoteVersion = data.version;
+      if (remoteVersion && remoteVersion !== this.currentAppVersion) {
+        console.log(`[PWA Update] New version detected: ${remoteVersion} (current: ${this.currentAppVersion})`);
+        this.showUpdateToast(remoteVersion, data.release_notes);
+        return true;
+      }
+    } catch (err) {
+      console.warn("[PWA Update] Error checking version.json:", err);
+    }
+    return false;
+  }
+
+  public showUpdateToast(_remoteVersion?: string, _releaseNotes?: string) {
+    if (this.isUpdateToastDismissed) return;
+    const toast = document.getElementById("pwa-update-toast");
+    if (!toast) return;
+
+    const textEl = toast.querySelector(".pwa-update-text");
+    if (textEl) {
+      textEl.textContent = "Actualización disponible.";
+    }
+
+    toast.classList.remove("hidden");
+    void toast.offsetWidth; // force reflow
+    toast.classList.add("visible");
+    Sound.play("blip");
+  }
 }
 
 function initApp() {
   const app = new AndroidApp();
   (window as any).__cocoApp = app;
   (window as any).triggerDevourAnimation = (file: File) => app.triggerDevourAnimation(file);
+  (window as any).checkForAppUpdate = () => app.checkForAppUpdate();
+  (window as any).simulateAppUpdate = (v?: string) => app.showUpdateToast(v || "1.0.1");
   app.render();
   (window as any).__swipeController = app.getSwipeController();
 
