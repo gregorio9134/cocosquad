@@ -2836,10 +2836,10 @@ html, body {
 }
 
 .founder-badge.client-badge {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-muted);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: none;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.15);
   animation: none;
 }
 
@@ -3318,5 +3318,184 @@ html, body {
   background: rgba(255, 255, 255, 0.1);
   border-color: var(--coco-accent);
 }
+
+/* Quick Account Switch Bar in Tasks & Modal */
+.sub-switch-card {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sub-switch-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.sub-switch-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.sub-chip-btn {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.sub-chip-btn:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+.sub-chip-btn.active-founder {
+  background: rgba(255, 215, 0, 0.14);
+  border-color: rgba(255, 215, 0, 0.45);
+  color: #ffd700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+.sub-chip-btn.active-regular {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+/* Quick Switch in Auth Modal Login Tab */
+.auth-quick-switch-header {
+  margin-bottom: 8px;
+}
+
+.auth-quick-switch-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.auth-quick-switch-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.auth-quick-switch-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.auth-switch-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.auth-switch-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.auth-switch-btn:active {
+  transform: scale(0.98);
+}
+
+.auth-switch-btn.founder-btn {
+  border-color: rgba(255, 215, 0, 0.35);
+  background: rgba(255, 215, 0, 0.06);
+}
+
+.auth-switch-btn.founder-btn:hover {
+  background: rgba(255, 215, 0, 0.12);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.25);
+}
+
+.auth-switch-btn.regular-btn {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.auth-switch-btn.regular-btn:hover {
+  background: rgba(16, 185, 129, 0.12);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+}
+
+.switch-btn-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.switch-btn-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.switch-btn-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.auth-switch-btn.founder-btn .switch-btn-title {
+  color: #ffd700;
+}
+
+.auth-switch-btn.regular-btn .switch-btn-title {
+  color: #10b981;
+}
+
+.switch-btn-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 11px;
+  margin: 6px 0 10px 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-divider span {
+  padding: 0 8px;
+}
+
 
 

@@ -730,17 +730,38 @@ class AndroidApp {
           <!-- Tab 2: User Login / Multi-Tenant Switch -->
           <div class="auth-tab-pane" id="pane-login" style="display: none;">
             <div class="auth-login-box">
-              <p class="auth-login-desc">Ingresá tu correo electrónico para identificarte en tu tenant o crear uno nuevo.</p>
+              <div class="auth-quick-switch-header">
+                <span class="auth-quick-switch-title">🧪 Switch Rápido de Prueba:</span>
+                <p class="auth-quick-switch-subtitle">Alterná instantáneamente entre la experiencia de Fundador y Cliente real:</p>
+              </div>
+
+              <div class="auth-quick-switch-actions">
+                <button class="auth-switch-btn founder-btn" id="btn-auth-quick-founder">
+                  <div class="switch-btn-icon">👑</div>
+                  <div class="switch-btn-col">
+                    <span class="switch-btn-title">Ingresar como Fundador</span>
+                    <span class="switch-btn-sub">tenant_id: 1 · is_founder: true (God Mode)</span>
+                  </div>
+                </button>
+
+                <button class="auth-switch-btn regular-btn" id="btn-auth-quick-regular">
+                  <div class="switch-btn-icon">🌱</div>
+                  <div class="switch-btn-col">
+                    <span class="switch-btn-title">Ingresar como Cliente Regular</span>
+                    <span class="switch-btn-sub">tenant_id: 2 · plan: 'free' · is_founder: false</span>
+                  </div>
+                </button>
+              </div>
+
+              <div class="auth-divider"><span>O ingresá otro correo</span></div>
+
               <div class="auth-input-group">
                 <label class="auth-input-label" for="auth-email-input">Correo Electrónico:</label>
                 <input type="email" class="auth-input-field" id="auth-email-input" placeholder="tu-empresa@correo.com" value="${this.userEmail}" />
               </div>
               <div class="auth-button-stack">
                 <button class="auth-submit-btn primary" id="btn-auth-login">
-                  🚀 Iniciar Sesión / Registrarse
-                </button>
-                <button class="auth-submit-btn founder-gold" id="btn-auth-quick-founder">
-                  👑 Acceder como Fundador (Tenant #1)
+                  🚀 Iniciar Sesión Personalizada
                 </button>
               </div>
               <div class="auth-status-notice hidden" id="auth-status-notice"></div>
@@ -1177,10 +1198,11 @@ class AndroidApp {
     });
   }
 
-  public selectSquadMember(m: SquadMember) {
-    this.activeMember = m;
+  public selectSquadMember(m: SquadMember | string) {
+    const memberObj = typeof m === "string" ? (SQUAD.find((s) => s.id === m) || SQUAD[0]) : m;
+    this.activeMember = memberObj;
     // Apagar aviso persistente y resetear flag al entrar al chat de este Coco
-    this.taskCompletedUnread[m.id] = false;
+    this.taskCompletedUnread[memberObj.id] = false;
     const remainingUnread = Object.values(this.taskCompletedUnread).filter(Boolean).length;
     if (remainingUnread === 0) {
       void clearAppBadge();
@@ -1188,7 +1210,7 @@ class AndroidApp {
       void setAppBadge(remainingUnread);
     }
     for (const mini of this.miniMochis) {
-      if (mini.member.id === m.id || !this.taskCompletedUnread[mini.member.id]) {
+      if (mini.member.id === memberObj.id || !this.taskCompletedUnread[mini.member.id]) {
         mini.engine.waveStart = 0;
         mini.engine.waveUntil = 0;
         mini.engine.hands = 0;
@@ -1201,20 +1223,20 @@ class AndroidApp {
     }
 
     // Update CSS variables
-    document.documentElement.style.setProperty("--coco-accent", m.color);
-    document.documentElement.style.setProperty("--coco-glow", m.glow);
-    document.documentElement.style.setProperty("--coco-bg-tint", m.bgTint);
-    document.documentElement.style.setProperty("--coco-send-color", m.sendTextColor || "#000000");
+    document.documentElement.style.setProperty("--coco-accent", memberObj.color);
+    document.documentElement.style.setProperty("--coco-glow", memberObj.glow);
+    document.documentElement.style.setProperty("--coco-bg-tint", memberObj.bgTint);
+    document.documentElement.style.setProperty("--coco-send-color", memberObj.sendTextColor || "#000000");
 
     // Update Header info
     const nameEl = document.getElementById("header-agent-name");
     const roleEl = document.getElementById("header-agent-role");
     const pulseEl = document.getElementById("header-pulse");
-    if (nameEl) nameEl.textContent = m.name;
-    if (roleEl) roleEl.textContent = `${m.role} · En línea`;
+    if (nameEl) nameEl.textContent = memberObj.name;
+    if (roleEl) roleEl.textContent = `${memberObj.role} · En línea`;
     if (pulseEl) {
-      pulseEl.style.backgroundColor = m.color;
-      if (this.thinkingByAgent[m.id]) {
+      pulseEl.style.backgroundColor = memberObj.color;
+      if (this.thinkingByAgent[memberObj.id]) {
         pulseEl.classList.add("thinking");
       } else {
         pulseEl.classList.remove("thinking");
@@ -1223,7 +1245,7 @@ class AndroidApp {
 
     // Update Empty State subtitle if visible
     const emptyHint = document.getElementById("empty-state-agent-hint");
-    if (emptyHint) emptyHint.innerHTML = `<span class="coco-name-animated">${m.name}</span> está listo para ayudarte`;
+    if (emptyHint) emptyHint.innerHTML = `<span class="coco-name-animated">${memberObj.name}</span> está listo para ayudarte`;
 
     // Ensure green-inbox-container is hidden / unmounted across all agents (prohibits split screen)
     const greenContainer = document.getElementById("green-inbox-container");
@@ -1235,7 +1257,7 @@ class AndroidApp {
     // Toggle Green Omnichannel Simulator Bar
     const simBar = document.getElementById("green-channel-sim-bar");
     if (simBar) {
-      simBar.style.display = m.id === "coco_verde" ? "flex" : "none";
+      simBar.style.display = memberObj.id === "coco_verde" ? "flex" : "none";
     }
     this.updateChatInputPlaceholder();
 
@@ -1246,8 +1268,8 @@ class AndroidApp {
     this.renderAttachedFileChip();
 
     // Update Mascot in mini canvas with guaranteed clean baseline face (both eyes & cute smile)
-    this.engine.setCocoSquadRole(m.squadRole);
-    if (this.thinkingByAgent[m.id]) {
+    this.engine.setCocoSquadRole(memberObj.squadRole);
+    if (this.thinkingByAgent[memberObj.id]) {
       this.engine.setState("thinking");
     } else {
       this.engine.setState("idle");
@@ -2055,7 +2077,11 @@ class AndroidApp {
     });
 
     document.getElementById("btn-auth-quick-founder")?.addEventListener("click", () => {
-      void this.loginUser("founder@cocosquad.ai");
+      void this.loginUser("founder@cocosquad.ai", false, 1);
+    });
+
+    document.getElementById("btn-auth-quick-regular")?.addEventListener("click", () => {
+      void this.loginUser("cliente@demo.com", false, 2);
     });
 
     // Global drag & drop on screen for feeding/devouring files into current Coco
@@ -2401,6 +2427,35 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
       } finally {
         notifyRequestEnd();
       }
+    }
+
+    if (isTelemetryQuery && !this.isFounder) {
+      const rejectionReply =
+`🔒 **Acceso Denegado · Modo Fundador Requerido**
+
+Hola. La telemetría global del sistema, estado del servidor y métricas consolidadas de red están reservadas exclusivamente para el **Modo Fundador (God Mode / Tenant #1)**.
+
+Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consultas financieras, KPIs y análisis de datos correspondientes a tu propia empresa.
+
+💡 *Para desbloquear bypass de cuotas y acceder a funciones ampliadas, puedes suscribirte al **Plan PRO** desde el botón de tu cuenta o la pestaña de suscripción.*`;
+
+      this.chatHistories[targetMemberId].push({
+        id: Date.now() + 1,
+        role: "assistant",
+        content: rejectionReply,
+      });
+      this.saveStorage();
+      this.setAgentThinking(targetMemberId, false);
+      if (this.activeMember.id === targetMemberId) {
+        this.renderChatMessages();
+        this.resetMochiToBase();
+        Sound.play("tap");
+      } else {
+        this.taskCompletedUnread[targetMemberId] = true;
+        this.renderTopSquadChips();
+      }
+      notifyAgentCompletion(targetMemberId, "Blu (Acceso Restringido)", rejectionReply);
+      return;
     }
 
     try {
@@ -3374,19 +3429,25 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
     this.renderSubscriptionSummary();
   }
 
-  public async loginUser(email: string, silent: boolean = false): Promise<boolean> {
+  public async loginUser(email: string, silent: boolean = false, requestedTenantId?: number): Promise<boolean> {
     const statusNotice = document.getElementById("auth-status-notice");
     if (statusNotice && !silent) {
       statusNotice.className = "auth-status-notice";
-      statusNotice.textContent = "Autenticando inquilino...";
+      statusNotice.textContent = requestedTenantId === 1
+        ? "Cambiando a Modo Fundador..."
+        : (requestedTenantId === 2 ? "Cambiando a Cliente Regular..." : "Autenticando inquilino...");
       statusNotice.classList.remove("hidden");
     }
 
     try {
+      const payload: Record<string, any> = { email };
+      if (requestedTenantId !== undefined) {
+        payload.tenant_id = requestedTenantId;
+      }
       const res = await fetch("http://150.136.59.173:8080/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -3407,15 +3468,21 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
         this.updateHeaderBadge();
         this.renderSubscriptionSummary();
         this.renderBillingCurrentPlan();
+        this.renderBillingOffer(this.selectedBillingCurrency);
+
+        const subTitle = document.getElementById("auth-modal-subtitle");
+        if (subTitle) {
+          subTitle.textContent = `Tenant #${this.tenantId} · ${this.userEmail} · Plan: ${this.userPlan.toUpperCase()}`;
+        }
 
         if (statusNotice && !silent) {
           statusNotice.className = "auth-status-notice success";
-          statusNotice.textContent = `✅ Sesión activa: ${this.userEmail} (Tenant #${this.tenantId} · ${this.userPlan.toUpperCase()})`;
+          statusNotice.textContent = `✅ Sesión activa: ${this.isFounder ? '👑 Fundador (God Mode)' : `🌱 Cliente Regular (Tenant #${this.tenantId})`}`;
           setTimeout(() => {
             this.closeAuthModal();
-          }, 1000);
+          }, 800);
         }
-        Sound.play("tap");
+        Sound.play("chime");
         return true;
       }
     } catch (e: any) {
@@ -3448,6 +3515,7 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
           } catch {}
           this.updateHeaderBadge();
           this.renderSubscriptionSummary();
+          this.renderBillingCurrentPlan();
         }
       }
     } catch (err) {
@@ -3464,8 +3532,8 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
       const span = document.createElement("span");
       span.id = "founder-badge";
       span.className = `founder-badge ${this.isFounder ? "" : (this.userPlan === "pro" ? "pro-badge" : "client-badge")} clickable-badge`;
-      span.title = "Tocar para gestionar cuenta y suscripción";
-      span.textContent = this.isFounder ? "👑 Fundador" : (this.userPlan === "pro" ? "💎 Plan PRO" : `🌱 Tenant #${this.tenantId}`);
+      span.title = "Tocar para alternar cuenta o ver suscripción";
+      span.textContent = this.isFounder ? "👑 Fundador" : (this.userPlan === "pro" ? "💎 Plan PRO" : "🌱 Cliente Regular");
       span.addEventListener("click", () => {
         this.openAuthModal("billing");
         Sound.play("tap");
@@ -3495,14 +3563,33 @@ WhatsApp, Instagram Direct, TikTok y Web Chat operando con bypass de límites ac
       <div class="sub-summary-desc">${planQuota}</div>
       <div class="sub-action-row">
         <button class="sub-manage-btn" id="btn-tasks-open-sub">
-          💳 Configurar Pasarela (Mercado Pago / Stripe)
+          💳 ${this.isFounder ? 'Gestionar Pasarela (Mercado Pago / Stripe)' : '🚀 Actualizar a Plan PRO (Mercado Pago / Stripe)'}
         </button>
+      </div>
+      <div class="sub-switch-card">
+        <div class="sub-switch-label">🧪 Switch Rápido de Cuenta:</div>
+        <div class="sub-switch-buttons">
+          <button class="sub-chip-btn ${this.isFounder ? 'active-founder' : ''}" id="btn-tasks-switch-founder">
+            👑 Fundador
+          </button>
+          <button class="sub-chip-btn ${!this.isFounder ? 'active-regular' : ''}" id="btn-tasks-switch-regular">
+            🌱 Cliente Regular
+          </button>
+        </div>
       </div>
     `;
 
     document.getElementById("btn-tasks-open-sub")?.addEventListener("click", () => {
       this.openAuthModal("billing");
       Sound.play("tap");
+    });
+
+    document.getElementById("btn-tasks-switch-founder")?.addEventListener("click", () => {
+      void this.loginUser("founder@cocosquad.ai", false, 1);
+    });
+
+    document.getElementById("btn-tasks-switch-regular")?.addEventListener("click", () => {
+      void this.loginUser("cliente@demo.com", false, 2);
     });
   }
 

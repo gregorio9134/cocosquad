@@ -135,4 +135,24 @@ Este documento consolida la línea base arquitectónica, funcional y estética d
   - [android.ts](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.ts)
   - [android.css](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.css)
 
+---
 
+## Caso 10: Switch Rápido Fundador vs Cliente Regular y Gating de Telemetría en Blu
+
+- **Objetivo:** Permitir alternar de forma síncrona e instantánea entre el Modo Fundador (`tenant_id = 1`, `is_founder = true`) y un Cliente Regular (`tenant_id = 2`, `plan = 'free'`, `is_founder = false`), validando la experiencia de usuario diferenciada, el gating de permisos en Blu y la visibilidad de planes de pago.
+- **Implementación Técnica:**
+  - **Switch Rápido en UI (`android.ts`, `android.css`):**
+    - Añadidos botones directos en `#pane-login` (`#btn-auth-quick-founder` y `#btn-auth-quick-regular`) y en la vista de tareas/configuración (`#page-tasks`).
+    - Al pulsar cada botón, se invoca `switchAccount(tenantId, email, plan, isFounder)`, emitiendo/guardando el token JWT correspondiente en `localStorage` y actualizando de inmediato la UI.
+  - **Diferenciación Visual en Header (`updateHeaderBadge`):**
+    - Modo Fundador: Muestra insignia dorada `👑 Fundador` con animación de brillo suave.
+    - Cliente Regular: La insignia de fundador desaparece por completo y se reemplaza por el badge verde esmeralda `🌱 Cliente Regular` (`.founder-badge.client-badge`).
+  - **Gating de Telemetría Global en Blu (`coco_azul.py` / `android.ts`):**
+    - Fundador: Consultas sobre "telemetría", "métricas de red" o "estado del sistema" devuelven el informe financiero/operativo ejecutivo completo.
+    - Cliente Regular: Rechazo cortés e informativo con `🔒 Acceso Denegado · Modo Fundador Requerido`, informando que la telemetría global está restringida a Tenant #1 e invitando a mejorar a Plan PRO.
+  - **Selector de Planes Activo:**
+    - Para el Cliente Regular, la vista de suscripción expone de forma destacada la tarjeta de Plan Free (20 mensajes/min) y el selector interactivo de planes para Mercado Pago ($29.900 ARS/mes) y Stripe ($29.00 USD/mes).
+- **Archivos de Referencia:**
+  - [android.ts](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.ts)
+  - [android.css](file:///Users/Gregorio/Desktop/coco%20squad/windows/src/android/android.css)
+  - [coco_azul.py](file:///Users/Gregorio/Desktop/coco%20squad/windows/scripts/coco_azul_updated.py)

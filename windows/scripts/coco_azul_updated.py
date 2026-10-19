@@ -130,20 +130,41 @@ class CocoAzul(BaseCoco):
             for k in ("telemetría", "telemetria", "métricas de red", "metricas de red", "estado del sistema", "balance general", "kpi del sistema")
         )
 
-        if is_founder and is_telemetry_request:
-            logger.info("[Coco Azul] 👑 Modo Fundador: Generando reporte de telemetría y balance ejecutivo...")
-            reporte = self._generar_reporte_telemetria_fundador()
-            return {
-                "texto": reporte,
-                "respuesta": reporte,
-                "reply": reporte,
-                "datos": {
-                    "tipo": "telemetria_fundador",
-                    "agente": "coco_azul",
-                    "is_founder": True,
-                    "tenant_id": 1
+        if is_telemetry_request:
+            if is_founder:
+                logger.info("[Coco Azul] 👑 Modo Fundador: Generando reporte de telemetría y balance ejecutivo...")
+                reporte = self._generar_reporte_telemetria_fundador()
+                return {
+                    "texto": reporte,
+                    "respuesta": reporte,
+                    "reply": reporte,
+                    "datos": {
+                        "tipo": "telemetria_fundador",
+                        "agente": "coco_azul",
+                        "is_founder": True,
+                        "tenant_id": 1
+                    }
                 }
-            }
+            else:
+                logger.info(f"[Coco Azul] ⛔ Cliente regular (tenant_id={tenant_id}) intentó consultar telemetría global: Acceso denegado.")
+                rechazo = (
+                    f"🔒 **Acceso Denegado · Modo Fundador Requerido**\n\n"
+                    f"Hola. La telemetría global del sistema, estado del servidor y métricas consolidadas de red "
+                    f"están reservadas exclusivamente para el **Modo Fundador (God Mode / Tenant #1)**.\n\n"
+                    f"Como **Cliente Regular (Tenant #{tenant_id})**, solo tienes acceso a consultas financieras, KPIs y análisis de datos correspondientes a tu propia empresa.\n\n"
+                    f"💡 *Para desbloquear bypass de cuotas y acceder a funciones ampliadas, puedes suscribirte al **Plan PRO** desde el botón de tu cuenta o la pestaña de suscripción.*"
+                )
+                return {
+                    "texto": rechazo,
+                    "respuesta": rechazo,
+                    "reply": rechazo,
+                    "datos": {
+                        "tipo": "telemetria_denegada",
+                        "agente": "coco_azul",
+                        "is_founder": False,
+                        "tenant_id": tenant_id
+                    }
+                }
 
         engine = self.obtener_engine()
         chat_id = contexto.get("chat_id", "desktop_coco_azul")
