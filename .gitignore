@@ -30,3 +30,7 @@ claves_ssh/
 *.pub
 id_rsa*
 id_ed25519*
+
+# Local tools and simulation logs
+tools/
+scripts/simulation/logs/
