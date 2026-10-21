@@ -201,7 +201,7 @@ const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
   ],
 };
 
-const SQUAD: SquadMember[] = [
+const SQUAD_CATALOG: SquadMember[] = [
   {
     id: "coco_blanco",
     name: "Coco",
@@ -267,6 +267,10 @@ interface AttachedMedia {
   isImage: boolean;
   isVideo: boolean;
 }
+
+// MVP: Green y Blu están en pausa. Para reactivarlos, agregar su id a MVP_ENABLED_MEMBERS.
+const MVP_ENABLED_MEMBERS = ["coco_blanco", "coco_rojo"];
+const SQUAD: SquadMember[] = SQUAD_CATALOG.filter((m) => MVP_ENABLED_MEMBERS.includes(m.id));
 
 class AndroidApp {
   private activeMember: SquadMember = SQUAD[0];
