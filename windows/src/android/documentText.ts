@@ -36,7 +36,7 @@ export async function extractDocumentText(file: File): Promise<ExtractedDocument
         for (let i = 1; i <= doc.numPages; i++) {
           const page = await doc.getPage(i);
           const content = await page.getTextContent();
-          collected += content.items.map((item) => ("str" in item ? item.str : "")).join(" ") + "\n";
+          collected += `\n[Página ${i}]\n` + content.items.map((item) => ("str" in item ? item.str : "")).join(" ") + "\n";
           if (collected.length > MAX_DOCUMENT_CHARS) break;
         }
         const trimmed = collected.trim();

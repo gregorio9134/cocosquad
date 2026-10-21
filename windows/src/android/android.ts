@@ -33,7 +33,19 @@ import {
   type VaultRecord,
 } from "./vault";
 import { extractDocumentText } from "./documentText";
+import {
+  FREE_DAILY_LIMIT,
+  getDailyUsage,
+  registerDailyUsage,
+  loadMemories,
+  addMemory,
+  removeMemory,
+  checkServiceStatus,
+  downloadTextFile,
+  searchHistories,
+} from "./mvpTools";
 import "./green-threads.css";
+import "./mvp-tools.css";
 
 marked.setOptions({
   gfm: true,
@@ -563,6 +575,7 @@ class AndroidApp {
               </div>
 
               <div class="chat-input-bar">
+                <button class="btn-icon-round btn-tools-trigger" id="btn-download-red-report" title="Descargar último informe de Red" style="display: none;">📥</button>
                 <button class="btn-icon-round btn-tools-trigger" id="btn-tools-plus" title="Herramientas y atajos" style="display: none;">+</button>
                 <input type="text" class="chat-input-field" id="chat-input" placeholder="Preguntale a Coco..." />
                 <button class="btn-send-round" id="btn-send" title="Enviar">➤</button>
@@ -712,6 +725,7 @@ class AndroidApp {
           <div class="auth-nav-tabs">
             <button class="auth-tab-btn active" id="tab-btn-billing" data-tab="billing">💳 Suscripción & Pagos</button>
             <button class="auth-tab-btn" id="tab-btn-login" data-tab="login">🔐 Cambiar Usuario</button>
+            <button class="auth-tab-btn" id="tab-btn-tools" data-tab="tools">🧰 Herramientas</button>
           </div>
 
           <!-- Tab 1: Billing & Subscription -->
@@ -733,6 +747,36 @@ class AndroidApp {
             <div class="billing-plan-offer-box" id="billing-plan-offer-box"></div>
 
             <div class="billing-status-notice hidden" id="billing-status-notice"></div>
+          </div>
+
+          <!-- Tab 3: Herramientas del MVP (cupo, memoria, historial, estado) -->
+          <div class="auth-tab-pane" id="pane-tools" style="display: none; flex-direction: column; gap: 14px;">
+            <div class="tools-section">
+              <div class="tools-section-title">Cupo diario</div>
+              <p class="tools-quota-text" id="tools-quota-text"></p>
+            </div>
+
+            <div class="tools-section">
+              <div class="tools-section-title">Preferencias que Coco recuerda</div>
+              <p class="tools-hint">Se guardan solo en este dispositivo. Podés borrarlas cuando quieras.</p>
+              <div id="tools-memory-list"></div>
+              <div class="tools-row">
+                <input type="text" class="auth-input-field" id="tools-memory-input" maxlength="300" placeholder="Ej: respondé siempre en tono formal" />
+                <button class="tools-small-btn" id="tools-memory-add">Guardar</button>
+              </div>
+            </div>
+
+            <div class="tools-section">
+              <div class="tools-section-title">Buscar en el historial</div>
+              <input type="text" class="auth-input-field" id="tools-search-input" placeholder="Buscar en tus chats..." />
+              <div id="tools-search-results"></div>
+            </div>
+
+            <div class="tools-section">
+              <div class="tools-section-title">Estado del servicio</div>
+              <button class="tools-small-btn" id="tools-status-btn">Verificar ahora</button>
+              <p class="tools-hint" id="tools-status-text"></p>
+            </div>
           </div>
 
           <!-- Tab 2: User Login / Multi-Tenant Switch -->
@@ -766,6 +810,10 @@ class AndroidApp {
               <div class="auth-input-group">
                 <label class="auth-input-label" for="auth-email-input">Correo Electrónico:</label>
                 <input type="email" class="auth-input-field" id="auth-email-input" placeholder="tu-empresa@correo.com" value="${this.userEmail}" />
+              </div>
+              <div class="auth-input-group">
+                <label class="auth-input-label" for="auth-password-input">Contraseña (solo fundador):</label>
+                <input type="password" class="auth-input-field" id="auth-password-input" placeholder="••••••••" autocomplete="current-password" />
               </div>
               <div class="auth-button-stack">
                 <button class="auth-submit-btn primary" id="btn-auth-login">
@@ -1297,6 +1345,10 @@ class AndroidApp {
     const plusTrigger = document.getElementById("btn-tools-plus");
     if (plusTrigger) {
       plusTrigger.style.display = memberObj.id === "coco_verde" ? "" : "none";
+    }
+    const downloadTrigger = document.getElementById("btn-download-red-report");
+    if (downloadTrigger) {
+      downloadTrigger.style.display = memberObj.id === "coco_rojo" ? "" : "none";
     }
     this.updateChatInputPlaceholder();
 
@@ -2181,6 +2233,50 @@ class AndroidApp {
     authCloseBtn?.addEventListener("click", () => this.closeAuthModal());
 
     document.getElementById("tab-btn-billing")?.addEventListener("click", () => this.switchAuthTab("billing"));
+    document.getElementById("tab-btn-tools")?.addEventListener("click", () => this.switchAuthTab("tools"));
+
+    document.getElementById("tools-memory-add")?.addEventListener("click", () => {
+      const input = document.getElementById("tools-memory-input") as HTMLInputElement | null;
+      if (!input) return;
+      addMemory(input.value);
+      input.value = "";
+      this.renderToolsPane();
+    });
+
+    document.getElementById("tools-search-input")?.addEventListener("input", (e) => {
+      const query = (e.target as HTMLInputElement).value;
+      const contenedor = document.getElementById("tools-search-results");
+      if (!contenedor) return;
+      contenedor.innerHTML = "";
+      const hits = searchHistories(this.chatHistories as Record<string, { role: string; content: string }[]>, query);
+      if (query.trim() && hits.length === 0) {
+        const vacio = document.createElement("p");
+        vacio.className = "tools-empty";
+        vacio.textContent = "No hay mensajes con ese texto.";
+        contenedor.appendChild(vacio);
+      }
+      hits.forEach((h) => {
+        const fila = document.createElement("div");
+        fila.className = "tools-search-hit";
+        const quien = document.createElement("strong");
+        quien.textContent = `${h.agentId} · ${h.role === "user" ? "vos" : "respuesta"}`;
+        const texto = document.createElement("span");
+        texto.textContent = h.content.slice(0, 160);
+        fila.append(quien, texto);
+        contenedor.appendChild(fila);
+      });
+    });
+
+    document.getElementById("tools-status-btn")?.addEventListener("click", async () => {
+      const salida = document.getElementById("tools-status-text");
+      if (salida) salida.textContent = "Midiendo…";
+      const estado = await checkServiceStatus("http://150.136.59.173:8080/version.json");
+      if (salida) {
+        salida.textContent = estado.ok
+          ? `Operativo · ${estado.latencyMs} ms · medido a las ${estado.checkedAt}`
+          : `No disponible ahora · medido a las ${estado.checkedAt}`;
+      }
+    });
     document.getElementById("tab-btn-login")?.addEventListener("click", () => this.switchAuthTab("login"));
 
     document.getElementById("pill-currency-ars")?.addEventListener("click", () => {
@@ -2201,14 +2297,34 @@ class AndroidApp {
 
     document.getElementById("btn-auth-login")?.addEventListener("click", () => {
       const emailInput = document.getElementById("auth-email-input") as HTMLInputElement | null;
+      const passInput = document.getElementById("auth-password-input") as HTMLInputElement | null;
       const email = emailInput ? emailInput.value.trim() : "";
+      const password = passInput ? passInput.value : "";
       if (email) {
-        void this.loginUser(email);
+        void this.loginUser(email, false, undefined, password || undefined);
       }
     });
 
+    document.getElementById("btn-download-red-report")?.addEventListener("click", () => {
+      const hist = this.chatHistories["coco_rojo"] || [];
+      const ultimo = [...hist].reverse().find((m) => m.role === "assistant" && m.content);
+      if (!ultimo) return;
+      downloadTextFile(`informe-red-${new Date().toISOString().slice(0, 10)}.md`, ultimo.content);
+    });
+
     document.getElementById("btn-auth-quick-founder")?.addEventListener("click", () => {
-      void this.loginUser("founder@cocosquad.ai", false, 1);
+      const passInput = document.getElementById("auth-password-input") as HTMLInputElement | null;
+      const password = passInput ? passInput.value : "";
+      if (!password) {
+        const notice = document.getElementById("auth-status-notice");
+        if (notice) {
+          notice.className = "auth-status-notice";
+          notice.textContent = "Ingresá la contraseña del fundador en el campo de abajo.";
+          notice.classList.remove("hidden");
+        }
+        return;
+      }
+      void this.loginUser("founder@cocosquad.ai", false, 1, password);
     });
 
     document.getElementById("btn-auth-quick-regular")?.addEventListener("click", () => {
@@ -2589,6 +2705,19 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
       return;
     }
 
+    if (!this.isFounder && getDailyUsage().count >= FREE_DAILY_LIMIT) {
+      this.chatHistories[targetMemberId].push({
+        id: Date.now(),
+        role: "assistant",
+        content: `Llegaste al límite de ${FREE_DAILY_LIMIT} consultas de hoy en el plan gratuito. El cupo se renueva mañana, o podés pasar a PRO desde Cuenta & Planes.`,
+      });
+      this.saveStorage();
+      this.setAgentThinking(targetMemberId, false);
+      if (this.activeMember.id === targetMemberId) this.renderChatMessages();
+      return;
+    }
+    if (!this.isFounder) registerDailyUsage();
+
     try {
       const pureB64 = attached
         ? (attached.base64.includes(",") ? attached.base64.split(",")[1] : attached.base64)
@@ -2618,6 +2747,7 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
           chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
           file: attached ? { name: attached.name, mime: mimeType, data: pureB64 } : null,
           document_text: this.activeDocumentByAgent[targetMemberId]?.text,
+          preferences: loadMemories().map((m) => m.text),
           todos: this.todos,
           notes: this.notes,
         },
@@ -3481,7 +3611,10 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
       if (data.status === "error") {
         throw new Error(data.error || "El agente no pudo responder");
       }
-      const reply = data.final_reply || data.reply || data.respuesta || data.response || "Análisis completado con éxito.";
+      const replyBase = data.final_reply || data.reply || data.respuesta || data.response || "Análisis completado con éxito.";
+      const reply = extractedDoc
+        ? `${replyBase}\n\n🔒 Documento leído en tu dispositivo: no se guardó en el servidor.`
+        : replyBase;
 
       // REEMPLAZAR el mensaje de espera en el historial exclusivo del agente
       const hist = this.chatHistories[targetMemberId] || [];
@@ -3700,7 +3833,7 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
     this.renderSubscriptionSummary();
   }
 
-  public async loginUser(email: string, silent: boolean = false, requestedTenantId?: number): Promise<boolean> {
+  public async loginUser(email: string, silent: boolean = false, requestedTenantId?: number, password?: string): Promise<boolean> {
     const statusNotice = document.getElementById("auth-status-notice");
     if (statusNotice && !silent) {
       statusNotice.className = "auth-status-notice";
@@ -3714,6 +3847,9 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
       const payload: Record<string, any> = { email };
       if (requestedTenantId !== undefined) {
         payload.tenant_id = requestedTenantId;
+      }
+      if (password) {
+        payload.password = password;
       }
       const res = await fetch("http://150.136.59.173:8080/api/auth/login", {
         method: "POST",
@@ -3856,7 +3992,10 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
     });
 
     document.getElementById("btn-tasks-switch-founder")?.addEventListener("click", () => {
-      void this.loginUser("founder@cocosquad.ai", false, 1);
+      const password = window.prompt("Contraseña del fundador:") || "";
+      if (password) {
+        void this.loginUser("founder@cocosquad.ai", false, 1, password);
+      }
     });
 
     document.getElementById("btn-tasks-switch-regular")?.addEventListener("click", () => {
@@ -3898,22 +4037,53 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
     Sound.play("close");
   }
 
-  public switchAuthTab(tab: "billing" | "login"): void {
-    const tabBilling = document.getElementById("tab-btn-billing");
-    const tabLogin = document.getElementById("tab-btn-login");
-    const paneBilling = document.getElementById("pane-billing");
-    const paneLogin = document.getElementById("pane-login");
+  public switchAuthTab(tab: "billing" | "login" | "tools"): void {
+    const tabs: Record<string, { btn: HTMLElement | null; pane: HTMLElement | null }> = {
+      billing: { btn: document.getElementById("tab-btn-billing"), pane: document.getElementById("pane-billing") },
+      login: { btn: document.getElementById("tab-btn-login"), pane: document.getElementById("pane-login") },
+      tools: { btn: document.getElementById("tab-btn-tools"), pane: document.getElementById("pane-tools") },
+    };
+    for (const [name, el] of Object.entries(tabs)) {
+      el.btn?.classList.toggle("active", name === tab);
+      if (el.pane) el.pane.style.display = name === tab ? "flex" : "none";
+    }
+    if (tab === "tools") this.renderToolsPane();
+  }
 
-    if (tab === "billing") {
-      tabBilling?.classList.add("active");
-      tabLogin?.classList.remove("active");
-      if (paneBilling) paneBilling.style.display = "flex";
-      if (paneLogin) paneLogin.style.display = "none";
-    } else {
-      tabLogin?.classList.add("active");
-      tabBilling?.classList.remove("active");
-      if (paneLogin) paneLogin.style.display = "flex";
-      if (paneBilling) paneBilling.style.display = "none";
+  private renderToolsPane(): void {
+    const usage = getDailyUsage();
+    const cupo = document.getElementById("tools-quota-text");
+    if (cupo) {
+      cupo.textContent = this.isFounder
+        ? "Fundador: sin límite de consultas."
+        : `Hoy usaste ${usage.count} de ${FREE_DAILY_LIMIT} consultas del plan gratuito.`;
+    }
+
+    const lista = document.getElementById("tools-memory-list");
+    if (lista) {
+      lista.innerHTML = "";
+      const recuerdos = loadMemories();
+      if (recuerdos.length === 0) {
+        const vacio = document.createElement("p");
+        vacio.className = "tools-empty";
+        vacio.textContent = "Todavía no guardaste preferencias. Escribí una abajo para que Coco la tenga en cuenta.";
+        lista.appendChild(vacio);
+      }
+      recuerdos.forEach((m) => {
+        const fila = document.createElement("div");
+        fila.className = "tools-memory-item";
+        const texto = document.createElement("span");
+        texto.textContent = m.text;
+        const borrar = document.createElement("button");
+        borrar.className = "tools-small-btn";
+        borrar.textContent = "Borrar";
+        borrar.addEventListener("click", () => {
+          removeMemory(m.id);
+          this.renderToolsPane();
+        });
+        fila.append(texto, borrar);
+        lista.appendChild(fila);
+      });
     }
   }
 
@@ -4063,24 +4233,15 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
       if (noticeEl) {
         noticeEl.innerHTML = `
           <div style="display:flex; flex-direction:column; gap:8px;">
-            <span style="color:#00f2fe; font-weight:600;">✅ Enlace generado con éxito (${data.currency} ${data.amount})</span>
+            <span style="color:#00f2fe; font-weight:600;">✅ Enlace generado con éxito (${data.currency} ${data.amount})</span>${data.is_live === false ? '<span style="color:#f5b041;">⚠️ Pasarela en modo prueba: todavía no hay un cobro real activo en el servidor.</span>' : ''}
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <a href="${checkoutUrl}" target="_blank" rel="noopener noreferrer" class="billing-external-link-btn">
                 🔗 Abrir Pasarela ${provider === "mercadopago" ? "Mercado Pago" : "Stripe"}
               </a>
-              <button class="billing-simulate-pay-btn" id="btn-simulate-webhook-${provider}">
-                ⚡ Confirmar Pago (Simulación)
-              </button>
+              <!-- Confirmación de pago: solo la confirma el servidor al verificar el pago con el proveedor -->
             </div>
           </div>
         `;
-
-        const simBtn = document.getElementById(`btn-simulate-webhook-${provider}`);
-        if (simBtn) {
-          simBtn.addEventListener("click", () => {
-            void this.simulatePaymentWebhook(provider);
-          });
-        }
       }
 
       window.open(checkoutUrl, "_blank");

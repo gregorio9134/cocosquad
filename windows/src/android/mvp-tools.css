@@ -1,0 +1,62 @@
+/* Panel de herramientas del MVP dentro de Cuenta & Planes. */
+
+.tools-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tools-section-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.tools-hint,
+.tools-quota-text,
+.tools-empty {
+  font-size: 12px;
+  opacity: 0.75;
+  margin: 0;
+}
+
+.tools-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tools-row .auth-input-field {
+  flex: 1;
+}
+
+.tools-small-btn {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 230, 118, 0.4);
+  background: rgba(0, 230, 118, 0.12);
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tools-memory-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+.tools-search-hit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
