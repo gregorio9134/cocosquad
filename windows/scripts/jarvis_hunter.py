@@ -43,8 +43,24 @@ LOG_FILE = os.path.join(BASE_DIR, "hunter.log")
 
 CUSTOM_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8269589789:AAHyuf4VigjRluQ2ijkKFBaRL9twYgW_V3Y")
-OWNER_TELEGRAM_ID = os.getenv("OWNER_TELEGRAM_ID", "1337913289")
+def _cargar_env_local():
+    """Carga variables desde el .env del directorio del script (el servicio systemd no lo carga)."""
+    ruta = os.path.join(BASE_DIR, ".env")
+    if not os.path.exists(ruta):
+        return
+    with open(ruta, "r", encoding="utf-8") as f:
+        for linea in f:
+            linea = linea.strip()
+            if not linea or linea.startswith("#") or "=" not in linea:
+                continue
+            clave, valor = linea.split("=", 1)
+            clave = clave.replace("export ", "").strip()
+            os.environ.setdefault(clave, valor.strip().strip('"').strip("'"))
+
+_cargar_env_local()
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+OWNER_TELEGRAM_ID = os.getenv("OWNER_TELEGRAM_ID") or os.getenv("TELEGRAM_ADMIN_CHAT_ID", "")
 
 # Especificaciones Always Free solicitadas: 2 OCPUs, 12 GB RAM, 50 GB SSD
 TARGET_OCPUS = 2.0
@@ -245,6 +261,36 @@ def hunt_oracle_ciclo():
             print(f"[Oracle] 🏆 ¡Instancia {TARGET_LABEL} ya capturada y confirmada en RUNNING!")
             return True
 
+        pendiente = estado.get("pendiente")
+        if pendiente and pendiente.get("instance_id"):
+            try:
+                inst_p = compute_client.get_instance(pendiente["instance_id"]).data
+                st_p = inst_p.lifecycle_state
+            except Exception as e:
+                print(f"[Pendiente] No se pudo consultar la instancia pendiente: {e}")
+                return False
+            if st_p == "RUNNING":
+                ip_p = obtener_ip_publica(pendiente["instance_id"])
+                estado["pendiente"] = None
+                c_p = estado.get("capturados", [])
+                if TARGET_LABEL not in c_p:
+                    c_p.append(TARGET_LABEL)
+                estado["capturados"] = c_p
+                estado[TARGET_LABEL] = {"instance_id": pendiente["instance_id"], "ad": pendiente.get("ad"), "ip_publica": ip_p, "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")}
+                guardar_estado(estado)
+                enviar_notificacion_telegram(
+                    "🎉 *¡INSTANCIA ORACLE ARM 12 GB CAPTURADA Y ACTIVA!*\n\n"
+                    f"🌐 *IP Pública:* `{ip_p}`\n🆔 *Instance ID:* `{pendiente['instance_id']}`"
+                )
+                return True
+            if st_p in ("TERMINATING", "TERMINATED"):
+                print(f"[Pendiente] Oracle terminó la instancia pendiente ({st_p}). Se reanuda la cacería.")
+                estado["pendiente"] = None
+                guardar_estado(estado)
+            else:
+                print(f"[Pendiente] Instancia {pendiente['instance_id']} en estado {st_p}. Espero antes de lanzar otra.")
+                return False
+
         subnet_id, image_id, ads = get_cached_metadata()
 
         for ad in ads:
@@ -277,8 +323,11 @@ def hunt_oracle_ciclo():
                         pass
 
                 if not confirmada:
-                    print("⚠️ La instancia no completó el ciclo RUNNING. Continuando búsqueda en segundo plano...")
-                    continue
+                    print("⚠️ La instancia no completó el ciclo RUNNING. Se verificará en el próximo ciclo antes de lanzar otra.")
+                    estado_pend = cargar_estado()
+                    estado_pend["pendiente"] = {"instance_id": instance_id, "ad": ad_short, "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")}
+                    guardar_estado(estado_pend)
+                    return False
 
                 # ¡CAPTURA 100% CONFIRMADA Y VIVA!
                 ip_publica = obtener_ip_publica(instance_id)
