@@ -1,0 +1,80 @@
+/* Ventana flotante de chats de Green (WhatsApp, Instagram, TikTok). */
+
+.green-threads-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 900;
+}
+
+.green-threads-card {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 420px);
+  max-height: 70vh;
+  overflow-y: auto;
+  background: rgba(18, 22, 32, 0.96);
+  border: 1px solid rgba(0, 230, 118, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  padding: 14px;
+  z-index: 901;
+  color: #f2f5f8;
+  font-family: inherit;
+}
+
+.green-threads-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.green-threads-close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.green-threads-empty {
+  font-size: 14px;
+  line-height: 1.4;
+  opacity: 0.8;
+  margin: 8px 0 4px;
+}
+
+.green-threads-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.green-threads-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.green-threads-preview {
+  font-size: 13px;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.green-threads-count {
+  font-size: 11px;
+  opacity: 0.6;
+}

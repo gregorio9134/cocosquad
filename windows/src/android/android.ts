@@ -33,6 +33,7 @@ import {
   type VaultRecord,
 } from "./vault";
 import { extractDocumentText } from "./documentText";
+import "./green-threads.css";
 
 marked.setOptions({
   gfm: true,
@@ -546,19 +547,19 @@ class AndroidApp {
               <!-- Green Omnichannel Simulator Strip -->
               <div class="channel-sim-bar" id="green-channel-sim-bar" style="display: none;">
                 <span class="channel-sim-label">Canal:</span>
-                <button class="channel-sim-chip active" data-channel="whatsapp" title="Simular mensaje entrante de WhatsApp">
-                  <span class="channel-sim-dot wa"></span> Simular WhatsApp
+                <button class="channel-sim-chip active" data-channel="whatsapp" title="Ver chats de WhatsApp">
+                  <span class="channel-sim-dot wa"></span> WhatsApp
                 </button>
-                <button class="channel-sim-chip" data-channel="instagram" title="Simular mensaje entrante de Instagram">
-                  <span class="channel-sim-dot ig"></span> Simular Instagram
+                <button class="channel-sim-chip" data-channel="instagram" title="Ver chats de Instagram">
+                  <span class="channel-sim-dot ig"></span> Instagram
                 </button>
-                <button class="channel-sim-chip" data-channel="tiktok" title="Simular mensaje entrante de TikTok">
-                  <span class="channel-sim-dot tt"></span> Simular TikTok
+                <button class="channel-sim-chip" data-channel="tiktok" title="Ver chats de TikTok">
+                  <span class="channel-sim-dot tt"></span> TikTok
                 </button>
               </div>
 
               <div class="chat-input-bar">
-                <button class="btn-icon-round btn-tools-trigger" id="btn-tools-plus" title="Herramientas y atajos">+</button>
+                <button class="btn-icon-round btn-tools-trigger" id="btn-tools-plus" title="Herramientas y atajos" style="display: none;">+</button>
                 <input type="text" class="chat-input-field" id="chat-input" placeholder="Preguntale a Coco..." />
                 <button class="btn-send-round" id="btn-send" title="Enviar">➤</button>
               </div>
@@ -1288,6 +1289,11 @@ class AndroidApp {
     if (simBar) {
       simBar.style.display = memberObj.id === "coco_verde" ? "flex" : "none";
     }
+    // El menú "+" queda solo para Green; en los demás Coco está oculto (no eliminado).
+    const plusTrigger = document.getElementById("btn-tools-plus");
+    if (plusTrigger) {
+      plusTrigger.style.display = memberObj.id === "coco_verde" ? "" : "none";
+    }
     this.updateChatInputPlaceholder();
 
     // Always render unified vertical chat for all Mochis
@@ -1317,6 +1323,73 @@ class AndroidApp {
       c.classList.toggle("active", (c as HTMLElement).dataset.channel === channel);
     });
     this.updateChatInputPlaceholder();
+  }
+
+  private openGreenThreads(channel: "whatsapp" | "instagram" | "tiktok") {
+    this.closeGreenThreads();
+    const canal = channel === "whatsapp" ? "WhatsApp" : channel === "instagram" ? "Instagram" : "TikTok";
+    const mensajes = (this.chatHistories["coco_verde"] || []).filter(
+      (m) => m.channel === channel && m.role === "user" && m.senderName
+    );
+    const porContacto = new Map<string, { ultimo: string; cantidad: number }>();
+    for (const m of mensajes) {
+      const contacto = m.senderName as string;
+      const previo = porContacto.get(contacto);
+      porContacto.set(contacto, { ultimo: m.content, cantidad: (previo?.cantidad || 0) + 1 });
+    }
+
+    const overlay = document.createElement("div");
+    overlay.className = "green-threads-overlay";
+    overlay.id = "green-threads-overlay";
+
+    const card = document.createElement("div");
+    card.className = "green-threads-card";
+    card.id = "green-threads-card";
+
+    const header = document.createElement("div");
+    header.className = "green-threads-header";
+    const titulo = document.createElement("span");
+    titulo.textContent = `Chats de ${canal}`;
+    const cerrar = document.createElement("button");
+    cerrar.className = "green-threads-close";
+    cerrar.textContent = "✕";
+    cerrar.addEventListener("click", () => this.closeGreenThreads());
+    header.append(titulo, cerrar);
+    card.appendChild(header);
+
+    if (porContacto.size === 0) {
+      const vacio = document.createElement("p");
+      vacio.className = "green-threads-empty";
+      vacio.textContent = `Todavía no hay chats de ${canal} conectados. Cuando el canal esté conectado, las conversaciones aparecerán aquí.`;
+      card.appendChild(vacio);
+    } else {
+      const lista = document.createElement("ul");
+      lista.className = "green-threads-list";
+      porContacto.forEach((info, contacto) => {
+        const item = document.createElement("li");
+        item.className = "green-threads-item";
+        const nombre = document.createElement("strong");
+        nombre.textContent = contacto;
+        const vista = document.createElement("span");
+        vista.className = "green-threads-preview";
+        vista.textContent = info.ultimo.slice(0, 90);
+        const cuenta = document.createElement("span");
+        cuenta.className = "green-threads-count";
+        cuenta.textContent = `${info.cantidad} mensaje(s)`;
+        item.append(nombre, vista, cuenta);
+        lista.appendChild(item);
+      });
+      card.appendChild(lista);
+    }
+
+    overlay.addEventListener("click", () => this.closeGreenThreads());
+    card.addEventListener("click", (e) => e.stopPropagation());
+    document.body.append(overlay, card);
+  }
+
+  private closeGreenThreads() {
+    document.getElementById("green-threads-overlay")?.remove();
+    document.getElementById("green-threads-card")?.remove();
   }
 
   private updateChatInputPlaceholder() {
@@ -2029,13 +2102,14 @@ class AndroidApp {
       if (e.key === "Enter") doSend();
     });
 
-    // Green Omnichannel Simulator channel switching chips
+    // Green: cada canal abre una ventana flotante con los chats de ese canal
     document.querySelectorAll(".channel-sim-chip").forEach((chip) => {
       chip.addEventListener("click", (e) => {
         const target = e.currentTarget as HTMLElement;
         const ch = target.dataset.channel as "whatsapp" | "instagram" | "tiktok";
         if (ch) {
           this.setSimulatedChannel(ch);
+          this.openGreenThreads(ch);
           Sound.play("tap");
         }
       });
