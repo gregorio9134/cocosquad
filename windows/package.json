@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
-    "marked": "^18.0.14"
+    "marked": "^18.0.14",
+    "pdfjs-dist": "^5.7.284"
   }
 }

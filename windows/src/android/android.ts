@@ -32,6 +32,7 @@ import {
   computeFileHash,
   type VaultRecord,
 } from "./vault";
+import { extractDocumentText } from "./documentText";
 
 marked.setOptions({
   gfm: true,
@@ -321,6 +322,8 @@ class AndroidApp {
     coco_azul: false,
   };
 
+  // Texto de documentos extraído en el dispositivo (no se guarda en el servidor). Solo vive en memoria.
+  private activeDocumentByAgent: Record<string, { name: string; text: string } | null> = {};
   private attachedFilesByAgent: Record<string, AttachedMedia | null> = {
     coco_blanco: null,
     coco_verde: null,
@@ -2536,6 +2539,7 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
         context: {
           chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
           file: attached ? { name: attached.name, mime: mimeType, data: pureB64 } : null,
+          document_text: this.activeDocumentByAgent[targetMemberId]?.text,
           todos: this.todos,
           notes: this.notes,
         },
@@ -3169,25 +3173,52 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
     try {
       notifyRequestStart();
       const pureB64 = base64.includes(",") ? base64.split(",")[1] : base64;
-      const res = await fetch("http://150.136.59.173:8080/agente/rojo", {
-        method: "POST",
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({
-          message: `Analiza detalladamente este documento (${file.name}) y presenta un informe exhaustivo con puntos clave, metodología y conclusiones.`,
-          chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
-          coco_id: "coco_rojo",
-          tenant_id: this.tenantId,
-          file: {
-            name: file.name,
-            data: pureB64,
-            base64: pureB64,
-            mime: file.type || (isPdf ? "application/pdf" : "text/plain"),
-          },
-        }),
-      });
+      const extractedRed = await extractDocumentText(file);
+      if (extractedRed) {
+        this.activeDocumentByAgent["coco_rojo"] = { name: extractedRed.name, text: extractedRed.text };
+      }
+      const redMessage = `Analiza detalladamente este documento (${file.name}) y presenta un informe exhaustivo con puntos clave, metodología y conclusiones.`;
+      const res = extractedRed
+        ? await fetch("http://150.136.59.173:8080/api/squad/interact", {
+            method: "POST",
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify({
+              message: redMessage,
+              current_agent: "coco_rojo",
+              tenant_id: this.tenantId,
+              chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
+              context: {
+                chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
+                document_text: extractedRed.text,
+                document_name: extractedRed.name,
+                todos: this.todos,
+                notes: this.notes,
+              },
+            }),
+          })
+        : await fetch("http://150.136.59.173:8080/agente/rojo", {
+            method: "POST",
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify({
+              message: redMessage,
+              chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
+              coco_id: "coco_rojo",
+              tenant_id: this.tenantId,
+              file: {
+                name: file.name,
+                data: pureB64,
+                base64: pureB64,
+                mime: file.type || (isPdf ? "application/pdf" : "text/plain"),
+              },
+            }),
+          });
 
       const data = await res.json();
+      if (data.status === "error") {
+        throw new Error(data.error || "Red no pudo responder");
+      }
       const redReply =
+        data.final_reply ||
         data.reply ||
         data.respuesta ||
         data.response ||
@@ -3308,7 +3339,26 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
         ? `[Video adjunto: ${file.name}] Analizá detalladamente este video/grabación adjunta y explicame las escenas, elementos clave y conclusiones.`
         : `[Documento adjunto: ${file.name}] Analizá el documento adjunto y resumí sus puntos clave, estructura y conclusiones principales.`;
 
-      const payload: Record<string, unknown> = {
+      const extractedDoc = !isImage && !isVideo ? await extractDocumentText(file) : null;
+      if (extractedDoc) {
+        this.activeDocumentByAgent[targetMemberId] = { name: extractedDoc.name, text: extractedDoc.text };
+      }
+
+      const payload: Record<string, unknown> = extractedDoc
+        ? {
+            message: promptText,
+            current_agent: targetMemberId,
+            tenant_id: this.tenantId,
+            chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
+            context: {
+              chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
+              document_text: extractedDoc.text,
+              document_name: extractedDoc.name,
+              todos: this.todos,
+              notes: this.notes,
+            },
+          }
+        : {
         message: promptText,
         chat_id: 1,
         tenant_id: this.tenantId,
@@ -3336,18 +3386,24 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
       };
 
       notifyRequestStart();
-      const res = await fetch("http://150.136.59.173:8080/api/chat", {
-        method: "POST",
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        extractedDoc ? "http://150.136.59.173:8080/api/squad/interact" : "http://150.136.59.173:8080/api/chat",
+        {
+          method: "POST",
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (!res.ok) {
         throw new Error(`Código de estado HTTP ${res.status}`);
       }
 
       const data = await res.json();
-      const reply = data.reply || data.respuesta || data.response || "Análisis completado con éxito.";
+      if (data.status === "error") {
+        throw new Error(data.error || "El agente no pudo responder");
+      }
+      const reply = data.final_reply || data.reply || data.respuesta || data.response || "Análisis completado con éxito.";
 
       // REEMPLAZAR el mensaje de espera en el historial exclusivo del agente
       const hist = this.chatHistories[targetMemberId] || [];
