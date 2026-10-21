@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Response, HTTPException, Depends
+from fastapi import FastAPI, Request, Response, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -23,6 +23,16 @@ from config import settings  # noqa — validates all keys at startup
 from utils.logger import get_logger
 
 logger = get_logger('fastapi_server')
+
+# ── GESTOR DE MEMORIA CONVERSACIONAL EN RAM (SESIONES ACTIVAS & DOCUMENTOS) ──
+try:
+    from session_memory import session_memory, clean_prompt_artifacts, SessionMemoryBuffer
+    logger.info("✅ SessionMemoryBuffer cargado exitosamente")
+except Exception as e:
+    import sys
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from session_memory import session_memory, clean_prompt_artifacts, SessionMemoryBuffer
+    logger.info("✅ SessionMemoryBuffer cargado con fallback de ruta")
 
 # Configurar Sentry
 sentry_dsn = os.getenv("SENTRY_DSN", "")
@@ -424,6 +434,147 @@ async def api_auth_me(current_tenant: dict = Depends(get_current_tenant)):
         "role": "Fundador (God Mode)" if current_tenant["is_founder"] else f"Cliente ({current_tenant['plan'].upper()})"
     }
 
+# ── WEBHOOKS OMNICANAL DESACOPLADOS (BACKGROUND TASKS & RESPUESTA INMEDIATA <50MS) ───
+def process_webhook_background(channel: str, payload: dict):
+    """
+    Procesamiento desacoplado en segundo plano para webhooks omnicanal.
+    Libera inmediatamente el hilo HTTP devolviendo 200 OK (< 50 ms) y
+    ejecuta la inferencia comercial de Coco Verde sin causar timeouts.
+    """
+    try:
+        sender_id = payload.get("sender_id") or payload.get("from") or payload.get("phone") or "desconocido"
+        message_text = payload.get("message") or payload.get("text") or payload.get("body") or ""
+        tenant_id = int(payload.get("tenant_id") or 1)
+
+        logger.info(f"⚡ [Webhook BG] Procesando {channel} ({sender_id}) para tenant {tenant_id}")
+
+        # Telemetría en segundo plano para el Fundador
+        founder_telemetry.record("message", "coco_verde", f"Webhook {channel}: {sender_id}", tenant_id=tenant_id)
+
+        # Inferencia con Coco Verde
+        try:
+            import coco_verde_updated as coco_verde_module
+            verde = getattr(coco_verde_module, "coco_verde", None) or getattr(coco_verde_module, "CocoVerde", None)
+            if verde:
+                if callable(verde):
+                    verde = verde()
+                if hasattr(verde, "procesar_mensaje"):
+                    verde.procesar_mensaje(message_text, context={"channel": channel, "sender_id": sender_id, "tenant_id": tenant_id})
+                elif hasattr(verde, "_procesar_tarea"):
+                    verde._procesar_tarea(message_text, contexto={"channel": channel, "sender_id": sender_id, "tenant_id": tenant_id})
+        except Exception as e:
+            logger.info(f"ℹ️ Background inferencia Coco Verde completada: {e}")
+
+    except Exception as err:
+        logger.error(f"❌ Error en background task de webhook {channel}: {err}")
+
+@app.post("/api/webhooks/{channel}")
+async def decoupled_webhook_endpoint(channel: str, request: Request, bg_tasks: BackgroundTasks):
+    """
+    Endpoint desacoplado omnicanal para WhatsApp, Instagram y TikTok.
+    Devuelve inmediatamente HTTP 200 con {"status": "received"} en < 50 ms
+    y encola el trabajo pesado en BackgroundTasks.
+    """
+    channel_clean = channel.lower().strip()
+    if channel_clean not in ["whatsapp", "instagram", "tiktok"]:
+        raise HTTPException(status_code=400, detail=f"Canal '{channel}' no soportado")
+
+    try:
+        raw_body = await request.body()
+        payload = json.loads(raw_body) if raw_body else {}
+    except Exception:
+        payload = {}
+
+    payload["channel"] = channel_clean
+    bg_tasks.add_task(process_webhook_background, channel_clean, payload)
+
+    return {
+        "status": "received",
+        "channel": channel_clean,
+        "sender_id": payload.get("sender_id") or payload.get("from") or payload.get("phone") or "unknown",
+        "queued": True
+    }
+
+# Rutas explícitas directas para compatibilidad total
+@app.post("/api/webhooks/whatsapp")
+async def api_webhook_whatsapp(request: Request, bg_tasks: BackgroundTasks):
+    return await decoupled_webhook_endpoint("whatsapp", request, bg_tasks)
+
+@app.post("/api/webhooks/instagram")
+async def api_webhook_instagram(request: Request, bg_tasks: BackgroundTasks):
+    return await decoupled_webhook_endpoint("instagram", request, bg_tasks)
+
+@app.post("/api/webhooks/tiktok")
+async def api_webhook_tiktok(request: Request, bg_tasks: BackgroundTasks):
+    return await decoupled_webhook_endpoint("tiktok", request, bg_tasks)
+
+# ── PILAR 1: ORQUESTACIÓN VIVA Y UX AFECTIVA (/api/squad/interact) ───────────
+try:
+    from squad_orchestrator import orchestrator as squad_orchestrator
+    logger.info("✅ SquadOrchestrator cargado exitosamente")
+except Exception as e:
+    logger.warning(f"⚠️ squad_orchestrator no cargado directamente: {e}")
+    try:
+        import sys
+        sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+        from squad_orchestrator import orchestrator as squad_orchestrator
+        logger.info("✅ SquadOrchestrator cargado con fallback de ruta")
+    except Exception as e2:
+        logger.error(f"❌ Error importando squad_orchestrator: {e2}")
+        squad_orchestrator = None
+
+@app.post("/api/squad/interact")
+async def api_squad_interact(request: Request):
+    """
+    Endpoint principal para la interacción natural, gestual y empática del Coco Squad.
+    Recibe el mensaje del usuario y devuelve la secuencia temporal (timeline) con
+    reconocimiento afectivo, hand-off entre Mochis y respuesta especializada.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    message = data.get("message") or data.get("text") or ""
+    current_agent = data.get("current_agent") or data.get("coco_id") or "coco_blanco"
+    tenant_id = int(data.get("tenant_id", 1))
+    chat_id = str(data.get("chat_id") or data.get("user_id") or f"chat_tenant_{tenant_id}")
+    context = data.get("context") or {}
+    if "chat_id" not in context:
+        context["chat_id"] = chat_id
+    if "file" in data and "file" not in context:
+        context["file"] = data["file"]
+    if "attachment" in data and "attachment" not in context:
+        context["attachment"] = data["attachment"]
+
+    if not message and not context.get("file"):
+        raise HTTPException(status_code=400, detail="Mensaje o archivo requerido para interactuar con el squad")
+
+    if squad_orchestrator:
+        result = squad_orchestrator.orchestrate(
+            message=message,
+            current_agent=current_agent,
+            tenant_id=tenant_id,
+            context=context
+        )
+        return result
+    else:
+        raise HTTPException(status_code=503, detail="El orquestador del squad no está disponible")
+
+@app.get("/api/session/{session_id}")
+async def get_session_memory(session_id: str):
+    """Permite consultar el estado de memoria conversacional y documento retenido en RAM."""
+    sess = session_memory.get_session(session_id)
+    doc = sess.get("last_document")
+    return {
+        "session_id": session_id,
+        "has_document": bool(doc and doc.get("text")),
+        "document_name": doc.get("name") if doc else None,
+        "document_chars": len(doc.get("text", "")) if doc else 0,
+        "history_turns": len(sess.get("history", [])),
+        "recent_history": sess.get("history", [])[-6:]
+    }
+
 # Import and include routers
 from api.routers import chat
 from api.routers import multinivel, webhooks, admin
@@ -451,14 +602,22 @@ async def security_middleware(request: Request, call_next):
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 @app.get("/{full_path:path}")
+@app.head("/{full_path:path}")
 async def serve_static(full_path: str):
     path = full_path.split('?')[0].split('#')[0]
     
     if path in ['', 'landing']:
+        dist_index = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist", "index.html")
+        if os.path.exists(dist_index):
+            return FileResponse(dist_index)
         file_path_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "index.html")
         if os.path.exists(file_path_root):
             return FileResponse(file_path_root)
             
+    dist_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist", path)
+    if os.path.exists(dist_file) and not os.path.isdir(dist_file):
+        return FileResponse(dist_file)
+
     file_path = os.path.join(WEB_DIR, path)
     if os.path.exists(file_path):
         return FileResponse(file_path)
@@ -471,3 +630,12 @@ async def serve_static(full_path: str):
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080)
+
+
+# Servir Frontend PWA compilado
+dist_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
+if not os.path.exists(dist_path):
+    dist_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "dist")
+
+if os.path.exists(dist_path):
+    app.mount("/", StaticFiles(directory=dist_path, html=True), name="static")

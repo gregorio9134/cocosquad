@@ -1113,25 +1113,34 @@ class AndroidApp {
     bar.innerHTML = "";
     this.miniMochis = [];
 
-    // Only display members OTHER than the active one (dynamic swap filter)
-    const available = SQUAD.filter((m) => m.id !== this.activeMember.id);
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = 30;
-    const h = 30;
+    // Squad Dock superior flotante: cápsula redondeada con los 4 Mochis interactivos
+    const capsule = document.createElement("div");
+    capsule.className = "squad-dock-capsule";
+    capsule.id = "squad-dock-capsule";
 
-    available.forEach((m, idx) => {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = 28;
+    const h = 28;
+
+    SQUAD.forEach((m, idx) => {
+      const isActive = m.id === this.activeMember.id;
       const isThinking = !!this.thinkingByAgent[m.id];
       const hasUnread = !isThinking && !!this.taskCompletedUnread[m.id];
       const btn = document.createElement("button");
-      btn.className = `squad-mochi-chip ${isThinking ? "thinking" : ""} ${hasUnread ? "has-unread" : ""}`;
+      btn.className = `squad-dock-item squad-mochi-chip ${isActive ? "active-mochi mochi-breathe" : ""} ${isThinking ? "thinking" : ""} ${hasUnread ? "has-unread" : ""}`;
       btn.dataset.agentId = m.id;
       btn.id = `squad-chip-${m.id}`;
       btn.style.setProperty("--chip-accent", m.color);
-      btn.title = isThinking
+      btn.style.setProperty("--dock-item-color", m.color);
+      btn.style.setProperty("--dock-item-glow", m.glow);
+      btn.style.setProperty("--mochi-trail-color", m.color);
+      btn.title = isActive
+        ? `${m.name} (${m.role}) · Mochi activo`
+        : isThinking
         ? `${m.name} está procesando con IA...`
         : hasUnread
-        ? `¡${m.name} completó el análisis! Toca para ver la respuesta`
-        : `Cambiar a ${m.name} (${m.role})`;
+        ? `¡${m.name} completó la tarea! Toca para ver la respuesta`
+        : `Fijar chat con ${m.name} (@${m.name.toLowerCase()})`;
       btn.setAttribute("aria-label", m.name);
 
       const canvas = document.createElement("canvas");
@@ -1164,6 +1173,9 @@ class AndroidApp {
       engine.setState(isThinking ? "thinking" : "idle");
       engine.setCocoSquadRole(m.squadRole);
       engine.isUserTracking = false;
+      if (isActive) {
+        engine.eyeOverride = "happy";
+      }
       if (hasUnread) {
         engine.eyeOverride = "happy";
         engine.eyeOverrideUntil = (performance.now() / 1000) + 3600;
@@ -1190,12 +1202,26 @@ class AndroidApp {
       engine.draw(ctx, w, h);
 
       btn.addEventListener("click", () => {
-        engine.triggerEmote("wink", 0.8);
-        this.selectSquadMember(m);
+        if (isActive) {
+          engine.triggerEmote("wink", 0.8);
+          btn.classList.remove("mochi-hop");
+          void btn.offsetWidth;
+          btn.classList.add("mochi-hop");
+          setTimeout(() => btn.classList.remove("mochi-hop"), 700);
+        } else {
+          engine.triggerEmote("happy", 0.8);
+          btn.classList.remove("mochi-hop", "mochi-hand-off");
+          void btn.offsetWidth;
+          btn.classList.add("mochi-hand-off");
+          setTimeout(() => btn.classList.remove("mochi-hand-off"), 850);
+          this.selectSquadMember(m);
+        }
       });
 
-      bar.appendChild(btn);
+      capsule.appendChild(btn);
     });
+
+    bar.appendChild(capsule);
   }
 
   public selectSquadMember(m: SquadMember | string) {
@@ -1455,9 +1481,18 @@ class AndroidApp {
               <span class="squad-returned-indicator">↩ <strong>${msg.intervention.from_name}</strong> volvió a su puesto</span>
             </div>
           `;
-        } else {
+        } else if (msg.isHandOffAck) {
           badge.className = "chat-agent-badge";
-          badge.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${this.activeMember.color};"></span> <span class="coco-name-animated">${this.activeMember.name}</span>`;
+          badge.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ffffff;box-shadow:0 0 6px #ffffff88;"></span> <span class="coco-name-animated" style="color:#ffffff;">Coco</span><span class="handoff-ack-badge">Pase de turno</span>`;
+          row.appendChild(badge);
+          bubble.className = "chat-bubble handoff-ack-bubble";
+          bubble.innerHTML = `<div class="message-content">${marked.parse(msg.content, { async: false }) as string}</div>`;
+        } else {
+          const speakerColor = msg.agentColor || this.activeMember.color;
+          const speakerName = msg.agentName || this.activeMember.name;
+          const speakerRole = msg.agentRole ? ` · ${msg.agentRole}` : "";
+          badge.className = "chat-agent-badge";
+          badge.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${speakerColor};box-shadow:0 0 6px ${speakerColor}88;"></span> <span class="coco-name-animated" style="color:${speakerColor};">${speakerName}</span><span style="font-size:10.5px;color:#94a3b8;margin-left:4px;">${speakerRole}</span>`;
           row.appendChild(badge);
           bubble.innerHTML = `<div class="message-content">${marked.parse(msg.content, { async: false }) as string}</div>`;
         }
@@ -1485,12 +1520,27 @@ class AndroidApp {
 
     if (this.thinkingByAgent[this.activeMember.id]) {
       const row = document.createElement("div");
-      row.className = "chat-bubble-row assistant";
+      row.className = "chat-bubble-row assistant mochi-custom-loader-row";
+      const m = this.activeMember;
+      let loaderIcon = "⚪";
+      let loaderText = `${m.name} coordinando con cariño...`;
+      if (m.id === "coco_rojo") {
+        loaderIcon = "📖";
+        loaderText = "Red analizando y leyendo en profundidad...";
+      } else if (m.id === "coco_verde") {
+        loaderIcon = "💬";
+        loaderText = "Green sincronizando WhatsApp y canales...";
+      } else if (m.id === "coco_azul") {
+        loaderIcon = "📊";
+        loaderText = "Blu ordenando métricas y balance de caja...";
+      }
       row.innerHTML = `
-        <div class="typing-pill">
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
+        <div class="mochi-custom-loader" style="--loader-border: ${m.color}55; --loader-glow: ${m.glow}; --loader-dot-color: ${m.color};">
+          <span class="mochi-loader-icon spin-pulse">${loaderIcon}</span>
+          <span class="mochi-loader-text">${loaderText}</span>
+          <div class="mochi-loader-dots">
+            <span></span><span></span><span></span>
+          </div>
         </div>
       `;
       container.appendChild(row);
@@ -2477,86 +2527,173 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
             : "text/plain")
         : "";
 
-      const payload: Record<string, unknown> = {
+      // ── PILAR 1: ORQUESTACIÓN VIVA Y UX AFECTIVA (/api/squad/interact) ───
+      const squadPayload = {
         message: messageText,
-        chat_id: 1,
+        current_agent: targetMemberId,
         tenant_id: this.tenantId,
-        coco_id: targetMemberId,
-        file: attached
-          ? {
-              name: attached.name,
-              data: pureB64,
-              base64: pureB64,
-              mime: mimeType,
-            }
-          : null,
-        attachment: attached ? pureB64 : undefined,
-        image: attached && attached.isImage ? pureB64 : undefined,
-        mime_type: attached ? mimeType : undefined,
-        contexto: attached
-          ? {
-              kind: "file",
-              name: attached.name,
-              archivo_base64: pureB64,
-            }
-          : null,
-        todos: this.todos,
-        notes: this.notes,
+        chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
+        context: {
+          chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
+          file: attached ? { name: attached.name, mime: mimeType, data: pureB64 } : null,
+          todos: this.todos,
+          notes: this.notes,
+        },
       };
 
-      notifyRequestStart();
-      const res = await fetch("http://150.136.59.173:8080/api/chat", {
-        method: "POST",
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        throw new Error(`Código de estado HTTP ${res.status}`);
+      let orchestratedData: any = null;
+      try {
+        notifyRequestStart();
+        const interactRes = await fetch("http://150.136.59.173:8080/api/squad/interact", {
+          method: "POST",
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(squadPayload),
+        });
+        if (interactRes.ok) {
+          orchestratedData = await interactRes.json();
+        }
+      } catch (err) {
+        console.warn("[Squad Orchestrator] Error consultando el servidor:", err);
       }
 
-      const data = await res.json();
-      const reply = data.reply || data.respuesta || "Sin respuesta del escuadrón.";
+      if (!orchestratedData || !orchestratedData.final_reply) {
+        throw new Error("El servidor no devolvió una respuesta del squad");
+      }
+
+      if (orchestratedData.is_handoff) {
+        // 1. Reconocimiento de Blanco con respiración elástica y pestañeo contento
+        const ack = (orchestratedData.timeline && orchestratedData.timeline.find((t: any) => t.step === "acknowledgement")) || {
+          content: "¡Entendido! Le paso la palabra a nuestro especialista.",
+          delay_ms: 380,
+        };
+
+        this.chatHistories["coco_blanco"].push({
+          id: Date.now() + 1,
+          role: "assistant",
+          content: ack.content,
+          agentId: "coco_blanco",
+          agentName: "Coco",
+          agentColor: "#FFFFFF",
+          agentRole: "Coordinador",
+          isHandOffAck: true,
+        });
+        this.saveStorage();
+        this.renderChatMessages();
+
+        this.engine.eyeOverride = "happy";
+        this.engine.triggerEmote("happy", 1.2);
+        Sound.play("pop");
+
+        await new Promise((resolve) => setTimeout(resolve, ack.delay_ms || 380));
+
+        // 2. Hand-off visual en el Squad Dock superior (salto hop y estela de color)
+        const targetAgentId: string = orchestratedData.target_agent;
+        const targetProfile = orchestratedData.target_profile || SQUAD.find((s) => s.id === targetAgentId) || SQUAD[0];
+        const targetChip = document.getElementById(`squad-chip-${targetAgentId}`);
+        if (targetChip) {
+          targetChip.classList.remove("mochi-hop", "mochi-hand-off");
+          void targetChip.offsetWidth;
+          targetChip.classList.add("mochi-hand-off");
+          setTimeout(() => targetChip.classList.remove("mochi-hand-off"), 850);
+        }
+        Sound.play("tap");
+        if (navigator.vibrate) navigator.vibrate([15, 25]);
+
+        await new Promise((resolve) => setTimeout(resolve, 450));
+
+        // 3. Conmutar al especialista y mostrar su loader característico
+        const targetMemberObj = SQUAD.find((s) => s.id === targetAgentId) || SQUAD[0];
+        this.selectSquadMember(targetMemberObj);
+        this.setAgentThinking(targetAgentId, true);
+        this.renderChatMessages();
+
+        // Si es Red, salto de entusiasmo hop al recibir textos/PDFs
+        if (targetAgentId === "coco_rojo") {
+          const redChip = document.getElementById("squad-chip-coco_rojo");
+          if (redChip) {
+            redChip.classList.add("mochi-hop");
+            setTimeout(() => redChip.classList.remove("mochi-hop"), 700);
+          }
+          this.engine.anim("sy", [
+            [1.22, 130, Ease.out],
+            [0.88, 120, Ease.inOut],
+            [1.06, 90, Ease.out],
+            [1, 100, Ease.back],
+          ]);
+        } else if (targetAgentId === "coco_verde") {
+          // Rebote elástico vivaz de Green
+          this.engine.anim("sx", [
+            [1.18, 110, Ease.out],
+            [0.85, 100, Ease.inOut],
+            [1, 110, Ease.back],
+          ]);
+        } else if (targetAgentId === "coco_azul") {
+          // Gestos pulcros de precisión de Blu
+          this.engine.anim("tilt", [
+            [0.15, 140, Ease.out],
+            [-0.1, 120, Ease.inOut],
+            [0, 100, Ease.back],
+          ]);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 600));
+
+        // 4. Respuesta substantive del especialista
+        const finalReply: string = orchestratedData.final_reply;
+        this.chatHistories[targetAgentId].push({
+          id: Date.now() + 2,
+          role: "assistant",
+          content: finalReply,
+          agentId: targetAgentId,
+          agentName: targetProfile.name,
+          agentColor: targetProfile.color,
+          agentRole: targetProfile.role,
+        });
+        this.saveStorage();
+        this.setAgentThinking(targetAgentId, false);
+        this.resetMochiToBase();
+        this.engine.setState("finished");
+        this.engine.triggerEmote("happy", 1.5);
+        Sound.play("finish");
+        this.renderChatMessages();
+        notifyAgentCompletion(targetAgentId, targetProfile.name, finalReply);
+        return;
+      }
+
+      // Flujo de interacción directa con el Mochi actual
+      const currentAgentObj = SQUAD.find((s) => s.id === targetMemberId) || SQUAD[0];
+      const finalReply: string = orchestratedData.final_reply;
 
       this.chatHistories[targetMemberId].push({
         id: Date.now() + 1,
         role: "assistant",
-        content: reply,
+        content: finalReply,
+        agentId: targetMemberId,
+        agentName: currentAgentObj.name,
+        agentColor: currentAgentObj.color,
+        agentRole: currentAgentObj.role,
       });
       this.saveStorage();
       this.setAgentThinking(targetMemberId, false);
 
       if (this.activeMember.id === targetMemberId) {
+        this.resetMochiToBase();
+        this.engine.setState("finished");
+        this.engine.triggerEmote("happy");
+        Sound.play("finish");
         this.renderChatMessages();
-      }
-
-      if (data.intervention) {
-        await this.executeSquadIntervention({
-          ...data.intervention,
-          user_prompt: messageText,
-        });
+        setTimeout(() => {
+          if (this.activeMember.id === targetMemberId && this.engine.state === "finished") {
+            this.resetMochiToBase();
+          }
+        }, 2200);
       } else {
-        const agent = SQUAD.find((s) => s.id === targetMemberId);
-        const agentName = agent ? agent.name : "Coco";
-
-        if (this.activeMember.id === targetMemberId) {
-          this.resetMochiToBase();
-          this.engine.setState("finished");
-          this.engine.triggerEmote("happy");
-          Sound.play("finish");
-          setTimeout(() => {
-            if (this.activeMember.id === targetMemberId && this.engine.state === "finished") {
-              this.resetMochiToBase();
-            }
-          }, 2200);
-        } else {
-          // Notificación persistente viva para el Coco que terminó en background
-          this.taskCompletedUnread[targetMemberId] = true;
-          this.renderTopSquadChips();
-          Sound.play("finish");
-        }
-        notifyAgentCompletion(targetMemberId, `${agentName} respondió`, reply);
+        this.taskCompletedUnread[targetMemberId] = true;
+        this.renderTopSquadChips();
+        Sound.play("finish");
       }
+      notifyAgentCompletion(targetMemberId, `${currentAgentObj.name} respondió`, finalReply);
+      return;
     } catch (err: any) {
       const agent = SQUAD.find((s) => s.id === targetMemberId);
       const agentName = agent ? agent.name : "Coco";
@@ -3037,7 +3174,7 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
         headers: this.getAuthHeaders(),
         body: JSON.stringify({
           message: `Analiza detalladamente este documento (${file.name}) y presenta un informe exhaustivo con puntos clave, metodología y conclusiones.`,
-          chat_id: 1,
+          chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
           coco_id: "coco_rojo",
           tenant_id: this.tenantId,
           file: {
@@ -3687,6 +3824,24 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
           <li>📱 WhatsApp, Instagram Direct y TikTok omnicanal</li>
           <li>🔒 Bóveda Local Zero-Storage de documentos sin límites</li>
         </ul>
+
+        <div class="billing-fiscal-box">
+          <div class="billing-fiscal-header">
+            <span>🧾</span>
+            <span>Datos Fiscales (Opcional · Factura A o B)</span>
+          </div>
+          <div class="billing-fiscal-inputs">
+            <input type="text" id="mp-fiscal-cuit" class="billing-fiscal-field" placeholder="CUIT / CUIL (e.g. 30-71234567-8)" maxlength="14" />
+            <select id="mp-fiscal-condition" class="billing-fiscal-field">
+              <option value="Consumidor Final">Consumidor Final (Factura B)</option>
+              <option value="Responsable Inscripto">Responsable Inscripto (Factura A)</option>
+              <option value="Monotributo">Monotributo (Factura B)</option>
+              <option value="Exento">Exento / No Gravado</option>
+            </select>
+            <input type="text" id="mp-fiscal-razon" class="billing-fiscal-field" placeholder="Razón Social / Empresa (Opcional)" maxlength="60" />
+          </div>
+        </div>
+
         <button class="billing-checkout-btn mp-btn" id="btn-action-checkout-mp">
           🚀 Pagar con Mercado Pago (ARS)
         </button>
@@ -3729,14 +3884,42 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
         ? "http://150.136.59.173:8080/api/billing/checkout/mercadopago"
         : "http://150.136.59.173:8080/api/billing/checkout/stripe";
 
+      let fiscalCuit: string | undefined;
+      let fiscalCond: string | undefined;
+      let fiscalRazon: string | undefined;
+
+      if (provider === "mercadopago") {
+        const cuitInput = document.getElementById("mp-fiscal-cuit") as HTMLInputElement | null;
+        const condSelect = document.getElementById("mp-fiscal-condition") as HTMLSelectElement | null;
+        const razonInput = document.getElementById("mp-fiscal-razon") as HTMLInputElement | null;
+        if (cuitInput && cuitInput.value.trim()) fiscalCuit = cuitInput.value.trim();
+        if (condSelect && condSelect.value) fiscalCond = condSelect.value;
+        if (razonInput && razonInput.value.trim()) fiscalRazon = razonInput.value.trim();
+      }
+
+      const bodyPayload: any = {
+        tenant_id: this.tenantId,
+        email: this.userEmail,
+        plan: "pro",
+      };
+
+      if (fiscalCuit) {
+        bodyPayload.cuit = fiscalCuit;
+        bodyPayload.tax_id = fiscalCuit;
+      }
+      if (fiscalCond) {
+        bodyPayload.condicion_fiscal = fiscalCond;
+        bodyPayload.tax_condition = fiscalCond;
+      }
+      if (fiscalRazon) {
+        bodyPayload.razon_social = fiscalRazon;
+        bodyPayload.company_name = fiscalRazon;
+      }
+
       const res = await fetch(endpoint, {
         method: "POST",
         headers: this.getAuthHeaders(),
-        body: JSON.stringify({
-          tenant_id: this.tenantId,
-          email: this.userEmail,
-          plan: "pro",
-        }),
+        body: JSON.stringify(bodyPayload),
       });
 
       if (!res.ok) throw new Error("Error en servidor al generar checkout");
@@ -3865,6 +4048,109 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
     toast.classList.add("visible");
     Sound.play("blip");
   }
+
+  public checkAndShowOnboardingTour(force: boolean = false): void {
+    try {
+      if (!force && typeof localStorage !== "undefined" && localStorage.getItem("onboarding_completed") === "true") {
+        return;
+      }
+    } catch {}
+
+    if (document.getElementById("coco-onboarding-tour-modal")) {
+      return;
+    }
+
+    const steps = [
+      {
+        icon: "💬",
+        agent: "Coco Blanco",
+        text: "Escribe o arrastra archivos a Coco Blanco para asistencia general.",
+        tip: "Asistente central de productividad y consultas ágiles"
+      },
+      {
+        icon: "⚡",
+        agent: "Squad Assist",
+        text: "Squad Assist: Green, Red y Blu intervendrán de forma automática según la tarea.",
+        tip: "Especialistas autónomos interconectados"
+      },
+      {
+        icon: "🔒",
+        agent: "Privacidad Zero-Storage",
+        text: "Privacidad Zero-Storage: Tus datos residen en tu navegador y se procesan en RAM.",
+        tip: "100% privado · Sin persistencia en servidor"
+      }
+    ];
+
+    let currentStep = 0;
+
+    const overlay = document.createElement("div");
+    overlay.id = "coco-onboarding-tour-modal";
+    overlay.className = "onboarding-tour-modal-backdrop";
+
+    const updateStepUI = () => {
+      const step = steps[currentStep];
+      const isLast = currentStep === steps.length - 1;
+
+      overlay.innerHTML = `
+        <div class="onboarding-tour-card" role="dialog" aria-modal="true">
+          <div class="onboarding-tour-header">
+            <span class="onboarding-tour-step-badge">Paso ${currentStep + 1} de ${steps.length}</span>
+            <button class="onboarding-tour-close-btn" id="btn-tour-dismiss" aria-label="Cerrar tour">✕</button>
+          </div>
+          <div class="onboarding-tour-body">
+            <div class="onboarding-tour-icon">${step.icon}</div>
+            <div class="onboarding-tour-agent">${step.agent}</div>
+            <p class="onboarding-tour-desc">${step.text}</p>
+            <span class="onboarding-tour-tip">${step.tip}</span>
+          </div>
+          <div class="onboarding-tour-footer">
+            <div class="onboarding-tour-dots">
+              ${steps.map((_, i) => `<span class="onboarding-tour-dot ${i === currentStep ? "active" : ""}"></span>`).join("")}
+            </div>
+            <div class="onboarding-tour-actions">
+              ${currentStep > 0 ? `<button class="onboarding-tour-back-btn" id="btn-tour-prev">Anterior</button>` : ""}
+              <button class="onboarding-tour-next-btn ${isLast ? "finish-btn" : ""}" id="btn-tour-next">
+                ${isLast ? "Entendido" : "Siguiente"}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      overlay.querySelector("#btn-tour-dismiss")?.addEventListener("click", () => finishTour());
+      overlay.querySelector("#btn-tour-prev")?.addEventListener("click", () => {
+        if (currentStep > 0) {
+          currentStep--;
+          Sound.play("tap");
+          updateStepUI();
+        }
+      });
+      overlay.querySelector("#btn-tour-next")?.addEventListener("click", () => {
+        if (isLast) {
+          finishTour();
+        } else {
+          currentStep++;
+          Sound.play("tap");
+          updateStepUI();
+        }
+      });
+    };
+
+    const finishTour = () => {
+      try {
+        localStorage.setItem("onboarding_completed", "true");
+      } catch {}
+      overlay.classList.add("tour-fade-out");
+      Sound.play("chime");
+      setTimeout(() => {
+        overlay.remove();
+      }, 240);
+    };
+
+    updateStepUI();
+    const appContainer = document.getElementById("app") || document.body;
+    appContainer.appendChild(overlay);
+  }
 }
 
 function initApp() {
@@ -3873,6 +4159,7 @@ function initApp() {
   (window as any).triggerDevourAnimation = (file: File) => app.triggerDevourAnimation(file);
   (window as any).checkForAppUpdate = () => app.checkForAppUpdate();
   (window as any).simulateAppUpdate = (v?: string) => app.showUpdateToast(v || "1.0.1");
+  (window as any).showOnboardingTour = (force?: boolean) => app.checkAndShowOnboardingTour(force);
   app.render();
   void app.initAuth();
   (window as any).__swipeController = app.getSwipeController();
@@ -3887,6 +4174,11 @@ function initApp() {
       }, 420);
     }, 1200);
   }
+
+  // Micro-Tour de Onboarding Guiado (3 pasos breves en primera visita)
+  setTimeout(() => {
+    app.checkAndShowOnboardingTour();
+  }, 1400);
 
   // Sanitize URL immediately so page refresh never re-executes tests
   if (window.location.search) {
