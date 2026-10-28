@@ -60,8 +60,13 @@ pub fn connect() -> Option<UnixStream> {
 /// parking us until the app gets round to accepting. Blocking again afterwards:
 /// the main thread's budget bounds every read and write.
 fn try_connect(path: &Path) -> io::Result<UnixStream> {
+    #[cfg(target_os = "linux")]
     let fd = unsafe {
         libc::socket(libc::AF_UNIX, libc::SOCK_STREAM | libc::SOCK_CLOEXEC | libc::SOCK_NONBLOCK, 0)
+    };
+    #[cfg(target_os = "macos")]
+    let fd = unsafe {
+        libc::socket(libc::AF_UNIX, libc::SOCK_STREAM | libc::O_CLOEXEC | libc::O_NONBLOCK, 0)
     };
     if fd < 0 {
         return Err(io::Error::last_os_error());
@@ -96,6 +101,7 @@ fn try_connect(path: &Path) -> io::Result<UnixStream> {
 
 /// True when the process serving the socket runs as the same user we do.
 /// A failure to answer is treated as "not ours", as on Windows.
+#[cfg(target_os = "linux")]
 fn server_is_same_user(stream: &UnixStream) -> bool {
     let mut cred: libc::ucred = unsafe { std::mem::zeroed() };
     let mut len = std::mem::size_of::<libc::ucred>() as libc::socklen_t;
@@ -111,4 +117,23 @@ fn server_is_same_user(stream: &UnixStream) -> bool {
     rc == 0
         && len as usize == std::mem::size_of::<libc::ucred>()
         && cred.uid == unsafe { libc::getuid() }
+}
+
+#[cfg(target_os = "macos")]
+fn server_is_same_user(stream: &UnixStream) -> bool {
+    let mut cred: libc::xucred = unsafe { std::mem::zeroed() };
+    let mut len = std::mem::size_of::<libc::xucred>() as libc::socklen_t;
+    let rc = unsafe {
+        libc::getsockopt(
+            stream.as_raw_fd(),
+            0, // SOL_LOCAL
+            libc::LOCAL_PEERCRED,
+            &mut cred as *mut libc::xucred as *mut libc::c_void,
+            &mut len,
+        )
+    };
+    rc == 0
+        && len as usize >= std::mem::size_of::<libc::xucred>()
+        && cred.cr_version == libc::XUCRED_VERSION
+        && cred.cr_uid == unsafe { libc::getuid() }
 }

@@ -39,9 +39,9 @@ mod win;
 #[cfg(windows)]
 use win::connect;
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 mod unix;
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 use unix::connect;
 
 fn main() {
