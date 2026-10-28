@@ -30,7 +30,16 @@ claves_ssh/
 *.pub
 id_rsa*
 id_ed25519*
+COPIA_SEGURIDAD_*
+*.tar.gz
+*.zip
 
 # Local tools and simulation logs
 tools/
 scripts/simulation/logs/
+
+# Repositorio de staging (tiene su propio git; ver server-staging/README si existe)
+server-staging/
+
+# Puntos de resguardo locales (resguardos de trabajo, nunca versionados)
+.resguardo/

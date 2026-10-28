@@ -1,5 +1,5 @@
 COCO SQUAD — COMUNICACION ENTRE NOTEBOOKS
-Actualizado: 10 de octubre de 2026
+Actualizado: 20 de octubre de 2026
 
 PARA QUE SIRVE ESTE ARCHIVO
 
@@ -926,3 +926,266 @@ Causas raices identificadas y resueltas:
      * Mochi permanece visible mostrando desconcierto (`sweat`, sonido `warn`).
      * Informa al usuario en el chat ("No se detecto ninguna ventana o carpeta compatible...").
      * Tras 1500ms regresa volando a la isla/notch de forma segura, sin bloquearse ni desaparecer.
+
+
+18. DESPLIEGUE EN ORACLE CLOUD STAGING (UBUNTU 22.04 LTS, FASTAPI, ZERO-STORAGE) (15-19 OCTUBRE 2026)
+-----------------------------------------------------------------------------------------------------
+Estado de la infraestructura en Oracle Cloud:
+- Servidor: Ubuntu 22.04.5 LTS (x86_64) en IP publica 150.136.59.173.
+- Usuario: ubuntu.
+- Clave SSH: ~/.ssh/oracle_key (RSA 4096 / OpenSSH).
+- Directorio de produccion / staging: /home/ubuntu/agente-staging/
+- Directorio legado de Jarvis: /home/ubuntu/agente/
+- Servicio principal: FastAPI sobre Uvicorn en puerto 8080 (0.0.0.0:8080).
+- Comando de arranque no bloqueante:
+  cd /home/ubuntu/agente-staging && nohup python3 fastapi_server.py > server.log 2>&1 &
+- Politica Zero-Storage: Estricta prohibicion de almacenar datos personales o documentos de usuarios en el disco de la VM. Todo procesamiento documental se realiza 100% en memoria RAM (BytesIO).
+- Servicio de estaticos: FastAPI monta `/home/ubuntu/agente-staging/dist/` para servir la PWA directamente a traves del puerto 8080 y de los tuneles HTTPS.
+
+
+19. AUTENTICACION MULTI-TENANT JWT (PASO 8) Y MODO FUNDADOR VS CLIENTE REGULAR (19 OCTUBRE 2026)
+-----------------------------------------------------------------------------------------------------
+Diferenciacion de roles y seguridad multi-tenant:
+- Mecanismo: Tokens JWT estandar HS256 emitidos por PyJWT o fallback criptografico HMAC-SHA256 en fastapi_server.py (`create_jwt_token`, `decode_jwt_token`).
+- Modo Fundador (Tenant ID = 1):
+  * Email: founder@cocosquad.ai (is_founder = true, quota = unlimited).
+  * Badge visual: Insignia dorada 👑 Fundador con animacion de brillo suave en el header.
+  * Telemetria y Auditoria en Blu: Consultas de metricas de red, caja y volumen operativo devuelven telemetria global en tiempo real (/api/founder/telemetry).
+- Cliente Regular (Tenant ID >= 2):
+  * Email: tenant_X@cocosquad.ai (is_founder = false, plan = 'free' o 'pro').
+  * Badge visual: Insignia verde esmeralda 🌱 Cliente Regular.
+  * Gating en Blu: Intentos de acceder a telemetria global son rechazados cortesmente con mensaje "Acceso Denegado · Modo Fundador Requerido".
+  * Selector de Planes Activo: Acceso al catalogo de planes Starter y PRO con integracion de pago.
+- Switch rapido en UI: Botones interactivos en login y configuracion para conmutar entre Fundador y Regular sin reiniciar la app.
+
+
+20. PASARELA DE COBROS HIBRIDA (MERCADO PAGO + STRIPE) Y WEBHOOKS (19 OCTUBRE 2026)
+-----------------------------------------------------------------------------------------------------
+Monetizacion hibrida local e internacional:
+- Backend: Modulo `billing.py` montado en `/api/billing`.
+- Mercado Pago (Argentina / Moneda Local):
+  * Plan Starter: $9.900 ARS/mes (~$8 USD).
+  * Plan PRO: $24.900 ARS/mes (~$20 USD).
+  * Endpoint: `POST /api/billing/checkout/mercadopago` genera preferencia de pago con external_reference vinculado al tenant_id.
+  * Soporte fiscal: Captura de CUIT y emision de Factura A/B automatizada.
+- Stripe (Internacional / USD):
+  * Plan Starter: $8.00 USD/mes.
+  * Plan PRO: $20.00 USD/mes.
+  * Endpoint: `POST /api/billing/checkout/stripe` genera checkout session con client_reference_id.
+- Webhooks asincronos desacoplados:
+  * Receptores `POST /api/billing/webhook/mercadopago` y `POST /api/billing/webhook/stripe`.
+  * Procesamiento en background en <50ms para evitar timeouts de pasarelas, actualizando de inmediato la tabla SQLite `subscriptions` a `plan = 'pro'`.
+
+
+21. SIMULACIONES CUANTITATIVAS DE MERCADO CON MIROFISH OASIS (V1 A V4) (19 OCTUBRE 2026)
+-----------------------------------------------------------------------------------------------------
+Validacion de modelo comercial con 100 agentes sinteticos:
+- MiroFish V1 & V2: Validacion de Micro-Tour de Onboarding (3 pasos), superando la barrera de activacion de los 4 Mochis (activacion subio de 52% a 88%).
+- MiroFish V3 (Programa de Referidos Escalonado):
+  * +5% de descuento mensual acumulable por cada referido activo (maximo 25% OFF con 5 referidos).
+  * 15% OFF inicial de bienvenida para el invitado.
+  * K-Factor alcanzado: 1.51 supercritico con retencion D90 de 94.0% y margen neto unitario de 97.2%.
+- MiroFish V4 (Programa de Afiliados Multinivel - 3 Niveles / 20% Total):
+  * Reparto de comisiones recurrentes en efectivo: Nivel 1 (Directos) 12%, Nivel 2 (Indirectos) 5%, Nivel 3 (Red terciaria) 3%.
+  * Regla de Calificacion: Suscripcion activa requerida para cobrar comisiones (Efecto "Lucro Cesante").
+  * K-Factor total de red: 2.48 (+64.2% vs V3), reduciendo de 10 a 7 meses el plazo para 1.000 clientes activos.
+  * Churn mensual en usuarios comisionados: Desplome al 0.2% (el 34.2% de los clientes se autofinancia).
+  * P&L a 1.000 clientes: $19.200.000 ARS/mes MRR con 75.1% de margen neto operativo ($14.399.200 ARS/mes libres).
+  * Reportes generados: SIMULATION_FEEDBACK_REPORT.md, SIMULATION_FEEDBACK_REPORT_V2.md, SIMULATION_REFERRALS_REPORT_V3.md, SIMULATION_AFFILIATES_REPORT_V4.md.
+
+
+22. PILAR 1 — ORQUESTACION VIVA, UX AFECTIVA Y SQUAD DOCK SUPERIOR (19-20 OCTUBRE 2026)
+-----------------------------------------------------------------------------------------------------
+Interaccion natural, gestual y empatica entre los 4 Mochis:
+- Squad Dock Superior (`windows/src/android/android.css`, `android.ts`):
+  * Capsula flotante redondeada en la cabecera con los 4 Mochis siempre visibles e interactivos a 60 FPS en canvas 2D.
+  * Invarianza morfologica estricta: 2 ojos simetricos ubicados en x=32% y x=68%, buffer de renderizado 80x80 escalado a 40x40 CSS.
+  * Halo de color y respiracion elastica suave (`mochi-breathe`, `mochi-hop`, `mochi-hand-off`) destacando al Mochi activo.
+- Roles y Loaders Dinamicos Especializados:
+  * Coco Blanco (Coordinador paciente, ⚪, #FFFFFF): Loader de respiracion empatica y gestion general.
+  * Coco Red (Erudito analista, 📖, #EF4444): Loader de libro abierto y lectura concentrada.
+  * Coco Verde (Comunicador despierto, 💬, #10B981): Loader de onda expansiva y sincronizacion WhatsApp.
+  * Coco Blu (Metodico de precision, 📊, #3B82F6): Loader de balance financiero y tablas ordenadas.
+- Orquestador de Secuencia Temporal (`windows/scripts/squad_orchestrator.py` & `/api/squad/interact`):
+  * Secuencia de 4 fases afectivas: Reconocimiento afectivo de Blanco (`acknowledgement`, 380ms), pase de manos (`hand_off`, 450ms), activacion del loader del especialista (`loader_state`, 550ms) y respuesta especializada substantiva (`response`).
+
+
+23. RESOLUCION DEFINITIVA DE LAS 3 FALLAS CRITICAS (20 OCTUBRE 2026)
+-----------------------------------------------------------------------------------------------------
+Problemas criticos detectados en pruebas de produccion y soluciones de raiz implementadas:
+1. Falla 1 (Parser de PDF y Alucinacion Soda Stereo / Costa Rica):
+   - Causa raiz: `CocoRojo._procesar_tarea` ejecutaba `DeepResearchTool.run(tema=mensaje)`, buscando el nombre de archivo en DuckDuckGo. Esto recuperaba articulos de Wikipedia de Soda Stereo / Costa Rica y retornaba directamente la plantilla de directivas del sistema en el chat.
+   - Solucion: Extraccion multi-tier en memoria RAM (`pdf_extractor.py`) con cascada `pypdf` -> `pdfplumber` -> `pymupdf` -> `PyPDF2` -> Gemini OCR (`gemini-flash-latest`). Se prohibe taxativamente la busqueda web (`web_search = False`) ante la presencia de documentos, inyectando el texto bajo la etiqueta obligatoria `[CONTENIDO DEL DOCUMENTO ADJUNTO]`. Sanitizador regex `clean_prompt_artifacts` depura cualquier encabezado o fuga de directivas internas.
+2. Falla 2 (Amnesia de Sesion / Perdida de Contexto entre Turnos):
+   - Causa raiz: Ni `fastapi_server.py` ni los routers conservaban el documento analizado en peticiones HTTP subsiguientes, respondiendo "No tengo a mano el documento..." ante repreguntas.
+   - Solucion: Buffer de memoria en RAM (`session_memory.py`) por `session_id`. Conserva el documento activo y los ultimos 12 turnos de dialogo. Al repreguntar (ej: "¿que podes decirme del punto 1.6?"), el backend inyecta automaticamente el texto del documento previo y responde con precision milimetrica.
+3. Falla 3 (Falsa Delegacion de Blanco a Red sin Ejecucion):
+   - Causa raiz: Blanco emitia texto estatico ("Ese documento supera mi limite... Se lo derivo a Red") como punto muerto sin ejecutar a Red.
+   - Solucion: Delegacion encadenada síncrona en el backend. En la misma peticion HTTP, Blanco deriva y ejecuta a Coco Rojo, retornando de inmediato el informe analitico exhaustivo del especialista.
+
+
+24. INFRAESTRUCTURA HTTPS PARA PRUEBAS EN CELULAR (PWA, WEBRTC & CLOUDFLARE) (20 OCTUBRE 2026)
+-----------------------------------------------------------------------------------------------------
+Conectividad segura y experiencia movil completa:
+- Requerimiento: Permitir el uso de la camara del celular (WebRTC / getUserMedia) y la instalacion de la PWA en pantalla completa ("Agregar a pantalla de inicio") sin advertencias de seguridad del navegador.
+- Implementacion del Tunel:
+  * Binario oficial `cloudflared` instalado en `/usr/local/bin/cloudflared` en el servidor Oracle Cloud (Ubuntu x86_64).
+  * Script `start_tunnel.sh`: Inicia de forma no bloqueante un tunel Cloudflare apuntando a `http://127.0.0.1:8080`, extrae dinamicamente la URL publica `https://*.trycloudflare.com` y la almacena en `tunnel_url.txt`.
+  * Script `stop_tunnel.sh`: Detiene el proceso del tunel y limpia los descriptores.
+  * URL activa probada: `https://contents-buses-profession-reasoning.trycloudflare.com`.
+- Soporte PWA:
+  * `manifest.json` y `sw.js` servidos con soporte explicito GET y HEAD en `fastapi_server.py`.
+  * Iconos en alta resolucion (`128x128.png`, `icon.png`) disponibles en la raiz y `/icons/`.
+  * Al ingresar desde el celular por HTTPS, Safari y Chrome permiten la instalacion directa como app nativa y el uso inmediato de la camara.
+
+
+25. INVENTARIO DE CREDENCIALES, ACCESO SSH, VARIABLES DE ENTORNO Y PAQUETE DE COPIA DE SEGURIDAD
+-----------------------------------------------------------------------------------------------------
+Para sincronizar y continuar el desarrollo en la otra notebook con Antigravity:
+1. Acceso SSH al Servidor Oracle:
+   - Host: 150.136.59.173 (o 129.158.204.84 alias jarvis)
+   - Usuario: ubuntu
+   - Clave privada: en `/Users/Gregorio/Desktop/Coco Squad - Claves y Accesos/claves/keys/oracle_key`.
+   - Permisos requeridos en la otra notebook: `chmod 600 ~/.ssh/oracle_key`.
+2. Variables de Entorno del Backend (.env):
+   - GROQ_API_KEY: <REDACTADA - rotar>
+
+   - GEMINI_API_KEY: <REDACTADA - rotar>
+   - PINECONE_API_KEY: <REDACTADA - rotar>
+   - PINECONE_HOST: vector-ai-index-1gxsytu.svc.aped-4627-b74a.pinecone.io
+   - CEREBRAS_API_KEY: <REDACTADA - rotar>
+   - CLOUDFLARE_API_TOKEN: <REDACTADA - rotar>
+   - CLOUDFLARE_ACCOUNT_ID: 0d10d5b0a0bd1c103c958d93476be029
+   - OPENROUTER_API_KEY: <REDACTADA - rotar>
+   - TELEGRAM_BOT_TOKEN: <REDACTADA - rotar>
+   - TELEGRAM_ADMIN_CHAT_ID: 1337913289
+   - JARVIS_API_KEY: <REDACTADA - rotar>
+3. Paquete de Copia de Seguridad Generado:
+   - Carpeta de claves y accesos (única, fuera del proyecto): `/Users/Gregorio/Desktop/Coco Squad - Claves y Accesos/`
+   - Respaldo único del notebook (comprimido): `.../Coco Squad - Claves y Accesos/respaldo/respaldo-notebook-2026-10-20.tar.gz`
+   - Las copias antiguas (carpeta COPIA_SEGURIDAD_* y sus .tar.gz/.zip) fueron eliminadas el 21/10/2026 tras verificar que su contenido estaba en las ubicaciones anteriores.
+   - Incluye: Claves SSH, archivo .env completo, todos los scripts de backend actualizados, el build de distribucion de frontend (`dist/`), los reportes de arquitectura y las instrucciones paso a paso para la otra notebook.
+
+26. RELEVO PARA NUEVA CONVERSACION (21 DE OCTUBRE DE 2026)
+-----------------------------------------------------------------------------------------------------
+Estado al cerrar la sesion:
+- Repositorio oficial elegido: gregorio9134/Coco-Squad. gregorio9134/cocosquad debe quedar intacto.
+- Checkout original: rama client/android, commit c554663. Tiene 10 archivos versionados modificados y 13 nuevos SIN commit. No se han tocado.
+- Rama local de integracion: integration/coco-squad-main, commit cfc619f (el worktree se quito el 21/10/2026; la rama sigue en el repo). Contiene el main oficial a4a08a3 en su historial: 71 commits por delante, 0 por detras. Esta limpia. NO publicada.
+- Baseline del backend de staging: repositorio propio en `/Users/Gregorio/Desktop/coco squad/server-staging/` (ignorado por el repo principal). Rama backend/staging-baseline, commits hasta 5ea5026, luego cambios de Gemini (6ba09a5). Sin push.
+- Nada se ha subido a GitHub ni se ha creado PR.
+
+Decision vigente: NO abrir PR todavia.
+
+Bloqueos antes de publicar (ver revision completa en la conversacion anterior):
+1. Autenticacion: get_current_tenant en fastapi_server.py acepta x-tenant-id sin JWT y asigna tenant fundador por defecto; el login no verifica contrasena.
+2. Webhooks de pago (billing.py: mercadopago y stripe) activan PRO sin verificar firma ni estado del pago; sin tenant asignan tenant 1.
+3. Datos fiscales (CUIT, razon social) expuestos por GET /api/billing/fiscal/{tenant_id} sin autenticacion; /api/session/{id} expone historial sin autenticacion.
+4. Metricas del fundador con valores fijos y minimos (fastapi_server.py: latencia 112 ms, uptime 99.98, minimos 142/28/19).
+5. Coco Azul aparece como miembro disponible en state.ts y android.ts, pero las notas dicen que no debe mostrarse como capacidad disponible hasta validarla. Definir alcance.
+6. git diff --check falla: espacios finales en PROJECT_MEMORY.md, SUCCESS_PATTERNS.md, billing.py, chat_router_updated.py y scripts.
+7. Los cambios sin commit no estan en la rama de integracion; dividir en PRs pequenos.
+
+Validaciones ya hechas (pasaron): tsc + vite build del frontend (desde windows/), parseo Python de 11 archivos, bash -n de scripts tunnel, scripts/test-safe-links.sh (15 casos), scripts/test-screen-geometry.sh (13 casos), swiftc -parse de fuentes Swift cambiadas.
+No ejecutado: test_viability_e2e.py (apunta al servidor Oracle y usa SSH); build Tauri/Rust para Windows.
+
+Proximos pasos sugeridos:
+- Corregir autenticacion, verificacion de webhooks y acceso a datos fiscales.
+- Decidir el alcance de Coco Azul.
+- Corregir espacios finales y volver a correr git diff --check.
+- Separar los cambios en PRs revisables y recien despues publicar en Coco-Squad.
+
+Seguridad: este archivo contiene claves y tokens en texto plano dentro de un repositorio de git. Antes de cualquier commit o push: rotar esas credenciales y sacarlas del repo (agregar al .gitignore o mover a un gestor de secretos).
+
+27. ESTADO AL 21/10/2026 (ACTUALIZACION)
+-----------------------------------------------------------------------------------------------------
+- Cazador duplicado en 129.158.204.84 (agente_legacy): DETENIDO y deshabilitado. Queda activo SOLO el de staging (150.136.59.173, jarvis-hunter.service).
+- Cazador local corregido (windows/scripts/jarvis_hunter.py, sin commit): sin secretos en el codigo; no lanza una segunda instancia mientras la primera no se confirme. Falta desplegarlo al servidor (requiere reiniciar el servicio activo).
+- Backend de staging: orquestador corregido y DESPLEGADO (squad_orchestrator.py, respaldo en squad_orchestrator.py.bak_20261021). Los Mochis ya responden con su personalidad: coco_verde -> Verde, coco_rojo -> Red, coco_azul -> Blu. Errores del modelo ahora devuelven status error.
+- Commit server-staging 9ee07b0 (orquestador) y f3b4c5c (seguridad). El commit f3b4c5c NO esta desplegado: requiere FOUNDER_PASSWORD y ajustar telemetria de Blu antes, o rompe el acceso del fundador.
+- Vista previa local: `windows/` con vite en http://127.0.0.1:5173 (apunta al servidor de staging).
+- Claves: NO revocadas. Groq, OpenRouter y Cerebras siguen en uso por el staging. Revocar al desplegar la version Gemini.
+- Repos GitHub: se conservan ambos (Coco-Squad y cocosquad) por decision del usuario.
+- Pendiente: clave de Gemini (presupuesto el mes que viene).
+
+28. CAMBIOS DEL 21/10/2026 (TARDE)
+-----------------------------------------------------------------------------------------------------
+- Seguridad DESPLEGADA en staging (150.136.59.173): sin sesion -> 401; login del fundador exige FOUNDER_PASSWORD; JWT_SECRET propio; pagos verificados. Secretos en "Coco Squad - Claves y Accesos/claves/fundador-secretos.env" (no subir a git).
+- Orquestador DESPLEGADO: Groq primero, luego OpenRouter y Cerebras. Regla de documento para no decir "solo recibo un fragmento".
+- Cazador DESPLEGADO (jarvis-hunter.service activo): lee su .env, sin secretos en codigo, no lanza una segunda instancia mientras una esta pendiente.
+- Pruebas guardadas en server-staging/tests (17 casos): python3 -m unittest tests.test_security tests.test_squad_orchestrator
+- PENDIENTE en la app: el cliente sigue mostrando "Fundador" por defecto; la telemetria de Blu devuelve 401 sin login. Falta la pantalla de login del fundador.
+- Claves: ninguna revocada. Groq, OpenRouter y Cerebras son ahora la cadena de respaldo gratuita.
+- Pendiente de decision: Green y el menu "+" (se revisan a continuacion).
+
+
+29. DECISION DE MVP (21/10/2026, 13:36)
+-----------------------------------------------------------------------------------------------------
+- MVP = Coco Blanco y Red. Green y Blu EN PAUSA (la app los oculta; el codigo queda en SQUAD_CATALOG).
+- Para reactivar uno: agregar su id a MVP_ENABLED_MEMBERS en windows/src/android/android.ts.
+- Motivo: la configuracion de Green (WhatsApp/Instagram/TikTok) requiere cuentas de Meta Business y decisiones pendientes.
+- Confirmado con la documentacion oficial de Meta: respuestas de texto solo dentro de la ventana de 24 h abierta por el usuario; el metodo no oficial queda descartado para el SaaS.
+
+30. LOGIN HONESTO DE PUNTA A PUNTA (21/10/2026, NOCHE)
+-----------------------------------------------------------------------------------------------------
+- Que "iniciar sesion" sea real: el token es la UNICA fuente de identidad. El tenant_id del cuerpo de la peticion se ignora por completo.
+- Backend (server-staging/ es la fuente de verdad; windows/scripts/ y server-staging/scripts/ son copias obsoletas: archivar, no desplegar):
+  - api/dependencies.py -> verify_session_or_internal(request): acepta "Bearer JARVIS_API_KEY" (interno) o un JWT de tenant valido. Import diferido de decode_jwt_token para evitar ciclo con fastapi_server.
+  - api/routers/chat.py -> api_chat depende de verify_session_or_internal y usa sesion["tenant_id"]. Se elimino el tenant_id del cuerpo y el override mode_req == 'recepcion'.
+  - fastapi_server.py -> api_auth_login: el fundador (founder@cocosquad.ai / admin@cocosquad.ai) reutiliza el inquilino 1 ("Coco Squad Global (Founder)") y NO crea filas nuevas en tenants. decode_jwt_token (linea 83) NO mover: tests/test_security.py lo extrae por AST.
+- Cliente (windows/src/android/android.ts + windows/src/core/bridge.ts):
+  - Sello real en el encabezado: "🔒 Sin sesion" / "👑 Fundador" / "💎 Plan PRO" / "🌱 Tenant #N". Sin token no hay sesion ni funciones de fundador.
+  - initAuth() sin login silencioso; loginUser() exige contrasena para las cuentas fundador; refreshProfile() con 401 -> logout() + aviso; logout() borra auth_token, tenant_id, user_email y user_plan.
+  - getAuthHeaders() manda Authorization: Bearer <auth_token> y NUNCA x-tenant-id (ya no queda ninguno en windows/src/).
+  - Flujo de archivos: 401 -> el mensaje "analizando..." se reemplaza por "🔒 Necesitas una sesion para analizar archivos. Inicia sesion y lo intentamos de nuevo." (una sola vez) y se cierra la sesion.
+  - showSessionNotice(mensaje, agregarAlChat = true): crea el historial del chat si no existia (si no, el aviso se perdia en silencio) y permite avisar sin duplicar el mensaje.
+  - bridge.ts -> chatSend en modo navegador manda el Authorization desde localStorage("auth_token") y avisa claro ante 401.
+- Contrasena del fundador: llega al navegador por un puente local de un solo uso en 127.0.0.1 (sin log, sin transcript, sin repo). NO escribirla en el terminal.
+- Desplegado en staging (150.136.59.173:8080, dir /home/ubuntu/agente-staging/, servicio python3 fastapi_server.py PID 33931, log server.log). Backups *.bak-20261021-231222 de los 3 archivos; md5 local == servidor. NO tocar produccion (129.158.204.84). deploy_safe.sh apunta a produccion: no usarlo.
+- Verificado (no declarado):
+  - Red real del navegador: POST /api/chat -> 401 (sin sesion), POST /api/auth/login -> 200, POST /api/chat -> 200 (analisis real de imagen), POST /api/auth/login -> 200 (cliente regular), POST /api/squad/interact -> 200.
+  - Estados visibles: "🔒 Sin sesion" al arrancar; "👑 Fundador" tras login; "🌱 Tenant #7" para cliente regular; aviso de sesion expirada visible en el chat; storage limpio tras cerrar sesion.
+  - Servidor: /api/chat sin token -> 401 {"detail":"Unauthorized"}; con JARVIS_API_KEY -> 400 (mensaje vacio); token de otro inquilino con tenant_id 1 en el cuerpo -> 200 (manda el token); token adulterado -> 401; login del fundador -> tenants en DB 5 antes / 5 despues (no crea cuenta).
+  - Suites: 22 tests locales (pytest tests/ -q) y 3 en el servidor, en verde. npx tsc --noEmit con 0 errores. npx vite build OK (el servidor estatico de 5173 ya sirve el build nuevo).
+- Cuentas de prueba creadas en la DB de staging durante las pruebas: demo-verificacion@cocosquad.ai y demo-cliente@cocosquad.ai. Ambas eliminadas (la DB quedo con 5 tenants).
+- 3 defectos del cliente encontrados SOLO al probar en navegador (no los veian los tests): la contrasena quedaba escrita tras un fallo, el aviso de sesion expirada se perdia, y el aviso de "necesitas sesion" salia duplicado. Los 3 corregidos.
+- Registrado como "Leccion 12" en PROJECT_MEMORY.md y "Caso 18" en SUCCESS_PATTERNS.md.
+- PENDIENTE de decision del fundador (nada se cambio todavia):
+  1. /api/squad/interact y /agente/rojo siguen publicos: consumen IA sin sesion (fuga de revenue; las cuotas de 20/dia son solo client-side en mvpTools.ts).
+  2. Auto-provisioning: cualquier email obtiene sesion y fila en la DB.
+  3. extract_tenant_context en billing.py (linea 131) prioriza body/header sobre el JWT: un pagador puede acreditar al tenant 1.
+  4. Rotar la clave de OpenRouter hardcodeada en jarvis_core.py (linea 1470) del servidor.
+  5. api_founder_telemetry POST publico.
+- Sin publicar: nada de commit, nada de PR, nada de push. Solo local + staging (decision del usuario: "Seguir sin publicar").
+
+31. REINICIO DE MAQUINA: ENTORNO DE PRUEBAS RECONSTRUIDO Y VERIFICACION FINAL (22/10/2026)
+-----------------------------------------------------------------------------------------------------
+- El reinicio borro el entorno temporal de pruebas (venv + stub de jarvis_core). Reconstruido:
+  - venv nuevo en $TMP/coco-venv con pytest, fastapi, uvicorn[standard], python-jose (SIN extra [cryptography]: en Python 3.9/macOS compila cryptography con Rust y falla), PyJWT, requests, python-multipart, httpx, python-dotenv, pydantic-settings, sentry-sdk, slowapi.
+  - Stub de jarvis_core recreado en $TMP/jarvis_stub/jarvis_core/__init__.py: SIN claves, respuestas deterministas, expone JarvisCoreEngine (procesar_mensaje_texto, procesar_multimodal, chat_histories, chat_memory_db, es_maestro, tenant_id, nombre_empresa, learning_engine, stock_mgr, trading_engine, whatsapp_gateway, _guardar_aprendizaje, generar_mazo_flashcards, generar_quiz_estructurado) y buscar_web_en_tiempo_real.
+  - El modulo real de jarvis_core sigue SOLO en el servidor (arrastra claves de proveedores): nunca al repo.
+- OJO IMPORTANTE (Lecion 13): al principio la suite daba "20 passed, 2 skipped" en verde. Los 2 saltados eran los que comprueban 401 sin token y 400 con mensaje vacio (los de seguridad). Motivo: faltaban sentry_sdk y slowapi y el test cae en pytest.skip. Un salto por dependencia faltante se INSTALA, no se acepta.
+- Estado final verificado (no declarado):
+  - Local: 22 passed, 0 skipped. unittest tests.test_security + tests.test_squad_orchestrator -> 19 OK. npx tsc --noEmit -> 0 errores. npx vite build OK.
+  - Staging (150.136.59.173:8080): PID 33931 vivo, /version.json 200, /api/chat sin token 401, suite del servidor 3 passed, tenants en DB = 5.
+  - Navegador (entorno recien reiniciado, http://127.0.0.1:5174): arranca en "🔒 Sin sesion" sin token y con el campo de contrasena presente; login del fundador -> 200 y sello "👑 Fundador" (Tenant #1, plan FOUNDER); chat principal -> POST /api/squad/interact 200 con respuesta real de Coco Blanco; cerrar sesion -> "🔒 Sin sesion" y storage limpio (auth_token/tenant_id/user_email/user_plan = null).
+  - Build estatico en http://127.0.0.1:5173 (serve de windows/dist): sirve el build nuevo (assets/island-CeICt6pu.js).
+- Puente de contrasena recreado en $TMP/pw_bridge.py (fuera del repo): lee FOUNDER_PASSWORD del servidor por SSH, lo sirve UNA vez en 127.0.0.1:5199, sin log y sin escribirla en ningun lado. Hay que enviarle el header Access-Control-Allow-Origin (si no, el navegador bloquea la lectura desde el puerto 5174 y falla con "Failed to fetch").
+- Registrado como "Leccion 13" en PROJECT_MEMORY.md y "Caso 19" en SUCCESS_PATTERNS.md.
+- Sin publicar: nada de commit, nada de PR, nada de push.
+
+30. ESTADO DEL PROYECTO (23/10/2026, revision)
+-----------------------------------------------------------------------------------------------------
+- API de staging (150.136.59.173:8080): CAIDA desde el 22/10 13:52 por un error al arrancar (admin.py
+  llamaba a una funcion inexistente). El archivo ya estaba corregido en disco; se reinicio el proceso el 23/10 20:0x
+  y responde 200 local y publico. Sin tracebacks.
+- Seguridad verificada en vivo: sin sesion 401 en /api/auth/me, /api/founder/telemetry y /api/squad/interact.
+  Webhook de Mercado Pago sin pago verificable: 400.
+- Squad verificado con sesion de fundador: responde como Red.
+- Cazador (jarvis-hunter.service en 150.136.59.173): activo, sin capacidad en Ashburn (esperado).
+- Servidor 129.158.204.84: api 404 (no es la api de staging), cazador inactivo. Sin uso actual.
+- Proyecto (feat/mochi-real-responses): commits hasta c2723c6. 30 archivos sin commit; uno no es nuestro
+  (windows/src/views/views.ts: boton "Invitar y ganar" de escritorio con un icono inexistente, rompe tsc).
+- Pendiente de la app: el login de fundador desde el modal y el cierre de sesion expirada no se verificaron de punta a punta.
+- Pendiente de seguridad: cliente sin contrasena (cualquier correo entra como cliente), cupo solo en el dispositivo,
+  Mercado Pago sin token real.
