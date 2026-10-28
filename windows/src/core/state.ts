@@ -34,6 +34,12 @@ export interface ChatMessage {
   content: string;
   channel?: "whatsapp" | "instagram" | "tiktok";
   senderName?: string;
+  agentId?: "coco_blanco" | "coco_verde" | "coco_rojo" | "coco_azul" | string;
+  agentName?: string;
+  agentColor?: string;
+  agentRole?: string;
+  gesture?: string;
+  isHandOffAck?: boolean;
   intervention?: {
     from_coco_id: 'coco_blanco' | 'coco_verde' | 'coco_rojo' | 'coco_azul';
     from_name: string;

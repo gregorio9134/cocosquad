@@ -72,12 +72,61 @@ def get_tenant_plan(tenant_id: int) -> str:
         logger.warning(f"Error leyendo plan de tenant {tenant_id}: {e}")
     return "free"
 
+# ── SOPORTE FISCAL PARA FACTURA A / CUIT (PYMES & EMPRESAS) ───────────────────
+def ensure_fiscal_schema(conn: sqlite3.Connection):
+    """Garantiza la existencia de columnas fiscales en la tabla tenants"""
+    try:
+        c = conn.cursor()
+        c.execute("PRAGMA table_info(tenants)")
+        cols = [r[1] for r in c.fetchall()]
+        if cols:
+            if "cuit" not in cols:
+                c.execute("ALTER TABLE tenants ADD COLUMN cuit TEXT")
+            if "condicion_fiscal" not in cols:
+                c.execute("ALTER TABLE tenants ADD COLUMN condicion_fiscal TEXT")
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"Error verificando columnas fiscales: {e}")
+
+def update_tenant_fiscal_info(tenant_id: int, cuit: Optional[str] = None, condicion_fiscal: Optional[str] = None, razon_social: Optional[str] = None):
+    """Almacena o actualiza la información fiscal (Factura A / CUIT) del tenant en master.db"""
+    try:
+        conn = get_db()
+        ensure_fiscal_schema(conn)
+        c = conn.cursor()
+        if razon_social:
+            c.execute("""
+                UPDATE tenants 
+                SET cuit = COALESCE(?, cuit), 
+                    condicion_fiscal = COALESCE(?, condicion_fiscal),
+                    nombre_empresa = ?
+                WHERE id = ?
+            """, (cuit, condicion_fiscal, razon_social, tenant_id))
+        else:
+            c.execute("""
+                UPDATE tenants 
+                SET cuit = COALESCE(?, cuit), 
+                    condicion_fiscal = COALESCE(?, condicion_fiscal)
+                WHERE id = ?
+            """, (cuit, condicion_fiscal, tenant_id))
+        conn.commit()
+        conn.close()
+        logger.info(f"🧾 Datos fiscales guardados para tenant_id={tenant_id}: CUIT={cuit}, Condición={condicion_fiscal}, Empresa={razon_social}")
+    except Exception as e:
+        logger.warning(f"No se pudo guardar info fiscal para tenant {tenant_id}: {e}")
+
 class CheckoutRequest(BaseModel):
     tenant_id: Optional[int] = None
     email: Optional[str] = None
     plan: Optional[str] = "pro"
     success_url: Optional[str] = None
     cancel_url: Optional[str] = None
+    cuit: Optional[str] = None
+    tax_id: Optional[str] = None
+    razon_social: Optional[str] = None
+    company_name: Optional[str] = None
+    condicion_fiscal: Optional[str] = None
+    tax_condition: Optional[str] = None
 
 def extract_tenant_context(request: Request, body_tenant_id: Optional[int] = None, body_email: Optional[str] = None):
     tenant_id = body_tenant_id
@@ -122,11 +171,25 @@ def extract_tenant_context(request: Request, body_tenant_id: Optional[int] = Non
 @router.post("/checkout/mercadopago")
 async def create_mercadopago_checkout(request: Request, body: Optional[CheckoutRequest] = None):
     """
-    Genera la preferencia de pago de Mercado Pago para planes locales (ARS).
+    Genera la preferencia de pago de Mercado Pago para planes locales (ARS)
+    con soporte opcional de Factura A, CUIT y Condición Fiscal para PyMEs.
     """
     body_tid = body.tenant_id if body else None
     body_email = body.email if body else None
     tenant_id, email = extract_tenant_context(request, body_tid, body_email)
+
+    cuit = (body.cuit or body.tax_id or "").strip() if body else ""
+    condicion_fiscal = (body.condicion_fiscal or body.tax_condition or "").strip() if body else ""
+    razon_social = (body.razon_social or body.company_name or "").strip() if body else ""
+
+    # Persistir metadatos fiscales del tenant
+    if cuit or condicion_fiscal or razon_social:
+        update_tenant_fiscal_info(
+            tenant_id,
+            cuit=cuit or None,
+            condicion_fiscal=condicion_fiscal or None,
+            razon_social=razon_social or None
+        )
 
     amount_ars = 29900.0
     title = "Coco Squad PRO - Suscripción Mensual"
@@ -151,6 +214,13 @@ async def create_mercadopago_checkout(request: Request, body: Optional[CheckoutR
                 ],
                 "payer": {
                     "email": email
+                },
+                "metadata": {
+                    "tenant_id": tenant_id,
+                    "cuit": cuit,
+                    "condicion_fiscal": condicion_fiscal,
+                    "razon_social": razon_social,
+                    "tipo_factura": "Factura A" if "inscripto" in condicion_fiscal.lower() else "Factura B"
                 },
                 "external_reference": str(tenant_id),
                 "back_urls": {
@@ -182,11 +252,35 @@ async def create_mercadopago_checkout(request: Request, body: Optional[CheckoutR
         "plan": "pro",
         "tenant_id": tenant_id,
         "email": email,
+        "cuit": cuit,
+        "condicion_fiscal": condicion_fiscal,
+        "razon_social": razon_social,
         "preference_id": preference_id,
         "checkout_url": checkout_url,
         "sandbox_url": sandbox_url,
         "is_live": bool(MP_ACCESS_TOKEN and mercadopago)
     }
+
+@router.get("/fiscal/{tenant_id}")
+async def get_tenant_fiscal(tenant_id: int):
+    """Devuelve la información fiscal registrada para el tenant"""
+    try:
+        conn = get_db()
+        ensure_fiscal_schema(conn)
+        c = conn.cursor()
+        c.execute("SELECT id, nombre_empresa, cuit, condicion_fiscal FROM tenants WHERE id = ?", (tenant_id,))
+        row = c.fetchone()
+        conn.close()
+        if row:
+            return {
+                "tenant_id": row["id"],
+                "razon_social": row["nombre_empresa"],
+                "cuit": row["cuit"],
+                "condicion_fiscal": row["condicion_fiscal"]
+            }
+    except Exception as e:
+        logger.warning(f"Error consultando datos fiscales: {e}")
+    return {"tenant_id": tenant_id, "cuit": None, "condicion_fiscal": None}
 
 @router.post("/checkout/stripe")
 async def create_stripe_checkout(request: Request, body: Optional[CheckoutRequest] = None):

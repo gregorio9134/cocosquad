@@ -199,9 +199,9 @@ export class BotEngine {
   /** Solid body colour for mini bots / integration pills (null = Mochi gradient). */
   bodyColor: RGB | null = null;
   /** Member of the Coco Squad: white (docs/general), green (whatsapp/turnos), red (deep research), blue (metrics/reports) */
-  cocoSquadRole: "white" | "green" | "red" | "blue" = "white";
+  cocoSquadRole: "white" | "green" | "red" | "blue" | "gold" = "white";
 
-  setCocoSquadRole(role: "white" | "green" | "red" | "blue") {
+  setCocoSquadRole(role: "white" | "green" | "red" | "blue" | "gold") {
     this.cocoSquadRole = role;
   }
 
@@ -946,6 +946,10 @@ export class BotEngine {
         g.addColorStop(0, "#93c5fd");
         g.addColorStop(0.35, "#3b82f6");
         g.addColorStop(1, "#0066cc");
+      } else if (this.cocoSquadRole === "gold") {
+        g.addColorStop(0, "#fde68a");
+        g.addColorStop(0.35, "#ffb800");
+        g.addColorStop(1, "#d97706");
       } else {
         g.addColorStop(0, rgba(BASE_TOP));
         g.addColorStop(1, rgba(BASE_BOTTOM));
@@ -1200,6 +1204,9 @@ export class BotEngine {
       } else if (this.cocoSquadRole === "blue") {
         g.addColorStop(0, "#93c5fd");
         g.addColorStop(1, "#0066cc");
+      } else if (this.cocoSquadRole === "gold") {
+        g.addColorStop(0, "#fde68a");
+        g.addColorStop(1, "#ffb800");
       } else if (this.bodyColor) {
         g.addColorStop(0, rgba(mix3(this.bodyColor, [1, 1, 1], 0.35)));
         g.addColorStop(1, rgba(this.bodyColor));

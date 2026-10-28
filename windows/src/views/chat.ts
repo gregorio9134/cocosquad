@@ -48,7 +48,7 @@ function typingDots(docName?: string | null): HTMLElement {
       { class: "chat-row assistant" },
       h(
         "div",
-        { class: "thinking-doc-badge" },
+        { class: "thinking-doc-badge thinking" },
         svg(ICONS.doc, 11),
         h("span", { text: `Coco Blanco está analizando "${docName}"…` }),
         h("div", { class: "typing" }, h("i"), h("i"), h("i")),
@@ -58,7 +58,12 @@ function typingDots(docName?: string | null): HTMLElement {
   return h(
     "div",
     { class: "chat-row assistant" },
-    h("div", { class: "typing" }, h("i"), h("i"), h("i")),
+    h(
+      "div",
+      { class: "typing-row" },
+      h("span", { class: "typing-label", text: "Los Mochis están pensando" }),
+      h("div", { class: "typing" }, h("i"), h("i"), h("i")),
+    ),
   );
 }
 

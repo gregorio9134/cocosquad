@@ -179,3 +179,140 @@ export async function clearVault(): Promise<void> {
     console.warn("[Vault] Error vaciando CocoVaultDB:", err);
   }
 }
+
+/**
+ * Zero-Knowledge E2EE Vault Encryption / Decryption Utilities
+ */
+async function deriveKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(passphrase),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: salt as any,
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function base64ToBuffer(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+export interface VaultExportBundle {
+  version: number;
+  timestamp: number;
+  records: VaultRecord[];
+  todos?: any[];
+  notes?: any[];
+  agenda?: any[];
+}
+
+export async function exportVaultEncrypted(
+  passphrase: string,
+  extraData?: { todos?: any[]; notes?: any[]; agenda?: any[] }
+): Promise<string> {
+  const records = await getAllFromVault();
+  const bundle: VaultExportBundle = {
+    version: 1,
+    timestamp: Date.now(),
+    records,
+    todos: extraData?.todos || [],
+    notes: extraData?.notes || [],
+    agenda: extraData?.agenda || [],
+  };
+
+  const enc = new TextEncoder();
+  const plaintext = enc.encode(JSON.stringify(bundle));
+
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(passphrase, salt);
+
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv as any },
+    key,
+    plaintext
+  );
+
+  return JSON.stringify({
+    format: "cocovault_e2ee_v1",
+    salt: bufferToBase64(salt),
+    iv: bufferToBase64(iv),
+    data: bufferToBase64(ciphertext),
+  });
+}
+
+export async function importVaultEncrypted(
+  encryptedJson: string,
+  passphrase: string
+): Promise<{ success: boolean; count: number; todos?: any[]; notes?: any[]; agenda?: any[]; error?: string }> {
+  try {
+    const parsed = JSON.parse(encryptedJson);
+    if (!parsed.salt || !parsed.iv || !parsed.data) {
+      throw new Error("Formato de respaldo cifrado inválido.");
+    }
+
+    const salt = base64ToBuffer(parsed.salt);
+    const iv = base64ToBuffer(parsed.iv);
+    const ciphertext = base64ToBuffer(parsed.data);
+
+    const key = await deriveKey(passphrase, salt);
+    const decryptedBuffer = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv as any },
+      key,
+      ciphertext as any
+    );
+
+    const dec = new TextDecoder();
+    const bundle: VaultExportBundle = JSON.parse(dec.decode(decryptedBuffer));
+
+    let count = 0;
+    if (bundle.records && Array.isArray(bundle.records)) {
+      for (const rec of bundle.records) {
+        await saveToVault(rec);
+        count++;
+      }
+    }
+
+    return {
+      success: true,
+      count,
+      todos: bundle.todos,
+      notes: bundle.notes,
+      agenda: bundle.agenda,
+    };
+  } catch (err: any) {
+    console.error("[Vault] Error descifrando respaldo:", err);
+    return {
+      success: false,
+      count: 0,
+      error: "Contraseña incorrecta o archivo de respaldo dañado.",
+    };
+  }
+}

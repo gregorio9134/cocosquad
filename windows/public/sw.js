@@ -1,5 +1,5 @@
 // Service Worker for Coco Squad PWA
-const CACHE_NAME = "coco-squad-v1.0.1";
+const CACHE_NAME = "coco-squad-v1.0.2";
 const PRECACHE_ASSETS = [
   "/",
   "/index.html",

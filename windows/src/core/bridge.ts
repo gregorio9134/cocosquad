@@ -94,10 +94,14 @@ export const Bridge = {
   chatSend: async (query: string, context: ChatContext | null, cocoId?: string | null): Promise<ChatReply> => {
     if (!IS_TAURI) {
       const activeId = cocoId || "coco_blanco";
+      const token = typeof localStorage !== "undefined" ? localStorage.getItem("auth_token") : null;
+      const apiBase = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8080";
       try {
-        const res = await fetch("http://150.136.59.173:8080/api/chat", {
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch(`${apiBase}/api/chat`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             message: query,
             chat_id: 1,
@@ -113,6 +117,12 @@ export const Bridge = {
             notes: State.quickNotes,
           }),
         });
+        if (res.status === 401) {
+          return {
+            text: "🔒 Necesitás una sesión activa para chatear. Iniciá sesión en Coco Squad y volvé a intentarlo.",
+            cocoId: activeId,
+          };
+        }
         if (!res.ok) {
           throw new Error(`Servidor devolvió status ${res.status}`);
         }
@@ -125,9 +135,9 @@ export const Bridge = {
           color: data.color || (activeId === "coco_verde" ? "#10b981" : activeId === "coco_rojo" ? "#ef4444" : activeId === "coco_azul" ? "#3b82f6" : "#ffffff"),
         };
       } catch (err) {
-        console.error("[bridge] Error conectando a staging:", err);
+        console.error("[bridge] Error conectando al servidor:", err);
         return {
-          text: `⚠️ No se pudo conectar con el servidor de Staging (150.136.59.173:8080): ${err instanceof Error ? err.message : String(err)}`,
+          text: `⚠️ No se pudo conectar con el servidor local (${apiBase}): ${err instanceof Error ? err.message : String(err)}\n\nAsegurate de que el backend esté corriendo en http://127.0.0.1:8080`,
           cocoId: activeId,
         };
       }

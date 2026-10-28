@@ -85,6 +85,11 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabChat = h("button", { class: "tab", title: "Ask", onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
   const tabDrop = h("button", { class: "tab", title: "Drop", onclick: () => go("upload") }, svg(ICONS.plusCircle, 13));
 
+  const inviteBtn = h(
+    "button",
+    { title: "Invitar y ganar", onclick: () => { actions.blip(); actions.openSettingsWindow(); } },
+    svg(ICONS.link, 14),
+  );
   const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
 
@@ -103,7 +108,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn, minimizeBtn),
+    h("div", { class: "header-actions" }, inviteBtn, gearBtn, soundBtn, minimizeBtn),
   );
 
   return {

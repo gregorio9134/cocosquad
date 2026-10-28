@@ -46,5 +46,15 @@
     </div>
     <div id="root"></div>
     <script type="module" src="/src/android/android.ts"></script>
+    <script>
+      // Fallback safeguard: si por alguna razón la inicialización tarda más de 2.2s, forzar desvanecimiento del splash
+      setTimeout(function() {
+        var s = document.getElementById("splash-screen");
+        if (s) {
+          s.classList.add("fade-out");
+          setTimeout(function() { if (s && s.parentNode) s.remove(); }, 350);
+        }
+      }, 2200);
+    </script>
   </body>
 </html>

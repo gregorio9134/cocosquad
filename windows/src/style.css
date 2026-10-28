@@ -1032,9 +1032,29 @@ input[type="range"]::-webkit-slider-thumb {
   animation-delay: 0.28s;
 }
 
+.typing-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px;
+  animation: fade-in 180ms ease-out;
+}
+
+.typing-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
 @keyframes typing {
   0%, 100% { transform: scale(0.6); }
   50% { transform: scale(1.2); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .chat-bar {

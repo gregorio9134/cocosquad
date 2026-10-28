@@ -56,6 +56,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         island: resolve(__dirname, "index.html"),
+        landing: resolve(__dirname, "landing.html"),
         settings: resolve(__dirname, "settings.html"),
         upload: resolve(__dirname, "dev/upload-preview.html"),
         mochi: resolve(__dirname, "mochi.html"),
