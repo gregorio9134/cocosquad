@@ -22,9 +22,9 @@ import urllib.request
 import urllib.error
 import base64
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://150.136.59.173:8080")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8080")
 PWA_BASE_URL = os.getenv("PWA_BASE_URL", "http://localhost:1420")
-SSH_CMD = "ssh -i ~/.ssh/oracle_key -o StrictHostKeyChecking=no ubuntu@150.136.59.173"
+SSH_CMD = os.getenv("COCO_SSH_CMD", "")
 
 GREEN = "\033[92m"
 RED = "\033[91m"

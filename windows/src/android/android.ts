@@ -8,7 +8,7 @@ import { Sound } from "../core/sound";
 import { State, type ChatMessage, type TodoItem, type QuickNote } from "../core/state";
 import { marked } from "marked";
 import { initSwipeController, triggerHapticFeedback, type SwipeController } from "./swipeController";
-import { GreenManager } from "./greenManager";
+import { GreenManager, type GreenClientContact } from "./greenManager";
 import {
   notifyAgentCompletion,
   notifyRequestStart,
@@ -46,11 +46,44 @@ import {
 } from "./mvpTools";
 import "./green-threads.css";
 import "./mvp-tools.css";
+import { SolDashboard } from "./solDashboard";
 
 marked.setOptions({
   gfm: true,
   breaks: true,
 });
+
+export function getApiBase(): string {
+  const env = (import.meta as any)?.env;
+  if (env?.VITE_API_BASE) return env.VITE_API_BASE;
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "127.0.0.1" || host === "localhost" || host === "[::1]") {
+      return "http://127.0.0.1:8080";
+    }
+  }
+  return "http://127.0.0.1:8080";
+}
+
+export interface AgendaEvent {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  description?: string;
+  createdAt: number;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  primaryAgent: string;
+  messages: Record<string, ChatMessage[]>;
+  snippet?: string;
+  messageCount: number;
+}
 
 interface SquadMember {
   id: string;
@@ -59,13 +92,13 @@ interface SquadMember {
   color: string;
   glow: string;
   bgTint: string;
-  squadRole: "white" | "green" | "red" | "blue";
+  squadRole: "white" | "green" | "red" | "blue" | "gold";
   greeting: string;
   sendTextColor?: string;
 }
 
 export interface SquadIntervention {
-  from_coco_id: 'coco_blanco' | 'coco_verde' | 'coco_rojo' | 'coco_azul';
+  from_coco_id: 'coco_blanco' | 'coco_verde' | 'coco_rojo' | 'coco_azul' | 'coco_sol';
   from_name: string;
   badge_color: string;
   reply: string;
@@ -85,7 +118,7 @@ interface QuickToolItem {
   title: string;
   desc: string;
   prompt?: string;
-  actionType?: "todo" | "note" | "vault" | "billing";
+  actionType?: "todo" | "note" | "vault" | "billing" | "agenda";
 }
 
 const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
@@ -113,6 +146,18 @@ const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
       title: "Guardar nota rápida",
       desc: "Crear una nota en Taby",
       actionType: "note",
+    },
+    {
+      icon: "🗓️",
+      title: "Agendar reunión / cita",
+      desc: "Coordinar eventos con fecha y hora",
+      prompt: "Agendame una reunión con el contador mañana a las 10:00 hs.",
+    },
+    {
+      icon: "⚡",
+      title: "Plan semanal en 2º plano",
+      desc: "Armar briefing y time-blocking semanal",
+      prompt: "Armame la planificación semanal y prioridades ejecutivas en segundo plano.",
     },
     {
       icon: "🔒",
@@ -211,6 +256,32 @@ const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
       prompt: "Mostrame el estado del sistema y métricas de red.",
     },
   ],
+  coco_sol: [
+    {
+      icon: "☀️",
+      title: "Tracción del SaaS",
+      desc: "Nuevas cuentas, empresas y actividad",
+      prompt: "Sol, ¿cómo viene la tracción de clientes y cuentas en Coco Squad?",
+    },
+    {
+      icon: "💰",
+      title: "Facturación & MRR",
+      desc: "Planes Free vs PRO y pasarelas",
+      prompt: "Mostrame el balance de suscripciones PRO y proyección de ingresos del mes.",
+    },
+    {
+      icon: "👥",
+      title: "Salud de Inquilinos",
+      desc: "Tenants activos y uso de cuotas",
+      prompt: "¿Cuáles son las cuentas de clientes más activas y quiénes necesitan seguimiento?",
+    },
+    {
+      icon: "🚀",
+      title: "Estrategia de Conversión",
+      desc: "Palancas para pasar usuarios a PRO",
+      prompt: "¿Qué oportunidades de upgrade y retención tenemos para esta semana?",
+    },
+  ],
 };
 
 const SQUAD_CATALOG: SquadMember[] = [
@@ -222,7 +293,7 @@ const SQUAD_CATALOG: SquadMember[] = [
     glow: "rgba(255, 255, 255, 0.40)",
     bgTint: "rgba(255, 255, 255, 0.05)",
     squadRole: "white",
-    greeting: "¡Hola Gregorio! Soy Coco, tu asistente general de productividad y chat.",
+    greeting: "¡Hola! Soy Coco, tu asistente. ¿En qué te ayudo hoy?",
     sendTextColor: "#000000",
   },
   {
@@ -258,6 +329,17 @@ const SQUAD_CATALOG: SquadMember[] = [
     greeting: "Blu aquí. Análisis de métricas, reportes mensuales y hábitos.",
     sendTextColor: "#ffffff",
   },
+  {
+    id: "coco_sol",
+    name: "Sol",
+    role: "SaaS Ops",
+    color: "#FFB800",
+    glow: "rgba(255, 184, 0, 0.45)",
+    bgTint: "rgba(255, 184, 0, 0.08)",
+    squadRole: "gold",
+    greeting: "¡Hola! Sol al habla. Crecimiento, clientes y métricas del SaaS en foco.",
+    sendTextColor: "#1a1202",
+  },
 ];
 
 interface MiniMochiChip {
@@ -280,8 +362,7 @@ interface AttachedMedia {
   isVideo: boolean;
 }
 
-// MVP: Green y Blu están en pausa. Para reactivarlos, agregar su id a MVP_ENABLED_MEMBERS.
-const MVP_ENABLED_MEMBERS = ["coco_blanco", "coco_rojo"];
+const MVP_ENABLED_MEMBERS = ["coco_blanco", "coco_rojo", "coco_verde", "coco_azul", "coco_sol"];
 const SQUAD: SquadMember[] = SQUAD_CATALOG.filter((m) => MVP_ENABLED_MEMBERS.includes(m.id));
 
 class AndroidApp {
@@ -305,7 +386,7 @@ class AndroidApp {
   // PWA Versioning & Auto-Update
   private currentAppVersion: string = (typeof localStorage !== "undefined" && localStorage.getItem("app_version")) || "1.0.0";
   private detectedRemoteVersion: string = "";
-  private updateCheckTimer: number | null = null;
+  // private updateCheckTimer: number | null = null; // COMENTADO
   private isUpdateToastDismissed: boolean = false;
   // Founder Mode & Multi-Tenant Auth & Billing (Paso 8 & 9)
   private tenantId: number = 1;
@@ -317,12 +398,22 @@ class AndroidApp {
   }
   private isAuthModalOpen: boolean = false;
   private selectedBillingCurrency: "ARS" | "USD" = "ARS";
+  private solDashboard: SolDashboard | null = null;
+
+  // Ventana Lateral Desplegable & Gestión de Conversaciones Persistentes
+  private isSidebarOpen: boolean = false;
+  private sidebarActiveTab: "sessions" | "clients" = "sessions";
+  private sidebarSearchQuery: string = "";
+  private chatSessions: ChatSession[] = [];
+  private currentSessionId: string = "";
+  private activeInspectedContact: GreenClientContact | null = null;
 
   private chatHistories: Record<string, ChatMessage[]> = {
     coco_blanco: [],
     coco_verde: [],
     coco_rojo: [],
     coco_azul: [],
+    coco_sol: [],
   };
 
   private get messages(): ChatMessage[] {
@@ -337,6 +428,7 @@ class AndroidApp {
     coco_verde: false,
     coco_rojo: false,
     coco_azul: false,
+    coco_sol: false,
   };
 
   // Texto de documentos extraído en el dispositivo (no se guarda en el servidor). Solo vive en memoria.
@@ -346,6 +438,7 @@ class AndroidApp {
     coco_verde: null,
     coco_rojo: null,
     coco_azul: null,
+    coco_sol: null,
   };
 
   private taskCompletedUnread: Record<string, boolean> = {
@@ -353,17 +446,18 @@ class AndroidApp {
     coco_verde: false,
     coco_rojo: false,
     coco_azul: false,
+    coco_sol: false,
   };
 
   private todos: TodoItem[] = [];
   private notes: QuickNote[] = [];
+  private agendaEvents: AgendaEvent[] = [];
   private greenManager: GreenManager = new GreenManager();
   private isAssisting = false;
   private assistTimers: number[] = [];
 
   constructor() {
     this.clearAllAssistSequences();
-    this.clearAllTestDataAndStorage();
     this.loadStorage();
     this.greenManager.setOnInterventionToggle((isIntervened, contact) => {
       if (this.activeMember.id === "coco_verde") {
@@ -434,38 +528,117 @@ class AndroidApp {
       coco_verde: [],
       coco_rojo: [],
       coco_azul: [],
+      coco_sol: [],
     };
     this.attachedFilesByAgent = {
       coco_blanco: null,
       coco_verde: null,
       coco_rojo: null,
       coco_azul: null,
+      coco_sol: null,
     };
     this.taskCompletedUnread = {
       coco_blanco: false,
       coco_verde: false,
       coco_rojo: false,
       coco_azul: false,
+      coco_sol: false,
     };
     this.thinkingByAgent = {
       coco_blanco: false,
       coco_verde: false,
       coco_rojo: false,
       coco_azul: false,
+      coco_sol: false,
     };
   }
 
+  private syncCurrentSession(): void {
+    if (!this.currentSessionId) {
+      if (this.chatSessions.length > 0) {
+        this.currentSessionId = this.chatSessions[0].id;
+      } else {
+        this.createNewSession(false);
+      }
+    }
+    const session = this.chatSessions.find((s) => s.id === this.currentSessionId);
+    if (session) {
+      session.messages = JSON.parse(JSON.stringify(this.chatHistories));
+      session.updatedAt = Date.now();
+      session.primaryAgent = this.activeMember.id;
+
+      let totalMsgs = 0;
+      let lastMsg: ChatMessage | null = null;
+      let firstUserMsg: ChatMessage | null = null;
+
+      for (const msgs of Object.values(this.chatHistories)) {
+        if (!Array.isArray(msgs)) continue;
+        totalMsgs += msgs.length;
+        for (const m of msgs) {
+          if (!firstUserMsg && m.role === "user") firstUserMsg = m;
+          if (!lastMsg || m.id > lastMsg.id) lastMsg = m;
+        }
+      }
+
+      session.messageCount = totalMsgs;
+      if (lastMsg) {
+        session.snippet = lastMsg.content.slice(0, 90);
+      }
+      if ((session.title === "Nueva conversación" || !session.title) && firstUserMsg) {
+        session.title = firstUserMsg.content.slice(0, 36) + (firstUserMsg.content.length > 36 ? "…" : "");
+      }
+    }
+  }
+
   private loadStorage() {
-    this.clearAllTestDataAndStorage();
     this.loadAuthStorage();
+
+    try {
+      const rawSessions = localStorage.getItem("coco_squad_sessions_v2");
+      if (rawSessions) {
+        this.chatSessions = JSON.parse(rawSessions);
+      }
+    } catch {
+      this.chatSessions = [];
+    }
+
+    const savedSessionId = localStorage.getItem("coco_current_session_id");
+    if (savedSessionId && this.chatSessions.some((s) => s.id === savedSessionId)) {
+      this.currentSessionId = savedSessionId;
+    } else if (this.chatSessions.length > 0) {
+      this.currentSessionId = this.chatSessions[0].id;
+    } else {
+      this.createNewSession(false);
+    }
+
+    const activeSess = this.chatSessions.find((s) => s.id === this.currentSessionId);
+    if (activeSess && activeSess.messages) {
+      this.chatHistories = JSON.parse(JSON.stringify(activeSess.messages));
+      if (activeSess.primaryAgent) {
+        const found = SQUAD.find((m) => m.id === activeSess.primaryAgent);
+        if (found) this.activeMember = found;
+      }
+    } else {
+      this.chatHistories = {
+        coco_blanco: [],
+        coco_verde: [],
+        coco_rojo: [],
+        coco_azul: [],
+        coco_sol: [],
+      };
+    }
+
     try {
       const t = localStorage.getItem("coco_mobile_todos");
       if (t) this.todos = JSON.parse(t);
       const n = localStorage.getItem("coco_mobile_notes");
       if (n) this.notes = JSON.parse(n);
+      const ag = localStorage.getItem("coco_mobile_agenda");
+      if (ag) this.agendaEvents = JSON.parse(ag);
     } catch {
       this.todos = [];
       this.notes = [];
+      this.agendaEvents = [];
     }
   }
 
@@ -481,6 +654,8 @@ class AndroidApp {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "x-tenant-id": String(this.tenantId || 1),
+      "x-is-founder": String(this.isFounder),
+      "x-user-plan": this.userPlan,
       ...extraHeaders,
     };
     if (this.authToken) {
@@ -490,12 +665,382 @@ class AndroidApp {
   }
 
   private saveStorage() {
+    this.syncCurrentSession();
     try {
+      localStorage.setItem("coco_squad_sessions_v2", JSON.stringify(this.chatSessions));
+      localStorage.setItem("coco_current_session_id", this.currentSessionId);
       localStorage.setItem("coco_mobile_todos", JSON.stringify(this.todos));
       localStorage.setItem("coco_mobile_notes", JSON.stringify(this.notes));
+      localStorage.setItem("coco_mobile_agenda", JSON.stringify(this.agendaEvents));
       State.todos = this.todos;
       State.quickNotes = this.notes;
-    } catch {}
+    } catch (e) {
+      console.warn("Storage save error:", e);
+    }
+    this.renderSidebarContent();
+  }
+
+  public createNewSession(switchImmediately: boolean = true): ChatSession {
+    const newSession: ChatSession = {
+      id: `chat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      title: "Nueva conversación",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      primaryAgent: this.activeMember?.id || "coco_blanco",
+      messages: {
+        coco_blanco: [],
+        coco_verde: [],
+        coco_rojo: [],
+        coco_azul: [],
+        coco_sol: [],
+      },
+      snippet: "Sin mensajes todavía",
+      messageCount: 0,
+    };
+
+    this.chatSessions.unshift(newSession);
+    this.currentSessionId = newSession.id;
+    if (switchImmediately) {
+      this.chatHistories = JSON.parse(JSON.stringify(newSession.messages));
+      this.selectSquadMember("coco_blanco");
+      this.renderChatMessages();
+      this.renderSidebarContent();
+      this.saveStorage();
+      Sound.play("chime");
+    }
+    return newSession;
+  }
+
+  public switchSession(sessionId: string): void {
+    if (sessionId === this.currentSessionId) {
+      this.closeSidebar();
+      return;
+    }
+    this.syncCurrentSession();
+
+    const target = this.chatSessions.find((s) => s.id === sessionId);
+    if (!target) return;
+
+    this.currentSessionId = target.id;
+    this.chatHistories = JSON.parse(JSON.stringify(target.messages || {
+      coco_blanco: [],
+      coco_verde: [],
+      coco_rojo: [],
+      coco_azul: [],
+      coco_sol: [],
+    }));
+
+    if (target.primaryAgent) {
+      this.selectSquadMember(target.primaryAgent);
+    }
+
+    this.renderChatMessages();
+    this.renderSidebarContent();
+    this.saveStorage();
+    this.closeSidebar();
+    Sound.play("tap");
+  }
+
+  public deleteSession(sessionId: string, e?: Event): void {
+    if (e) e.stopPropagation();
+    if (this.chatSessions.length <= 1) {
+      const s = this.chatSessions[0];
+      s.title = "Nueva conversación";
+      s.messages = { coco_blanco: [], coco_verde: [], coco_rojo: [], coco_azul: [], coco_sol: [] };
+      s.snippet = "Sin mensajes todavía";
+      s.messageCount = 0;
+      s.updatedAt = Date.now();
+      this.chatHistories = JSON.parse(JSON.stringify(s.messages));
+      this.renderChatMessages();
+      this.renderSidebarContent();
+      this.saveStorage();
+      return;
+    }
+
+    this.chatSessions = this.chatSessions.filter((s) => s.id !== sessionId);
+    if (this.currentSessionId === sessionId) {
+      this.switchSession(this.chatSessions[0].id);
+    } else {
+      this.renderSidebarContent();
+      this.saveStorage();
+    }
+    Sound.play("tap");
+  }
+
+  public toggleSidebar(): void {
+    if (this.isSidebarOpen) {
+      this.closeSidebar();
+    } else {
+      this.openSidebar();
+    }
+  }
+
+  public openSidebar(): void {
+    this.isSidebarOpen = true;
+    if (!this.isFounder && this.sidebarActiveTab === "clients") {
+      this.sidebarActiveTab = "sessions";
+    }
+    const drawer = document.getElementById("coco-sidebar-drawer");
+    const backdrop = document.getElementById("coco-sidebar-backdrop");
+    const tabClients = document.getElementById("tab-pill-clients");
+    if (tabClients) {
+      tabClients.style.display = this.isFounder ? "" : "none";
+    }
+    if (drawer) drawer.classList.add("open");
+    if (backdrop) backdrop.classList.remove("hidden");
+    this.renderSidebarContent();
+    Sound.play("tap");
+  }
+
+  public closeSidebar(): void {
+    this.isSidebarOpen = false;
+    const drawer = document.getElementById("coco-sidebar-drawer");
+    const backdrop = document.getElementById("coco-sidebar-backdrop");
+    if (drawer) drawer.classList.remove("open");
+    if (backdrop) backdrop.classList.add("hidden");
+  }
+
+  public switchSidebarTab(tab: "sessions" | "clients"): void {
+    if (!this.isFounder && tab === "clients") {
+      return; // Bloqueado para clientes regulares: solo ven sus propios chats
+    }
+    this.sidebarActiveTab = tab;
+    const tabSessions = document.getElementById("tab-pill-sessions");
+    const tabClients = document.getElementById("tab-pill-clients");
+    const newChatBtn = document.getElementById("btn-sidebar-new-chat");
+
+    if (tabSessions) tabSessions.classList.toggle("active", tab === "sessions");
+    if (tabClients) tabClients.classList.toggle("active", tab === "clients");
+    if (newChatBtn) newChatBtn.style.display = tab === "sessions" ? "flex" : "none";
+
+    this.renderSidebarContent();
+    Sound.play("tap");
+  }
+
+  private formatSessionDate(timestamp: number): string {
+    const d = new Date(timestamp);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const timeStr = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (isToday) return `Hoy ${timeStr}`;
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return `Ayer ${timeStr}`;
+    return `${d.getDate()}/${d.getMonth() + 1} ${timeStr}`;
+  }
+
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  public renderSidebarContent(): void {
+    const list = document.getElementById("sidebar-content-list");
+    if (!list) return;
+
+    const tabClients = document.getElementById("tab-pill-clients");
+    if (tabClients) {
+      tabClients.style.display = this.isFounder ? "" : "none";
+    }
+    if (!this.isFounder && this.sidebarActiveTab === "clients") {
+      this.sidebarActiveTab = "sessions";
+      const tabSessions = document.getElementById("tab-pill-sessions");
+      if (tabSessions) tabSessions.classList.add("active");
+      if (tabClients) tabClients.classList.remove("active");
+    }
+
+    const sessCountEl = document.getElementById("sidebar-sessions-count");
+    if (sessCountEl) sessCountEl.textContent = String(this.chatSessions.length);
+    const clientsCountEl = document.getElementById("sidebar-clients-count");
+    if (clientsCountEl) clientsCountEl.textContent = String(this.greenManager.getContacts().length);
+
+    list.innerHTML = "";
+    const query = this.sidebarSearchQuery.trim().toLowerCase();
+
+    if (this.sidebarActiveTab === "sessions") {
+      let filtered = this.chatSessions;
+      if (query) {
+        filtered = filtered.filter((s) => {
+          if (s.title && s.title.toLowerCase().includes(query)) return true;
+          if (s.snippet && s.snippet.toLowerCase().includes(query)) return true;
+          if (s.messages) {
+            for (const msgs of Object.values(s.messages)) {
+              if (Array.isArray(msgs) && msgs.some((m) => m.content && m.content.toLowerCase().includes(query))) {
+                return true;
+              }
+            }
+          }
+          return false;
+        });
+      }
+
+      if (filtered.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "sidebar-empty-state";
+        empty.innerHTML = `
+          <div class="sidebar-empty-icon">💬</div>
+          <div class="sidebar-empty-title">${query ? "Sin resultados" : "No hay chats guardados"}</div>
+          <div class="sidebar-empty-desc">${query ? `No se encontraron chats con "${this.escapeHtml(query)}".` : "Hacé clic en '+ Nueva Conversación' para iniciar un chat."}</div>
+        `;
+        list.appendChild(empty);
+        return;
+      }
+
+      filtered.forEach((session) => {
+        const card = document.createElement("div");
+        card.className = `sidebar-session-card ${session.id === this.currentSessionId ? "active" : ""}`;
+        card.setAttribute("data-session-id", session.id);
+
+        const agentObj = SQUAD_CATALOG.find((m) => m.id === session.primaryAgent) || SQUAD[0];
+        const agentDot = agentObj.id === "coco_rojo" ? "🔴" : "⚪";
+        const dateStr = this.formatSessionDate(session.updatedAt || session.createdAt);
+
+        card.innerHTML = `
+          <div class="session-top-meta">
+            <span class="session-agent-badge ${agentObj.id}">${agentDot} ${agentObj.name}</span>
+            <span class="session-time-text">${dateStr}</span>
+          </div>
+          <div class="session-title-text">${this.escapeHtml(session.title || "Conversación")}</div>
+          <div class="session-snippet-text">${this.escapeHtml(session.snippet || "Sin mensajes")}</div>
+          <div class="session-bottom-meta">
+            <span class="session-count-badge">${session.messageCount || 0} msgs</span>
+          </div>
+          <button class="session-delete-btn" title="Eliminar conversación" data-delete-id="${session.id}">🗑️</button>
+        `;
+
+        card.addEventListener("click", (e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest(".session-delete-btn")) return;
+          this.switchSession(session.id);
+        });
+
+        const delBtn = card.querySelector(".session-delete-btn");
+        delBtn?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (confirm(`¿Eliminar la conversación "${session.title}"?`)) {
+            this.deleteSession(session.id, e);
+          }
+        });
+
+        list.appendChild(card);
+      });
+    } else {
+      // Clientes WhatsApp / Omnicanal
+      let contacts = this.greenManager.getContacts();
+      if (query) {
+        contacts = contacts.filter((c) => {
+          if (c.name.toLowerCase().includes(query)) return true;
+          if (c.phone.toLowerCase().includes(query)) return true;
+          if (c.tag.toLowerCase().includes(query)) return true;
+          if (c.messages.some((m) => m.content.toLowerCase().includes(query))) return true;
+          return false;
+        });
+      }
+
+      if (contacts.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "sidebar-empty-state";
+        empty.innerHTML = `
+          <div class="sidebar-empty-icon">👥</div>
+          <div class="sidebar-empty-title">No hay clientes</div>
+          <div class="sidebar-empty-desc">${query ? `No se encontraron clientes con "${this.escapeHtml(query)}".` : "No hay hilos de clientes registrados aún."}</div>
+        `;
+        list.appendChild(empty);
+        return;
+      }
+
+      contacts.forEach((contact) => {
+        const card = document.createElement("div");
+        card.className = "sidebar-client-card";
+        const lastMsg = contact.messages[contact.messages.length - 1];
+        const snippet = lastMsg ? lastMsg.content : "Sin mensajes";
+
+        card.innerHTML = `
+          <div class="client-card-top">
+            <div class="client-card-avatar" style="background: ${contact.avatarColor || '#0084FF'};">${contact.name.charAt(0)}</div>
+            <div class="client-card-info">
+              <div class="client-card-name">${this.escapeHtml(contact.name)}</div>
+              <div class="client-card-phone">${this.escapeHtml(contact.phone)}</div>
+            </div>
+            <span class="client-card-tag">${this.escapeHtml(contact.tag)}</span>
+          </div>
+          <div class="client-card-snippet">${this.escapeHtml(snippet)}</div>
+          <div class="client-card-bottom">
+            <span class="client-bot-pill ${contact.isBotActive ? 'active' : 'intervened'}">
+              ${contact.isBotActive ? '🤖 Bot Activo' : '✋ Intervenido'}
+            </span>
+            <span>${contact.lastTime || ''}</span>
+          </div>
+        `;
+
+        card.addEventListener("click", () => {
+          this.showClientConversationModal(contact);
+        });
+
+        list.appendChild(card);
+      });
+    }
+  }
+
+  public showClientConversationModal(contact: GreenClientContact): void {
+    this.activeInspectedContact = contact;
+    const overlay = document.getElementById("client-modal-overlay");
+    if (!overlay) return;
+
+    const avatar = document.getElementById("modal-client-avatar");
+    if (avatar) {
+      avatar.textContent = contact.name.charAt(0);
+      avatar.style.background = contact.avatarColor || "#0084FF";
+    }
+    const nameEl = document.getElementById("modal-client-name");
+    if (nameEl) nameEl.textContent = contact.name;
+    const phoneEl = document.getElementById("modal-client-phone");
+    if (phoneEl) phoneEl.textContent = contact.phone;
+    const tagEl = document.getElementById("modal-client-tag");
+    if (tagEl) tagEl.textContent = contact.tag;
+    const botStatusEl = document.getElementById("modal-client-bot-status");
+    if (botStatusEl) {
+      botStatusEl.textContent = contact.isBotActive ? "🤖 Modo Bot Activo" : "✋ Intervenido por Asesor";
+      botStatusEl.className = `client-modal-bot-status ${contact.isBotActive ? "active" : "intervened"}`;
+    }
+    const btnIntervention = document.getElementById("btn-client-toggle-intervention");
+    if (btnIntervention) {
+      btnIntervention.textContent = contact.isBotActive
+        ? "✋ Pausar e Intervenir como Asesor Humano"
+        : "🤖 Reactivar Respuesta Autónoma del Bot";
+    }
+
+    const messagesContainer = document.getElementById("modal-client-messages");
+    if (messagesContainer) {
+      messagesContainer.innerHTML = "";
+      contact.messages.forEach((msg) => {
+        const bubble = document.createElement("div");
+        bubble.className = `client-msg-bubble ${msg.role}`;
+        const senderLabel = msg.role === "user" ? contact.name : (msg.role === "assistant" ? "Squad Green" : "Asesor Humano");
+        bubble.innerHTML = `
+          <div style="font-size:11px; font-weight:700; margin-bottom:4px; opacity:0.8;">${this.escapeHtml(senderLabel)}</div>
+          <div>${marked.parse(msg.content)}</div>
+          <div class="client-msg-meta">
+            <span>🕒 ${this.escapeHtml(msg.timestamp)}</span>
+          </div>
+        `;
+        messagesContainer.appendChild(bubble);
+      });
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    overlay.classList.remove("hidden");
+    Sound.play("tap");
+  }
+
+  public closeClientConversationModal(): void {
+    const overlay = document.getElementById("client-modal-overlay");
+    if (overlay) overlay.classList.add("hidden");
+    this.activeInspectedContact = null;
   }
 
   public render() {
@@ -504,9 +1049,91 @@ class AndroidApp {
 
     root.innerHTML = `
       <div id="app">
+        <!-- Ventana Lateral Desplegable / Collapsible Sidebar Drawer -->
+        <div class="coco-sidebar-backdrop hidden" id="coco-sidebar-backdrop"></div>
+        <aside class="coco-sidebar-drawer" id="coco-sidebar-drawer" aria-label="Historial de conversaciones">
+          <div class="sidebar-header">
+            <div class="sidebar-brand-row">
+              <div class="sidebar-brand-title">
+                <span class="sidebar-brand-icon">💬</span>
+                <span>Historial de Chats</span>
+              </div>
+              <button class="sidebar-close-btn" id="btn-close-sidebar" title="Cerrar ventana lateral">✕</button>
+            </div>
+
+            ${this.isFounder ? `
+              <div style="margin: 6px 0 10px;">
+                <button class="sol-torre-control-btn" id="btn-sidebar-sol-control" style="width:100%; justify-content:center; padding:8px 12px; font-size:12px; border-radius:12px;">
+                  ☀️ Torre de Control · Sol SaaS Ops
+                </button>
+              </div>
+            ` : ''}
+
+            <div class="sidebar-tab-pills">
+              <button class="sidebar-tab-pill ${this.sidebarActiveTab === 'sessions' ? 'active' : ''}" id="tab-pill-sessions" data-tab="sessions">
+                🤖 Mis Chats (<span id="sidebar-sessions-count">${this.chatSessions.length}</span>)
+              </button>
+              <button class="sidebar-tab-pill ${this.sidebarActiveTab === 'clients' ? 'active' : ''}" id="tab-pill-clients" data-tab="clients" style="${this.isFounder ? '' : 'display: none;'}">
+                👥 Clientes (<span id="sidebar-clients-count">${this.greenManager.getContacts().length}</span>)
+              </button>
+            </div>
+
+            <div class="sidebar-search-box">
+              <span class="sidebar-search-icon">🔍</span>
+              <input type="text" class="sidebar-search-input" id="sidebar-search-input" placeholder="Buscar en conversaciones..." value="${this.sidebarSearchQuery}" />
+            </div>
+
+            <button class="sidebar-new-chat-btn" id="btn-sidebar-new-chat" style="${this.sidebarActiveTab === 'clients' ? 'display: none;' : ''}">
+              <span class="new-chat-plus">+</span> Nueva Conversación
+            </button>
+          </div>
+
+          <div class="sidebar-body" id="sidebar-content-list">
+            <!-- Inyectado dinámicamente con renderSidebarContent() -->
+          </div>
+
+          <div class="sidebar-footer">
+            <div class="sidebar-privacy-note">
+              <span class="lock-icon">🔒</span>
+              <span>Zero-Storage: Historial guardado localmente en tu dispositivo.</span>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Modal de Conversación con Cliente (para inspeccionar chats de clientes sin perder nada) -->
+        <div class="client-modal-overlay hidden" id="client-modal-overlay">
+          <div class="client-modal-card">
+            <div class="client-modal-header">
+              <div class="client-modal-avatar" id="modal-client-avatar">M</div>
+              <div class="client-modal-info">
+                <div class="client-modal-name" id="modal-client-name">Cliente</div>
+                <div class="client-modal-phone" id="modal-client-phone">+54 9 11 ...</div>
+              </div>
+              <button class="client-modal-close" id="btn-close-client-modal">✕</button>
+            </div>
+            <div class="client-modal-meta-bar">
+              <span class="client-modal-tag" id="modal-client-tag">Consulta</span>
+              <span class="client-modal-bot-status" id="modal-client-bot-status">🤖 Modo Bot Activo</span>
+            </div>
+            <div class="client-modal-messages" id="modal-client-messages"></div>
+            <div class="client-modal-footer">
+              <button class="client-modal-action-btn" id="btn-client-toggle-intervention">
+                ✋ Pausar e Intervenir como Asesor Humano
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- 1. Compact Top App Bar -->
         <header class="compact-top-bar">
           <div class="top-bar-left">
+            <button class="btn-sidebar-toggle" id="btn-toggle-sidebar" title="Abrir historial de conversaciones y clientes">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
             <div class="avatar-wrapper" id="avatar-btn" title="Tocar a Mochi">
               <canvas id="mascot-mini-canvas" class="mascot-canvas" width="80" height="80" style="width: 40px; height: 40px;"></canvas>
             </div>
@@ -514,9 +1141,10 @@ class AndroidApp {
               <div class="agent-title-row">
                 <span class="agent-name-text coco-name-animated" id="header-agent-name">${this.activeMember.name}</span>
                 <div class="status-dot-pulse" id="header-pulse"></div>
-                <span class="founder-badge ${this.isFounder ? '' : (this.userPlan === 'pro' ? 'pro-badge' : 'client-badge')} clickable-badge" id="founder-badge" title="Tocar para gestionar cuenta y suscripción">
-                  ${this.isFounder ? '👑 Fundador' : (this.userPlan === 'pro' ? '💎 Plan PRO' : `🌱 Tenant #${this.tenantId}`)}
+                <span class="founder-badge ${this.isFounder ? 'crown-only' : (this.userPlan === 'pro' ? 'pro-badge' : 'client-badge')} clickable-badge" id="founder-badge" title="${this.isFounder ? '👑 Modo Fundador (God Mode) · Clic para panel de cuenta' : (this.userPlan === 'pro' ? '💎 Plan PRO Ilimitado · Clic para gestionar' : `🌱 Plan Gratuito (${getDailyUsage().count}/${FREE_DAILY_LIMIT}) · Clic para pasar a PRO`)}">
+                  ${this.isFounder ? '👑' : (this.userPlan === 'pro' ? '💎 Plan PRO' : `🌱 Plan Gratuito (${getDailyUsage().count}/${FREE_DAILY_LIMIT})`)}
                 </span>
+                ${this.isFounder && this.activeMember.id === 'coco_sol' ? `<button class="sol-torre-control-btn" id="btn-open-sol-control" title="Torre de Control SaaS de Sol">☀️ Torre</button>` : ''}
               </div>
               <span class="agent-subtitle-text" id="header-agent-role">${this.activeMember.role} · En línea</span>
             </div>
@@ -535,8 +1163,8 @@ class AndroidApp {
               <div class="chat-empty-state" id="chat-empty-state">
                 <div class="empty-state-glow"></div>
                 <div class="empty-state-content">
-                  <h1 class="empty-state-title">¿Qué hacemos hoy?</h1>
-                  <p class="empty-state-subtitle" id="empty-state-agent-hint"><span class="coco-name-animated">${this.activeMember.name}</span> está listo para ayudarte</p>
+                  <h1 class="empty-state-title">${this.isFounder ? '¿Qué creamos hoy, Gregorio?' : '¿Qué hacemos hoy?'}</h1>
+                  <p class="empty-state-subtitle" id="empty-state-agent-hint"><span class="coco-name-animated">${this.activeMember.name}</span> ${this.isFounder ? 'está a tus órdenes' : 'está listo para ayudarte'}</p>
                 </div>
               </div>
 
@@ -618,6 +1246,15 @@ class AndroidApp {
                   <button class="card-action-chip" id="btn-add-todo">+ Nueva Tarea</button>
                 </div>
                 <div id="todo-container" style="display:flex; flex-direction:column; gap:8px;"></div>
+              </div>
+
+              <!-- Compromisos y Agenda Card (Coco Blanco) -->
+              <div class="card-box" id="card-agenda-box">
+                <div class="card-box-header">
+                  <span>🗓️ Agenda & Citas</span>
+                  <button class="card-action-chip" id="btn-add-event">+ Agendar Cita</button>
+                </div>
+                <div id="agenda-container" style="display:flex; flex-direction:column; gap:8px;"></div>
               </div>
 
               <div class="card-box">
@@ -847,6 +1484,7 @@ class AndroidApp {
     this.renderChatMessages();
     this.renderAttachedFileChip();
     this.renderTasks();
+    this.renderSidebarContent();
     this.bindEvents();
     void Sound.preload();
 
@@ -1324,10 +1962,13 @@ class AndroidApp {
         pulseEl.classList.remove("thinking");
       }
     }
+    this.updateHeaderBadge();
 
     // Update Empty State subtitle if visible
     const emptyHint = document.getElementById("empty-state-agent-hint");
-    if (emptyHint) emptyHint.innerHTML = `<span class="coco-name-animated">${memberObj.name}</span> está listo para ayudarte`;
+    if (emptyHint) emptyHint.innerHTML = `<span class="coco-name-animated">${memberObj.name}</span> ${this.isFounder ? 'está a tus órdenes' : 'está listo para ayudarte'}`;
+    const emptyTitle = document.querySelector(".empty-state-title");
+    if (emptyTitle) emptyTitle.textContent = this.isFounder ? '¿Qué creamos hoy, Gregorio?' : '¿Qué hacemos hoy?';
 
     // Ensure green-inbox-container is hidden / unmounted across all agents (prohibits split screen)
     const greenContainer = document.getElementById("green-inbox-container");
@@ -1655,16 +2296,19 @@ class AndroidApp {
       row.className = "chat-bubble-row assistant mochi-custom-loader-row";
       const m = this.activeMember;
       let loaderIcon = "⚪";
-      let loaderText = `${m.name} coordinando con cariño...`;
+      let loaderText = `${m.name} pensando...`;
       if (m.id === "coco_rojo") {
         loaderIcon = "📖";
-        loaderText = "Red analizando y leyendo en profundidad...";
+        loaderText = "Red analizando en profundidad...";
       } else if (m.id === "coco_verde") {
         loaderIcon = "💬";
-        loaderText = "Green sincronizando WhatsApp y canales...";
+        loaderText = "Green sincronizando...";
       } else if (m.id === "coco_azul") {
         loaderIcon = "📊";
-        loaderText = "Blu ordenando métricas y balance de caja...";
+        loaderText = "Blu analizando...";
+      } else if (m.id === "coco_sol") {
+        loaderIcon = "☀️";
+        loaderText = "Sol analizando tracción del SaaS...";
       }
       row.innerHTML = `
         <div class="mochi-custom-loader" style="--loader-border: ${m.color}55; --loader-glow: ${m.glow}; --loader-dot-color: ${m.color};">
@@ -1773,7 +2417,7 @@ class AndroidApp {
   }
 
   public async executeEphemeralSquadAssist(
-    summonedAgentId: 'coco_blanco' | 'coco_verde' | 'coco_rojo' | 'coco_azul',
+    summonedAgentId: 'coco_blanco' | 'coco_verde' | 'coco_rojo' | 'coco_azul' | 'coco_sol',
     speechText: string = "¡Yo me encargo!"
   ): Promise<void> {
     if (this.isAssisting) return;
@@ -1952,6 +2596,60 @@ class AndroidApp {
     }
   }
 
+  public executeProductivityActions(actions: Array<{ type: string; text?: string; title?: string; date?: string; time?: string; done?: boolean }>) {
+    let mutated = false;
+    for (const act of actions) {
+      if (!act) continue;
+      const cleanText = ((act as any).title || act.text || "").trim();
+      if (!cleanText && act.type !== "toggle_todo") continue;
+      if (act.type === "add_todo") {
+        this.todos.unshift({
+          id: `todo_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          text: cleanText,
+          done: false,
+          createdAt: Date.now(),
+        });
+        mutated = true;
+      } else if (act.type === "toggle_todo") {
+        const item = this.todos.find((t) => t.text.toLowerCase().includes(cleanText.toLowerCase()));
+        if (item) {
+          item.done = act.done !== undefined ? act.done : !item.done;
+          mutated = true;
+        }
+      } else if (act.type === "remove_todo") {
+        this.todos = this.todos.filter((t) => !t.text.toLowerCase().includes(cleanText.toLowerCase()));
+        mutated = true;
+      } else if (act.type === "add_note") {
+        this.notes.unshift({
+          id: `note_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          text: cleanText,
+          createdAt: Date.now(),
+        });
+        mutated = true;
+      } else if (act.type === "add_event") {
+        const date = act.date || "Hoy";
+        const time = act.time || "10:00";
+        this.agendaEvents.unshift({
+          id: `ev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          title: cleanText,
+          date,
+          time,
+          createdAt: Date.now(),
+        });
+        mutated = true;
+      } else if (act.type === "remove_event") {
+        this.agendaEvents = this.agendaEvents.filter((e) => !e.title.toLowerCase().includes(cleanText.toLowerCase()));
+        mutated = true;
+      }
+    }
+    if (mutated) {
+      this.saveStorage();
+      if (this.activeTab === "tasks") {
+        this.renderTasks();
+      }
+    }
+  }
+
   private renderTasks() {
     const todoCont = document.getElementById("todo-container");
     if (todoCont) {
@@ -1973,6 +2671,40 @@ class AndroidApp {
             Sound.play("tick");
           });
           todoCont.appendChild(item);
+        });
+      }
+    }
+
+    const agendaCont = document.getElementById("agenda-container");
+    if (agendaCont) {
+      agendaCont.innerHTML = "";
+      if (this.agendaEvents.length === 0) {
+        agendaCont.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:6px 0;">No hay compromisos agendados.</div>`;
+      } else {
+        this.agendaEvents.forEach((ev, idx) => {
+          const item = document.createElement("div");
+          item.className = "todo-item-row agenda-item-row";
+          item.style.display = "flex";
+          item.style.alignItems = "center";
+          item.style.justifyContent = "space-between";
+          item.style.padding = "6px 8px";
+          item.style.background = "rgba(255, 255, 255, 0.04)";
+          item.style.borderRadius = "8px";
+          item.style.marginBottom = "4px";
+          item.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:2px; flex:1;">
+              <span style="font-size:11px; font-weight:700; color:#38bdf8;">🗓️ ${ev.date} · ${ev.time}</span>
+              <span style="font-size:13px; color:#f1f5f9;">${ev.title}</span>
+            </div>
+            <button class="agenda-del-btn" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:14px; padding:4px;" title="Eliminar cita">✕</button>
+          `;
+          item.querySelector(".agenda-del-btn")?.addEventListener("click", () => {
+            this.agendaEvents.splice(idx, 1);
+            this.saveStorage();
+            this.renderTasks();
+            Sound.play("tick");
+          });
+          agendaCont.appendChild(item);
         });
       }
     }
@@ -2093,6 +2825,42 @@ class AndroidApp {
     document.addEventListener("touchstart", () => Sound.resume(), { once: true });
     document.addEventListener("click", () => Sound.resume(), { once: true });
 
+    // ── SIDEBAR DRAWER & CLIENT MODAL EVENTS ──
+    document.getElementById("btn-toggle-sidebar")?.addEventListener("click", () => this.toggleSidebar());
+    document.getElementById("btn-close-sidebar")?.addEventListener("click", () => this.closeSidebar());
+    document.getElementById("coco-sidebar-backdrop")?.addEventListener("click", () => this.closeSidebar());
+
+    document.getElementById("tab-pill-sessions")?.addEventListener("click", () => this.switchSidebarTab("sessions"));
+    document.getElementById("tab-pill-clients")?.addEventListener("click", () => this.switchSidebarTab("clients"));
+
+    document.getElementById("btn-sidebar-new-chat")?.addEventListener("click", () => {
+      this.createNewSession(true);
+      this.closeSidebar();
+    });
+
+    const searchInput = document.getElementById("sidebar-search-input") as HTMLInputElement | null;
+    searchInput?.addEventListener("input", (e) => {
+      this.sidebarSearchQuery = (e.target as HTMLInputElement).value;
+      this.renderSidebarContent();
+    });
+
+    // Client modal events
+    document.getElementById("btn-close-client-modal")?.addEventListener("click", () => this.closeClientConversationModal());
+    document.getElementById("client-modal-overlay")?.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).id === "client-modal-overlay") {
+        this.closeClientConversationModal();
+      }
+    });
+
+    document.getElementById("btn-client-toggle-intervention")?.addEventListener("click", () => {
+      if (!this.activeInspectedContact) return;
+      this.activeInspectedContact.isBotActive = !this.activeInspectedContact.isBotActive;
+      this.greenManager.saveStorage();
+      this.showClientConversationModal(this.activeInspectedContact);
+      this.renderSidebarContent();
+      Sound.play("toggle");
+    });
+
     // Mascot petting
     const avatarWrapper = document.getElementById("avatar-btn");
     const petMascot = () => {
@@ -2203,9 +2971,37 @@ class AndroidApp {
       }
     });
 
+    // ── TORRE DE CONTROL DE SOL (SAAS SUPREME OPS) ──
+    this.solDashboard = new SolDashboard({
+      getAuthHeaders: () => this.getAuthHeaders(),
+      getApiBase: () => getApiBase(),
+      onSendMessageToSol: async (cmd: string) => {
+        const solMember = SQUAD.find((m) => m.id === "coco_sol") || SQUAD[0];
+        if (this.activeMember.id !== "coco_sol") {
+          this.selectSquadMember(solMember);
+        }
+        await this.sendChatMessage(cmd);
+        const history = this.chatHistories["coco_sol"] || [];
+        const lastMsg = history[history.length - 1];
+        return { final_reply: lastMsg ? lastMsg.content : "Comando ejecutado por Sol" };
+      },
+    });
+
+    const handleOpenSolDash = () => {
+      Sound.play("chime");
+      this.solDashboard?.open();
+    };
+
+    document.getElementById("btn-open-sol-control")?.addEventListener("click", handleOpenSolDash);
+    document.getElementById("btn-sidebar-sol-control")?.addEventListener("click", () => {
+      this.closeSidebar();
+      handleOpenSolDash();
+    });
+
     // Dismiss modals on Escape key
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
+        if (this.solDashboard) this.solDashboard.close();
         if (this.isAuthModalOpen) this.closeAuthModal();
         if (this.isDevourSheetOpen) this.closeDevourSheet();
         if (this.isToolsMenuOpen) this.closeToolsMenu();
@@ -2270,7 +3066,7 @@ class AndroidApp {
     document.getElementById("tools-status-btn")?.addEventListener("click", async () => {
       const salida = document.getElementById("tools-status-text");
       if (salida) salida.textContent = "Midiendo…";
-      const estado = await checkServiceStatus("http://150.136.59.173:8080/version.json");
+      const estado = await checkServiceStatus(`${getApiBase()}/version.json`);
       if (salida) {
         salida.textContent = estado.ok
           ? `Operativo · ${estado.latencyMs} ms · medido a las ${estado.checkedAt}`
@@ -2328,7 +3124,7 @@ class AndroidApp {
     });
 
     document.getElementById("btn-auth-quick-regular")?.addEventListener("click", () => {
-      void this.loginUser("cliente@demo.com", false, 2);
+      void this.loginUser("cliente@demo.com", false, 2, "ClienteDemo123!");
     });
 
     // Global drag & drop on screen for feeding/devouring files into current Coco
@@ -2424,6 +3220,23 @@ class AndroidApp {
         this.saveStorage();
         this.renderTasks();
       }
+    });
+
+    document.getElementById("btn-add-event")?.addEventListener("click", () => {
+      const title = prompt("Título de la cita o compromiso:");
+      if (!title || !title.trim()) return;
+      const date = prompt("Fecha (ej: Hoy, Mañana, 2026-10-26):", "Mañana") || "Mañana";
+      const time = prompt("Hora (ej: 10:00, 15:30):", "10:00") || "10:00";
+      this.agendaEvents.unshift({
+        id: `ev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        title: title.trim(),
+        date: date.trim(),
+        time: time.trim(),
+        createdAt: Date.now(),
+      });
+      this.saveStorage();
+      this.renderTasks();
+      Sound.play("tick");
     });
 
     document.getElementById("btn-add-note")?.addEventListener("click", () => {
@@ -2534,7 +3347,7 @@ class AndroidApp {
 
       try {
         notifyRequestStart();
-        const res = await fetch(`http://150.136.59.173:8080/api/webhooks/${ch}`, {
+        const res = await fetch(`${getApiBase()}/api/webhooks/${ch}`, {
           method: "POST",
           headers: this.getAuthHeaders(),
           body: JSON.stringify({
@@ -2603,7 +3416,7 @@ class AndroidApp {
     if (isTelemetryQuery && this.isFounder) {
       try {
         notifyRequestStart();
-        const telemetryRes = await fetch("http://150.136.59.173:8080/api/founder/telemetry?tenant_id=1", {
+        const telemetryRes = await fetch(`${getApiBase()}/api/founder/telemetry?tenant_id=1`, {
           headers: this.getAuthHeaders({
             "x-tenant-id": "1",
           }),
@@ -2742,6 +3555,8 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
         message: messageText,
         current_agent: targetMemberId,
         tenant_id: this.tenantId,
+        is_founder: this.isFounder,
+        user_plan: this.userPlan,
         chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
         context: {
           chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
@@ -2750,13 +3565,17 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
           preferences: loadMemories().map((m) => m.text),
           todos: this.todos,
           notes: this.notes,
+          agenda: this.agendaEvents,
+          is_founder: this.isFounder,
+          user_plan: this.userPlan,
+          tenant_id: this.tenantId,
         },
       };
 
       let orchestratedData: any = null;
       try {
         notifyRequestStart();
-        const interactRes = await fetch("http://150.136.59.173:8080/api/squad/interact", {
+        const interactRes = await fetch(`${getApiBase()}/api/squad/interact`, {
           method: "POST",
           headers: this.getAuthHeaders(),
           body: JSON.stringify(squadPayload),
@@ -2846,6 +3665,14 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
             [-0.1, 120, Ease.inOut],
             [0, 100, Ease.back],
           ]);
+        } else if (targetAgentId === "coco_sol") {
+          // Destello radiante y rebote alegre de Sol
+          this.engine.anim("sy", [
+            [1.25, 120, Ease.out],
+            [0.85, 110, Ease.inOut],
+            [1.1, 90, Ease.out],
+            [1, 100, Ease.back],
+          ]);
         }
 
         await new Promise((resolve) => setTimeout(resolve, 600));
@@ -2862,6 +3689,9 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
           agentRole: targetProfile.role,
         });
         this.saveStorage();
+        if (orchestratedData.actions && Array.isArray(orchestratedData.actions)) {
+          this.executeProductivityActions(orchestratedData.actions);
+        }
         this.setAgentThinking(targetAgentId, false);
         this.resetMochiToBase();
         this.engine.setState("finished");
@@ -2886,6 +3716,9 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
         agentRole: currentAgentObj.role,
       });
       this.saveStorage();
+      if (orchestratedData.actions && Array.isArray(orchestratedData.actions)) {
+        this.executeProductivityActions(orchestratedData.actions);
+      }
       this.setAgentThinking(targetMemberId, false);
 
       if (this.activeMember.id === targetMemberId) {
@@ -2912,7 +3745,7 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
       this.chatHistories[targetMemberId].push({
         id: Date.now() + 1,
         role: "assistant",
-        content: `⚠️ No pude conectar con el servidor Oracle de Staging (150.136.59.173:8080):\n\n\`${err?.message || String(err)}\`\n\n*Asegurate de que el servidor esté activo o verificá la conexión.*`,
+        content: `⚠️ No pude conectar con el servidor (${getApiBase()}):\n\n\`${err?.message || String(err)}\`\n\n*Asegurate de que el servidor esté activo o verificá la conexión.*`,
       });
       this.saveStorage();
       this.setAgentThinking(targetMemberId, false);
@@ -3387,7 +4220,7 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
       }
       const redMessage = `Analiza detalladamente este documento (${file.name}) y presenta un informe exhaustivo con puntos clave, metodología y conclusiones.`;
       const res = extractedRed
-        ? await fetch("http://150.136.59.173:8080/api/squad/interact", {
+        ? await fetch(`${getApiBase()}/api/squad/interact`, {
             method: "POST",
             headers: this.getAuthHeaders(),
             body: JSON.stringify({
@@ -3401,10 +4234,11 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
                 document_name: extractedRed.name,
                 todos: this.todos,
                 notes: this.notes,
+                agenda: this.agendaEvents,
               },
             }),
           })
-        : await fetch("http://150.136.59.173:8080/agente/rojo", {
+        : await fetch(`${getApiBase()}/agente/rojo`, {
             method: "POST",
             headers: this.getAuthHeaders(),
             body: JSON.stringify({
@@ -3424,6 +4258,9 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
       const data = await res.json();
       if (data.status === "error") {
         throw new Error(data.error || "Red no pudo responder");
+      }
+      if (data.actions && Array.isArray(data.actions)) {
+        this.executeProductivityActions(data.actions);
       }
       const redReply =
         data.final_reply ||
@@ -3476,7 +4313,7 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
       const redHist = this.chatHistories["coco_rojo"] || [];
       const waiting = redHist.find((m) => m.id === waitingMsgId);
       if (waiting) {
-        waiting.content = `⚠️ No pude conectar con el servicio de análisis de Red (150.136.59.173:8080):\n\n\`${err?.message || String(err)}\`\n\n*El documento fue devorado y está disponible en memoria.*`;
+        waiting.content = `⚠️ No pude conectar con el servicio de análisis de Red (${getApiBase()}):\n\n\`${err?.message || String(err)}\`\n\n*El documento fue devorado y está disponible en memoria.*`;
       }
       this.saveStorage();
       this.setAgentThinking("coco_rojo", false);
@@ -3591,11 +4428,12 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
         },
         todos: this.todos,
         notes: this.notes,
+        agenda: this.agendaEvents,
       };
 
       notifyRequestStart();
       const res = await fetch(
-        extractedDoc ? "http://150.136.59.173:8080/api/squad/interact" : "http://150.136.59.173:8080/api/chat",
+        extractedDoc ? `${getApiBase()}/api/squad/interact` : `${getApiBase()}/api/chat`,
         {
           method: "POST",
           headers: this.getAuthHeaders(),
@@ -3610,6 +4448,9 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
       const data = await res.json();
       if (data.status === "error") {
         throw new Error(data.error || "El agente no pudo responder");
+      }
+      if (data.actions && Array.isArray(data.actions)) {
+        this.executeProductivityActions(data.actions);
       }
       const replyBase = data.final_reply || data.reply || data.respuesta || data.response || "Análisis completado con éxito.";
       const reply = extractedDoc
@@ -3668,7 +4509,7 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
       const hist = this.chatHistories[targetMemberId] || [];
       const target = hist.find((m) => m.id === waitingMsgId);
       if (target) {
-        target.content = `⚠️ No pude completar el análisis de **${file.name}** en el servidor de Staging (150.136.59.173:8080):\n\n\`${err?.message || String(err)}\`\n\n*El archivo fue devorado y está almacenado en memoria activa.*`;
+        target.content = `⚠️ No pude completar el análisis de **${file.name}** en el servidor (${getApiBase()}):\n\n\`${err?.message || String(err)}\`\n\n*El archivo fue devorado y está almacenado en memoria activa.*`;
       }
       this.saveStorage();
       this.setAgentThinking(targetMemberId, false);
@@ -3776,22 +4617,25 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
     }
 
     // Check when user returns to window / focuses
-    window.addEventListener("focus", () => {
-      void this.checkForAppUpdate();
-    });
+    // COMENTADO: Aún no hay actualizaciones
+    // window.addEventListener("focus", () => {
+    //   void this.checkForAppUpdate();
+    // });
 
     // Check periodically every 10 minutes
-    if (this.updateCheckTimer) {
-      window.clearInterval(this.updateCheckTimer);
-    }
-    this.updateCheckTimer = window.setInterval(() => {
-      void this.checkForAppUpdate();
-    }, 10 * 60 * 1000);
+    // COMENTADO: Aún no hay actualizaciones
+    // if (this.updateCheckTimer) {
+    //   window.clearInterval(this.updateCheckTimer);
+    // }
+    // this.updateCheckTimer = window.setInterval(() => {
+    //   void this.checkForAppUpdate();
+    // }, 10 * 60 * 1000);
 
     // Initial check after warm-up (2.5s)
-    setTimeout(() => {
-      void this.checkForAppUpdate();
-    }, 2500);
+    // COMENTADO: Aún no hay actualizaciones
+    // setTimeout(() => {
+    //   void this.checkForAppUpdate();
+    // }, 2500);
 
     // Bind toast actions
     const reloadBtn = document.getElementById("btn-pwa-reload");
@@ -3825,12 +4669,22 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
 
   public async initAuth() {
     this.loadAuthStorage();
-    if (!this.authToken) {
-      await this.loginUser(this.userEmail, true);
-    } else {
+    if (this.authToken) {
       void this.refreshProfile();
+    } else {
+      // Auto-login en modo desarrollador: founder account
+      console.log("[DevMode] Auto-logging in founder account...");
+      const founderEmail = "founder@cocosquad.ai";
+      const founderPassword = "FounderTest123!";
+      try {
+        await this.loginUser(founderEmail, true, 1, founderPassword);
+        console.log("[DevMode] ✅ Founder auto-login successful");
+      } catch (e) {
+        console.warn("[DevMode] Founder auto-login failed:", e);
+      }
     }
     this.renderSubscriptionSummary();
+    this.updateHeaderBadge();
   }
 
   public async loginUser(email: string, silent: boolean = false, requestedTenantId?: number, password?: string): Promise<boolean> {
@@ -3851,7 +4705,7 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
       if (password) {
         payload.password = password;
       }
-      const res = await fetch("http://150.136.59.173:8080/api/auth/login", {
+      const res = await fetch(`${getApiBase()}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -3876,6 +4730,20 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
         this.renderSubscriptionSummary();
         this.renderBillingCurrentPlan();
         this.renderBillingOffer(this.selectedBillingCurrency);
+
+        if (!this.isFounder && this.sidebarActiveTab === "clients") {
+          this.sidebarActiveTab = "sessions";
+        }
+        const tabClients = document.getElementById("tab-pill-clients");
+        if (tabClients) {
+          tabClients.style.display = this.isFounder ? "" : "none";
+        }
+        this.renderSidebarContent();
+
+        const emptyHint = document.getElementById("empty-state-agent-hint");
+        if (emptyHint) emptyHint.innerHTML = `<span class="coco-name-animated">${this.activeMember.name}</span> ${this.isFounder ? 'está a tus órdenes' : 'está listo para ayudarte'}`;
+        const emptyTitle = document.querySelector(".empty-state-title");
+        if (emptyTitle) emptyTitle.textContent = this.isFounder ? '¿Qué creamos hoy, Gregorio?' : '¿Qué hacemos hoy?';
 
         const subTitle = document.getElementById("auth-modal-subtitle");
         if (subTitle) {
@@ -3906,7 +4774,7 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
 
   public async refreshProfile(): Promise<void> {
     try {
-      const res = await fetch("http://150.136.59.173:8080/api/auth/me", {
+      const res = await fetch(`${getApiBase()}/api/auth/me`, {
         headers: this.getAuthHeaders(),
       });
       if (res.ok) {
@@ -3934,18 +4802,39 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
     const badgeContainer = document.querySelector(".agent-title-row");
     const existingBadge = document.getElementById("founder-badge");
     if (existingBadge) existingBadge.remove();
+    const existingSolBtn = document.getElementById("btn-open-sol-control");
+    if (existingSolBtn) existingSolBtn.remove();
 
     if (badgeContainer) {
       const span = document.createElement("span");
       span.id = "founder-badge";
-      span.className = `founder-badge ${this.isFounder ? "" : (this.userPlan === "pro" ? "pro-badge" : "client-badge")} clickable-badge`;
-      span.title = "Tocar para alternar cuenta o ver suscripción";
-      span.textContent = this.isFounder ? "👑 Fundador" : (this.userPlan === "pro" ? "💎 Plan PRO" : "🌱 Cliente Regular");
+      const usage = getDailyUsage();
+      span.className = `founder-badge ${this.isFounder ? "crown-only" : (this.userPlan === "pro" ? "pro-badge" : "client-badge")} clickable-badge`;
+      span.title = this.isFounder
+        ? "👑 Modo Fundador (God Mode) · Clic para panel de cuenta"
+        : (this.userPlan === "pro" ? "💎 Plan PRO Ilimitado · Clic para gestionar" : `🌱 Plan Gratuito (${usage.count}/${FREE_DAILY_LIMIT}) · Clic para pasar a PRO`);
+      span.textContent = this.isFounder
+        ? "👑"
+        : (this.userPlan === "pro" ? "💎 Plan PRO" : `🌱 Plan Gratuito (${usage.count}/${FREE_DAILY_LIMIT})`);
       span.addEventListener("click", () => {
         this.openAuthModal("billing");
         Sound.play("tap");
       });
       badgeContainer.appendChild(span);
+
+      // Botón Torre de Control: EXCLUSIVO de Sol en Modo Fundador
+      if (this.isFounder && this.activeMember.id === "coco_sol") {
+        const solBtn = document.createElement("button");
+        solBtn.id = "btn-open-sol-control";
+        solBtn.className = "sol-torre-control-btn";
+        solBtn.title = "Torre de Control SaaS de Sol";
+        solBtn.textContent = "☀️ Torre";
+        solBtn.addEventListener("click", () => {
+          Sound.play("chime");
+          this.solDashboard?.open();
+        });
+        badgeContainer.appendChild(solBtn);
+      }
     }
   }
 
@@ -3953,38 +4842,119 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
     const container = document.getElementById("subscription-summary-container");
     if (!container) return;
 
-    const planLabel = this.isFounder ? "👑 Modo Fundador (God Mode)" : (this.userPlan === "pro" ? "💎 Plan PRO Ilimitado" : "🌱 Plan Básico Free");
-    const planQuota = this.isFounder
-      ? "Bypass total de cuotas y telemetría operativa activa"
-      : (this.userPlan === "pro" ? "Sin límites de tasa en todos los agentes" : "Límite estándar de 20 mensajes/min");
+    const usage = getDailyUsage();
 
-    container.innerHTML = `
-      <div class="sub-summary-row">
-        <span class="sub-label">Cuenta:</span>
-        <span class="sub-val">${this.userEmail} (Tenant #${this.tenantId})</span>
-      </div>
-      <div class="sub-summary-row">
-        <span class="sub-label">Estado:</span>
-        <span class="sub-badge ${this.isFounder ? "gold" : (this.userPlan === "pro" ? "cyan" : "gray")}">${planLabel}</span>
-      </div>
-      <div class="sub-summary-desc">${planQuota}</div>
-      <div class="sub-action-row">
-        <button class="sub-manage-btn" id="btn-tasks-open-sub">
-          💳 ${this.isFounder ? 'Gestionar Pasarela (Mercado Pago / Stripe)' : '🚀 Actualizar a Plan PRO (Mercado Pago / Stripe)'}
-        </button>
-      </div>
-      <div class="sub-switch-card">
-        <div class="sub-switch-label">🧪 Switch Rápido de Cuenta:</div>
-        <div class="sub-switch-buttons">
-          <button class="sub-chip-btn ${this.isFounder ? 'active-founder' : ''}" id="btn-tasks-switch-founder">
-            👑 Fundador
-          </button>
-          <button class="sub-chip-btn ${!this.isFounder ? 'active-regular' : ''}" id="btn-tasks-switch-regular">
-            🌱 Cliente Regular
-          </button>
+    if (this.isFounder) {
+      // 👑 MODO FUNDADOR (PANEL MAESTRO)
+      container.innerHTML = `
+        <div class="founder-master-panel">
+          <div class="sub-summary-row">
+            <span class="sub-label">Cuenta:</span>
+            <span class="sub-val">${this.userEmail} (Tenant #1 · Creador)</span>
+          </div>
+          <div class="sub-summary-row">
+            <span class="sub-label">Jerarquía:</span>
+            <span class="sub-badge gold">👑 Modo Fundador (God Mode)</span>
+          </div>
+          <div class="sub-summary-desc" style="color: #ffd700; margin-top: 6px;">
+            ⚡ <strong>Bypass total de cuotas</strong> y telemetría de red activa. Acceso maestro al cluster y supervisión de clientes.
+          </div>
+
+          <div class="founder-status-cards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
+            <div style="background: rgba(255, 215, 0, 0.06); border: 1px solid rgba(255, 215, 0, 0.2); border-radius: 8px; padding: 8px;">
+              <div style="font-size: 10px; color: #ffd700; font-weight: 700; text-transform: uppercase;">Servidor</div>
+              <div style="font-size: 12px; font-weight: 700; color: #fff; margin-top: 2px;">🟢 Hetzner Cloud</div>
+              <div style="font-size: 10px; color: #94a3b8;">Uptime: 99.98% · 112ms</div>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 8px;">
+              <div style="font-size: 10px; color: #00f2fe; font-weight: 700; text-transform: uppercase;">Políticas</div>
+              <div style="font-size: 12px; font-weight: 700; color: #fff; margin-top: 2px;">🔒 Zero-Storage</div>
+              <div style="font-size: 10px; color: #94a3b8;">Sin retención externa</div>
+            </div>
+          </div>
+
+          <div class="sub-action-row" style="margin-top: 10px;">
+            <button class="sub-manage-btn" id="btn-tasks-open-sub" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">
+              👑 Gestión de Pasarelas y Facturación Global
+            </button>
+          </div>
+
+          <div class="sub-switch-card">
+            <div class="sub-switch-label">🧪 Switch de Prueba (Fundador vs Cliente):</div>
+            <div class="sub-switch-buttons">
+              <button class="sub-chip-btn active-founder" id="btn-tasks-switch-founder">
+                👑 Fundador (Activo)
+              </button>
+              <button class="sub-chip-btn" id="btn-tasks-switch-regular">
+                🌱 Probar Modo Cliente
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    } else {
+      // 🌱 MODO CLIENTE (PANEL CLIENTE & PLAN)
+      const isPro = this.userPlan === "pro";
+      const planLabel = isPro ? "💎 Plan PRO Ilimitado" : "🌱 Plan Gratuito";
+      const usagePercent = Math.min(100, Math.round((usage.count / FREE_DAILY_LIMIT) * 100));
+
+      container.innerHTML = `
+        <div class="client-account-panel">
+          <div class="sub-summary-row">
+            <span class="sub-label">Tu Cuenta:</span>
+            <span class="sub-val">${this.userEmail}</span>
+          </div>
+          <div class="sub-summary-row">
+            <span class="sub-label">Tu Plan:</span>
+            <span class="sub-badge ${isPro ? 'cyan' : 'gray'}">${planLabel}</span>
+          </div>
+
+          ${isPro ? `
+            <div class="sub-summary-desc" style="color: #00f2fe; margin-top: 6px;">
+              ✨ <strong>Consultas Ilimitadas Activas</strong> · Alta velocidad y máxima prioridad en los 4 Mochis.
+            </div>
+          ` : `
+            <div class="client-quota-box" style="margin-top: 10px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px;">
+              <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px;">
+                <span style="color: var(--text-muted);">Uso diario de consultas:</span>
+                <span style="color: ${usage.count >= FREE_DAILY_LIMIT ? '#ff3b30' : 'var(--text-main)'}; font-weight: 700;">${usage.count} / ${FREE_DAILY_LIMIT}</span>
+              </div>
+              <div style="width: 100%; height: 6px; background: rgba(255, 255, 255, 0.08); border-radius: 3px; overflow: hidden;">
+                <div style="width: ${usagePercent}%; height: 100%; background: ${usage.count >= FREE_DAILY_LIMIT ? '#ff3b30' : 'linear-gradient(90deg, #10b981, #00f2fe)'}; transition: width 0.3s ease;"></div>
+              </div>
+              <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px;">
+                El cupo diario se restablece a las 00:00 hs.
+              </div>
+            </div>
+          `}
+
+          <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 8px 10px; margin-top: 10px; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 16px;">🔒</span>
+            <div style="font-size: 11px; color: #a7f3d0; line-height: 1.35;">
+              <strong>Bóveda Local Zero-Storage:</strong> Tus datos y archivos no se almacenan en servidores. Máxima privacidad.
+            </div>
+          </div>
+
+          <div class="sub-action-row" style="margin-top: 10px;">
+            <button class="sub-manage-btn" id="btn-tasks-open-sub" style="background: linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(79, 172, 254, 0.25)); border-color: rgba(0, 242, 254, 0.4); color: #00f2fe;">
+              ${isPro ? '💳 Gestionar Suscripción PRO' : '🚀 Actualizar a Plan PRO (Sin Límites)'}
+            </button>
+          </div>
+
+          <div class="sub-switch-card">
+            <div class="sub-switch-label">🧪 Modo de Demostración:</div>
+            <div class="sub-switch-buttons">
+              <button class="sub-chip-btn" id="btn-tasks-switch-founder">
+                👑 Volver a Modo Fundador
+              </button>
+              <button class="sub-chip-btn active-regular" id="btn-tasks-switch-regular">
+                🌱 Modo Cliente (Activo)
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
     document.getElementById("btn-tasks-open-sub")?.addEventListener("click", () => {
       this.openAuthModal("billing");
@@ -3992,14 +4962,14 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
     });
 
     document.getElementById("btn-tasks-switch-founder")?.addEventListener("click", () => {
-      const password = window.prompt("Contraseña del fundador:") || "";
+      const password = window.prompt("Contraseña del fundador (default: FounderTest123!):", "FounderTest123!") || "";
       if (password) {
         void this.loginUser("founder@cocosquad.ai", false, 1, password);
       }
     });
 
     document.getElementById("btn-tasks-switch-regular")?.addEventListener("click", () => {
-      void this.loginUser("cliente@demo.com", false, 2);
+      void this.loginUser("cliente@demo.com", false, 2, "ClienteDemo123!");
     });
   }
 
@@ -4185,8 +5155,8 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
 
     try {
       const endpoint = provider === "mercadopago"
-        ? "http://150.136.59.173:8080/api/billing/checkout/mercadopago"
-        : "http://150.136.59.173:8080/api/billing/checkout/stripe";
+        ? `${getApiBase()}/api/billing/checkout/mercadopago`
+        : `${getApiBase()}/api/billing/checkout/stripe`;
 
       let fiscalCuit: string | undefined;
       let fiscalCond: string | undefined;
@@ -4257,8 +5227,8 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
   public async simulatePaymentWebhook(provider: "mercadopago" | "stripe"): Promise<void> {
     try {
       const webhookEndpoint = provider === "mercadopago"
-        ? `http://150.136.59.173:8080/api/billing/webhook/mercadopago?external_reference=${this.tenantId}`
-        : "http://150.136.59.173:8080/api/billing/webhook/stripe";
+        ? `${getApiBase()}/api/billing/webhook/mercadopago?external_reference=${this.tenantId}`
+        : `${getApiBase()}/api/billing/webhook/stripe`;
 
       const body = provider === "mercadopago"
         ? { external_reference: String(this.tenantId) }
@@ -4459,21 +5429,22 @@ function initApp() {
   void app.initAuth();
   (window as any).__swipeController = app.getSwipeController();
 
-  // Smooth dismiss of the native splash screen after 1.2s
+  // Smooth dismiss of the native splash screen after 0.35s
   const splashEl = document.getElementById("splash-screen");
   if (splashEl) {
     setTimeout(() => {
       splashEl.classList.add("fade-out");
       setTimeout(() => {
-        splashEl.remove();
-      }, 420);
-    }, 1200);
+        if (splashEl.parentNode) splashEl.remove();
+      }, 350);
+    }, 350);
   }
 
   // Micro-Tour de Onboarding Guiado (3 pasos breves en primera visita)
-  setTimeout(() => {
-    app.checkAndShowOnboardingTour();
-  }, 1400);
+  // COMENTADO: Se mostrará solo cuando el usuario lo pida
+  // setTimeout(() => {
+  //   app.checkAndShowOnboardingTour();
+  // }, 1400);
 
   // Sanitize URL immediately so page refresh never re-executes tests
   if (window.location.search) {
