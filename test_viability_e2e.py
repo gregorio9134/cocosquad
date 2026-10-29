@@ -96,10 +96,11 @@ session = {
 # 1. AUTHENTICATION & MULTI-TENANT TESTS
 # ---------------------------------------------------------------------------
 def test_founder_login():
+    founder_pw = os.getenv("FOUNDER_PASSWORD", "FounderTest123!")
     code, resp = http_req(
         f"{API_BASE_URL}/api/auth/login",
         method="POST",
-        data={"email": "founder@cocosquad.ai", "tenant_id": 1}
+        data={"email": "founder@cocosquad.ai", "password": founder_pw, "tenant_id": 1}
     )
     assert code == 200, f"HTTP status {code} != 200: {resp}"
     assert resp.get("status") == "success", f"Status not success: {resp}"
@@ -127,7 +128,7 @@ def test_tenant_isolation_login():
     code, resp = http_req(
         f"{API_BASE_URL}/api/auth/login",
         method="POST",
-        data={"email": "cliente_auditoria@test.com", "tenant_id": 2}
+        data={"email": "cliente_auditoria@test.com", "password": "ClienteDemo123!", "tenant_id": 2}
     )
     assert code == 200, f"HTTP status {code} != 200: {resp}"
     token = resp.get("token")
