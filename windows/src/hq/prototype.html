@@ -832,7 +832,7 @@
         speech: '',
         jumpTimer: 0,
         phase: 1.5,
-        accessory: 'sprout'
+        accessory: null
       },
       {
         id: 'blanco',
@@ -852,7 +852,7 @@
         speech: '',
         jumpTimer: 0,
         phase: 3.0,
-        accessory: 'medical'
+        accessory: null
       },
       {
         id: 'red',
@@ -872,7 +872,7 @@
         speech: '',
         jumpTimer: 0,
         phase: 4.5,
-        accessory: 'beacon'
+        accessory: null
       },
       {
         id: 'blu',
@@ -892,7 +892,7 @@
         speech: '',
         jumpTimer: 0,
         phase: 6.0,
-        accessory: 'visor'
+        accessory: null
       }
     ];
 
@@ -2471,16 +2471,7 @@
           }
         }
 
-        // 5. Rosy Cheeks (Blush)
-        ctx.fillStyle = 'rgba(244, 63, 94, 0.4)';
-        ctx.beginPath();
-        ctx.ellipse(-eyeDist - 3, eyeY + 4, 2.6, 1.4, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.ellipse(eyeDist + 3, eyeY + 4, 2.6, 1.4, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 6. Accessories
+        // 5. Accessories (Only Sol has the SaaS crown)
         if (m.accessory === 'crown') {
           const crownY = -ry - 2;
           ctx.fillStyle = '#F59E0B';
@@ -2500,53 +2491,6 @@
           ctx.fillStyle = '#EF4444';
           ctx.beginPath();
           ctx.arc(0, crownY - 4, 1.6, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (m.accessory === 'sprout') {
-          const sproutY = -ry;
-          ctx.strokeStyle = '#15803D';
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          ctx.moveTo(0, sproutY + 1);
-          ctx.quadraticCurveTo(0, sproutY - 6, -4, sproutY - 8);
-          ctx.stroke();
-          ctx.fillStyle = '#22C55E';
-          ctx.beginPath();
-          ctx.ellipse(-4, sproutY - 8, 3.4, 1.8, -0.6, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.ellipse(3, sproutY - 6, 2.8, 1.5, 0.5, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (m.accessory === 'medical') {
-          const headY = -ry + 3;
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-          ctx.fillRect(-rx * 0.75, headY, rx * 1.5, 3.5);
-          ctx.fillStyle = '#EF4444';
-          ctx.fillRect(-1.2, headY - 2, 2.4, 7.5);
-          ctx.fillRect(-3.8, headY + 0.6, 7.6, 2.3);
-        } else if (m.accessory === 'beacon') {
-          const headY = -ry;
-          const flash = (Math.sin(animTick * 0.15) + 1) * 0.5;
-          ctx.fillStyle = `rgba(255, 23, 68, ${0.4 + flash * 0.6})`;
-          ctx.beginPath();
-          ctx.arc(0, headY - 4, 3.5 + flash * 2, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(-1, headY - 6, 2, 6);
-          ctx.fillRect(-3, headY - 4, 6, 2);
-        } else if (m.accessory === 'visor') {
-          const visorY = eyeY - 1;
-          ctx.fillStyle = '#06B6D4';
-          ctx.fillRect(-rx * 0.68, visorY, rx * 1.36, 3.2);
-          ctx.strokeStyle = '#0284C7';
-          ctx.lineWidth = 1.2;
-          ctx.beginPath();
-          ctx.moveTo(rx * 0.5, -ry + 2);
-          ctx.lineTo(rx * 0.65, -ry - 7);
-          ctx.stroke();
-          const antLed = (Math.sin(animTick * 0.12) + 1) * 0.5;
-          ctx.fillStyle = antLed > 0.5 ? '#38BDF8' : '#0369A1';
-          ctx.beginPath();
-          ctx.arc(rx * 0.65, -ry - 7, 2, 0, Math.PI * 2);
           ctx.fill();
         }
 

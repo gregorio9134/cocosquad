@@ -1349,5 +1349,39 @@ Se logro la conexion y navegacion fluida de ida y vuelta entre el Cuartel Pixel 
      * HQ inicial -> seleccion de Coco Blanco -> transicion exitosa a pantalla de chat -> clic en '🏢 HQ' -> regreso exitoso al edificio 2D.
    - Capturas guardadas en `design/captures/app_hq_view.png` y `design/captures/app_chat_blanco_view.png`.
 
+--------------------------------------------------------------------------------
+HITO 37: PURIFICACION ESTETICA DE LOS MOCHIS AL DISENO ORIGINAL COUCOU
+--------------------------------------------------------------------------------
+Fecha: 30/10/2026
+Estado: COMPLETADO, TESTEADO Y VERIFICADO
+
+Resumen:
+Se restauro la identidad visual autentica de los Mochis de Coucou, eliminando los accesorios invasivos en las cabezas y el rubor facial, volviendo a su fisonomia pura, limpia y minimalista de superelipses:
+
+1. Retiro de Accesorios en Cabezas y Frentes:
+   - Coco Green: Se removio el brote/planta de la cabeza (sprout).
+   - Coco Blanco: Se removio la vincha y cruz medica de la frente (medical cross).
+   - Coco Blu: Se removieron los lentes/visor de realidad aumentada y la antena con led (visor & antenna).
+   - Coco Red: Se removio la baliza y cruz luminosa de emergencia de la cabeza (beacon).
+   - Coco Sol: Conserva intacta su corona real dorada de Líder SaaS (👑), manteniendo su rol jerarquico superior.
+
+2. Eliminacion del Rubor Facial en Todo el Escuadron:
+   - Se suprimieron las elipses de rubor rosado bajo los ojos en todos los Mochis (Sol, Green, Blanco, Red y Blu).
+   - Los ojos expresivos kawaii conservan su parpadeo organico procedural y brillo especular sin manchas ni distracciones visuales.
+
+3. Sincronizacion de Maquetas y Aplicacion:
+   - Se actualizaron de manera sincronica e identica:
+     * `windows/public/hq.html`
+     * `coco_hub_interactive_prototype.html`
+     * `design/prototype/coco_hub_interactive_prototype.html`
+     * `windows/src/hq/prototype.html`
+     * `windows/dist/hq.html`
+   - Build Vite/Tauri (`windows/`) validado al 100% (`tsc --noEmit && vite build`) en 9.01s con 0 errores de tipos o empaquetado.
+
+4. Verificacion Visual:
+   - Captura de alta resolucion generada con navegador headless y verificada:
+     * `design/captures/app_mochis_clean_coucou.png`
+
+
 
 
