@@ -2406,3 +2406,65 @@ hint: Turn this message off by running
 hint: "git config advice.addIgnoredFile false"
 Exited with code 1
 ```
+
+## 2026-10-29T11:58:31.919Z — fallo (código 0)
+
+```bash
+cd "/Users/Gregorio/Desktop/coco squad" && python3 test_viability_e2e.py 2>&1 | head -80
+```
+
+```
+m [Auth] Aislamiento y login de Tenant regular (tenant_id=2) (11.1 ms) - [91mHTTP status 403 != 200: {'detail': 'Para crear una cuenta necesitás una contraseña de al menos 6 caracteres.'}[0m
+[1m2. Modo Fundador & Telemetría (Paso 7):[0m
+  [92m✔[0m [Telemetry] Consulta de Telemetría Fundador (/api/founder/telemetry) (41.1 ms) - [96mMétricas: msgs=142, boveda=28, delegaciones=19[0m
+  [91m✖[0m [Telemetry] Protección de acceso y rechazo 403 a no-fundadores (0.0 ms) - [91mMissing tenant2 token[0m
+[1m3. Pasarela de Cobros Híbrida (Paso 9):[0m
+  [91m✖[0m [Billing] Creación de Checkout Mercado Pago (ARS) (7.5 ms) - [91mHTTP status 401 != 200: {'detail': 'Necesitás iniciar sesión para operar con tu cuenta.'}[0m
+  [91m✖[0m [Billing] Creación de Checkout Stripe (USD) (5.6 ms) - [91mHTTP status 401 != 200: {'detail': 'Necesitás iniciar sesión para operar con tu cuenta.'}[0m
+  [91m✖[0m [Billing] Simulación de Webhook de pago y upgrade automático a PRO (5.8 ms) - [91mWebhook failed with status 503: {'detail': 'Webhook de Stripe no configurado'}[0m
+[1m4. Garantía de Zero-Storage & Bóveda en Memoria:[0m
+  [91m✖[0m [Zero-Storage] Procesamiento de archivo en RAM y 0 residuales en /tmp (15.6 ms) - [91mCommand ' 'ls -1 /tmp | wc -l'' returned non-zero exit status 127.[0m
+[1m5. Ruteo de Especialistas y Webhooks Omnicanal (Paso 5):[0m
+  [91m✖[0m [Routing] Despacho a Especialistas (Blanco, Verde, Azul, Rojo) (59743.1 ms) - [91mtimed out[0m
+  [91m✖[0m [Omnichannel] Webhook WhatsApp a Coco Verde (11.8 ms) - [91mStatus not success[0m
+  [91m✖[0m [Omnichannel] Webhook Instagram Direct a Coco Verde (9.9 ms) - [91mStatus not success[0m
+  [91m✖[0m [Omnichannel] Webhook TikTok a Coco Verde (30.4 ms) - [91mStatus not success[0m
+[1m6. Versionado PWA & Service Worker (Paso 6):[0m
+  [92m✔[0m [PWA] Disponibilidad de /version.json en Backend (29.7 ms) - [96mBackend version.json activo (v1.0.1 - Mejoras de rendimiento y Squad Assist)[0m
+  [91m✖[0m [PWA] Sincronización de /version.json en Frontend Vite (8.6 ms) - [91m<urlopen error [Errno 61] Connection refused>[0m
+[1m[96m========================================================================[0m
+[1m RESULTADO DE AUDITORÍA: 4/15 PRUEBAS EXITOSAS (26.7% VIABILIDAD)[0m
+[1m[96m========================================================================[0m
+📄 Reporte persistido en: /Users/Gregorio/.gemini/antigravity/brain/9003ef3a-a8dd-45b6-8e42-661fcb11d807/audit_viabilidad_mvp_e2e.md
+```
+
+## 2026-10-29T12:00:23.039Z — fallo (código 0)
+
+```bash
+cd "/Users/Gregorio/Desktop/coco squad" && python3 test_viability_e2e.py 2>&1 | head -40
+```
+
+```
+[0m [Auth] Aislamiento y login de Tenant regular (tenant_id=2) (199.0 ms) - [96mTenant 7 aislado correctamente (plan=free, is_founder=False)[0m
+[1m2. Modo Fundador & Telemetría (Paso 7):[0m
+  [92m✔[0m [Telemetry] Consulta de Telemetría Fundador (/api/founder/telemetry) (20.1 ms) - [96mMétricas: msgs=142, boveda=28, delegaciones=19[0m
+  [92m✔[0m [Telemetry] Protección de acceso y rechazo 403 a no-fundadores (5.5 ms) - [96mAislamiento verificado: HTTP 403 Forbidden para usuarios no fundadores[0m
+[1m3. Pasarela de Cobros Híbrida (Paso 9):[0m
+  [91m✖[0m [Billing] Creación de Checkout Mercado Pago (ARS) (5.7 ms) - [91mHTTP status 401 != 200: {'detail': 'Necesitás iniciar sesión para operar con tu cuenta.'}[0m
+  [91m✖[0m [Billing] Creación de Checkout Stripe (USD) (4.8 ms) - [91mHTTP status 401 != 200: {'detail': 'Necesitás iniciar sesión para operar con tu cuenta.'}[0m
+  [91m✖[0m [Billing] Simulación de Webhook de pago y upgrade automático a PRO (3.3 ms) - [91mWebhook failed with status 503: {'detail': 'Webhook de Stripe no configurado'}[0m
+[1m4. Garantía de Zero-Storage & Bóveda en Memoria:[0m
+  [91m✖[0m [Zero-Storage] Procesamiento de archivo en RAM y 0 residuales en /tmp (9.0 ms) - [91mCommand ' 'ls -1 /tmp | wc -l'' returned non-zero exit status 127.[0m
+[1m5. Ruteo de Especialistas y Webhooks Omnicanal (Paso 5):[0m
+  [91m✖[0m [Routing] Despacho a Especialistas (Blanco, Verde, Azul, Rojo) (44638.5 ms) - [91mtimed out[0m
+  [91m✖[0m [Omnichannel] Webhook WhatsApp a Coco Verde (7.4 ms) - [91mStatus not success[0m
+  [91m✖[0m [Omnichannel] Webhook Instagram Direct a Coco Verde (7.4 ms) - [91mStatus not success[0m
+  [91m✖[0m [Omnichannel] Webhook TikTok a Coco Verde (14.4 ms) - [91mStatus not success[0m
+[1m6. Versionado PWA & Service Worker (Paso 6):[0m
+  [92m✔[0m [PWA] Disponibilidad de /version.json en Backend (60.2 ms) - [96mBackend version.json activo (v1.0.1 - Mejoras de rendimiento y Squad Assist)[0m
+  [91m✖[0m [PWA] Sincronización de /version.json en Frontend Vite (4.4 ms) - [91m<urlopen error [Errno 61] Connection refused>[0m
+[1m[96m========================================================================[0m
+[1m RESULTADO DE AUDITORÍA: 6/15 PRUEBAS EXITOSAS (40.0% VIABILIDAD)[0m
+[1m[96m========================================================================[0m
+📄 Reporte persistido en: /Users/Gregorio/.gemini/antigravity/brain/9003ef3a-a8dd-45b6-8e42-661fcb11d807/audit_viabilidad_mvp_e2e.md
+```

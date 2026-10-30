@@ -1,5 +1,5 @@
 COCO SQUAD — COMUNICACION ENTRE NOTEBOOKS
-Actualizado: 20 de octubre de 2026
+Actualizado: 29 de octubre de 2026
 
 PARA QUE SIRVE ESTE ARCHIVO
 
@@ -1189,3 +1189,136 @@ Seguridad: este archivo contiene claves y tokens en texto plano dentro de un rep
 - Pendiente de la app: el login de fundador desde el modal y el cierre de sesion expirada no se verificaron de punta a punta.
 - Pendiente de seguridad: cliente sin contrasena (cualquier correo entra como cliente), cupo solo en el dispositivo,
   Mercado Pago sin token real.
+
+32. COCO SOL: GERENTE GENERAL SUPREMO Y TORRE DE CONTROL SAAS (27/10/2026)
+-----------------------------------------------------------------------------------------------------
+- Incorporacion del 5to Mochi del ecosistema: Coco Sol (#FFB800), el Gerente General Supremo del SaaS.
+- Desdoblamiento de roles: el Coco Squad clasico (Blanco, Green, Red, Blu) atiende la gestion operativa y clinica del consultorio; Sol supervisa la totalidad del negocio SaaS y la red de consultorios clientes.
+- Torre de Control SaaS implementada:
+  - Metricas financieras en vivo: MRR (Monthly Recurring Revenue), ARR, consultorios activos, en mora y suspendidos.
+  - Gestion de Tenants: tabla administrativa para activar, pausar o cambiar de plan a los consultorios.
+  - Radar de Hotspots de Mercado: analisis anonimizado de demanda clinica a nivel regional bajo estricta politica Zero-Knowledge (sin almacenar ni leer jamas nombres, telefonos o patologias confidenciales de pacientes).
+  - Emision de Comunicados / Broadcasts: publicacion de alertas, avisos informativos y mantenimientos a todos los consultorios clientes.
+  - Copiloto Administrativo: Sol interpreta directivas en lenguaje natural (ej: 'pausa el tenant #3') y ejecuta cambios en DB en tiempo real.
+- Interfaz y Header de Fundador:
+  - Header badge compactado a la corona resplandeciente '👑'.
+  - Boton exclusivo de Sol '☀️ Torre': solo se renderiza cuando el miembro activo seleccionado es Coco Sol; no ocupa espacio ni se muestra en los demas mochis.
+- Verificado de punta a punta con tests de navegador headless en local y staging.
+
+33. HITO DE ARQUITECTURA DEFINITIVA: NODO CENTRAL, MOCHIS SUPERVISORES Y SUB-AGENTES PIXEL ART (29/10/2026)
+-----------------------------------------------------------------------------------------------------
+- Tras el analisis exhaustivo de proyectos de referencia (Pixel Agents, OpenOffice, Agents Office), se definio el modelo conceptual y operativo definitivo de Coco Squad:
+
+1. Estructura Espacial 2D con 'Nodo Central' (Hub & Spoke):
+   - Centro: El Nodo Central / El Cerebro, habitado por Sol, donde converge la base de conocimiento compartido, las metricas globales y los reportes del negocio (privacidad estricta Zero-Knowledge).
+   - Periferia: 4 oficinas/despachos satelitales correspondientes a los departamentos del consultorio (Green en Recepcion/Agenda, Blanco en Clinica/Kinesiologia, Red en Triage/Urgencias y Blu en Soporte/Sistemas).
+
+2. Jerarquia Operativa de 3 Niveles:
+   - Nivel 1 (Estrategico / Supremo): Sol en el Nodo Central, supervisando el SaaS, metricas de facturacion y la salud del negocio.
+   - Nivel 2 (Tactico / Supervisores): Los Mochis. Son la cara visible y empatica con la que el usuario humano interactua y habla en lenguaje natural.
+   - Nivel 3 (Operativo / Sub-agentes Pixel Art): Pequenos obreros en pixel art que nacen bajo demanda (on-the-fly) cuando un Mochi supervisor delega tareas masivas (ej: enviar 40 recordatorios de turnos, indexar fichas clinicas). Se visualizan fisicamente caminando a sus escritorios, tipeando o leyendo documentos, y desaparecen al finalizar entregando el resultado terminado a su Mochi.
+
+3. Solucion de Diseno Multiplataforma (Cero Friccion en Celulares):
+   - PC / Mac / Notebook (Pantalla horizontal): Vista panoramica completa 2D del edificio y despachos en orbita alrededor del nodo central.
+   - Celular / Tablet (Pantalla vertical): 'Carrusel Orbital con Swipe'. La navegacion en moviles no reduce el mapa a un tamano ilegible; en cambio, cada oficina se convierte en una pantalla vertical completa a la que se accede deslizando el pulgar hacia los costados (Sol en el centro, Green, Blanco, Red y Blu a los lados), con el Mochi arriba, los subagentes trabajando en el medio y el chat debajo.
+   - Sesion Unica Sincronizada en Tiempo Real: Arquitectura de 'Espejo en la Nube' mediante WebSockets. Los dispositivos comparten la misma sesion (como Figma o WhatsApp Web). Si se envia una orden desde la notebook, el celular se actualiza al instante. Los agentes y subagentes corren en el servidor; si se apaga o bloquea el telefono, las tareas continuan ejecutandose en segundo plano.
+
+4. Estrategia de Entrega y Distribucion (Web-First + PWA):
+   - Modelo Web-First: Acceso instantaneo via URL (app.cocosquad.com) en cualquier navegador sin descargas pesadas que generen friccion en la venta a consultorios.
+   - Instalacion en 1-click mediante PWA (crea el acceso directo en Windows, Mac, Android e iOS con experiencia nativa).
+   - Generacion de instaladores de escritorio livianos (.exe / .dmg) via Tauri v2 unicamente si el cliente corporativo exige una aplicacion instalada formalmente.
+
+5. Estrategia y Roadmap de Inteligencia Artificial (De Gemini a Hetzner):
+   - Fase 1 (Validacion y Salida al Mercado): Gemini API Pay-as-you-go. Cero costos fijos de infraestructura, maxima velocidad con Gemini Flash y costo variable por centavos segun consumo.
+   - Fase 2 (Escala Masiva): Migracion a servidores dedicados con GPU en Hetzner ejecutando Open Claw / modelos open-source propios (costo mensual fijo sin importar el volumen de tokens).
+   - Desacoplamiento total mediante un 'LLM Gateway Adapter' en el backend de Python: el cambio de proveedor de IA se realiza mediante configuracion del servidor sin alterar la logica de los mochis, subagentes ni la interfaz visual.
+
+
+--------------------------------------------------------------------------------
+HITO 34: MAQUETA INTERACTIVA DEFINITIVA - MASTER EDITION (2D PIXEL ART HQ)
+--------------------------------------------------------------------------------
+Fecha: 29/10/2026
+Estado: COMPLETADO Y VERIFICADO
+
+Resumen:
+Se diseno, programo y valido la maqueta interactiva definitiva 'Coco Squad · Autonomous Pixel HQ (Master Edition)', consolidando todos los requerimientos visuales, operativos y de experiencia de usuario:
+
+1. Estetica Retro RPG 2D Fidedigna (Estilo Pixel Agents / OpenOffice):
+   - Motor grafico Canvas HTML5 a 60 FPS con pixel-ratio integro (image-rendering: pixelated).
+   - Z-ordering quirurgico: agentes y pacientes sentados anatomicamente detras de sus escritorios (silla -> cuerpo -> escritorio en frente -> monitores CRT con fosforo activo).
+   - Arquitectura de consultorio completa: paredes con bisel 3D, zocalos, piso de parquet calido con grano, baldosas clinicas en boxes y ajedrezado refinado de 12px en cafeteria.
+
+2. Flujo Completo de Paciente Autonomo (Playable Live Journey):
+   - Al pulsar 'Simular Flujo Completo de Paciente', un paciente ingresa por el felpudo de bienvenida, realiza el check-in con Mensajero #1 y Archivador #2 en recepcion, aguarda en el sillon junto al gato Michi, el Dr. Blanco lo convoca al Box 1, se acuesta en la camilla kinesiologica, recibe la maniobra de descompresion lumbar, se guarda la pauta clinica y se retira agradeciendo.
+
+3. Modales Interactivos de Inspeccion Clinica y de Negocio:
+   - Despacho Sol (Mapa SaaS): Muestra los 14 consultorios activos en red nacional con su aporte al MRR (,450 USD) y garantia de privacidad Zero-Knowledge.
+   - Box Kinesiologia (Ficha Clinica): Ficha detallada de paciente lumbar L4-L5, ejercicios prescriptos con pelota suiza y espaldera sueca.
+   - Data Center (Consola Hetzner): Telemetria del servidor dedicado en Alemania, consumo de tokens Gemini API y estado de sincronizacion.
+   - Recepcion (Simulador WhatsApp Web): Chat bidireccional realista de confirmacion automatica de turnos.
+   - Cafeteria (Vending Machine): Dispensador interactivo de cafe espresso doble y alfajores.
+
+4. Resolucion Multiplataforma Integrada (Escritorio vs. Movil):
+   - Botonera superior para alternar instantaneamente entre 'Modo Planta Escritorio' (lienzo completo con zoom y paneo) y 'Modo Movil (Carrusel)', simulando el marco de un smartphone con navegacion deslizable por departamentos, eliminando toda friccion de lectura.
+
+5. Sistema de Sonido e Iluminacion Atmosferica:
+   - Sintetizador de musica ambiental Lo-Fi (Web Audio API nativo con acordes calidos relajantes, sin descargas de mp3).
+   - Modos de iluminacion ambiental: Luz de Dia (haces de sol por ventanales), Hora Dorada Cozy (calidez ambar) y Noche Cyberpunk (resplandor fosforescente de monitores CRT y racks de servidores en penumbra).
+   - Filtro optativo de lineas de escaneo 'CRT Scanlines'.
+
+--------------------------------------------------------------------------------
+HITO 35: INTEGRACION DE MOCHIS SUPERVISORES EN CADA OFICINA Y PULIDO DE AMBIENTACION
+--------------------------------------------------------------------------------
+Fecha: 29/10/2026
+Estado: COMPLETADO Y VERIFICADO
+
+Resumen:
+Se perfecciono la maqueta interactiva 'Coco Squad · Autonomous Pixel HQ' cumpliendo al 100% con la jerarquia operativa de 3 niveles y ubicando a cada Mochi supervisor en su correspondiente despacho fisico:
+
+1. Presencia Fisica de los Mochis Supervisores en Cada Oficina:
+   - Despacho Central Sol: Coco Sol (#FFB800), lider supremo del SaaS, con corona real dorada y rubi, aura de sol resplandeciente, sentado al frente de la mesa directiva con su mapa multitenant.
+   - Recepcion & Espera: Coco Green (#10B981), supervisora de recepcion y turnos, con su brote verde, aura esmeralda, supervisando a los subagentes Mensajero #1 y Archivador #2 mientras gestionan turnos de WhatsApp.
+   - Box Kinesiologia: Coco Blanco (#FFFFFF), especialista en rehabilitacion motora, con cinta medica y cruz clinica roja, supervisando la camilla kinesica junto a Kinesiologo #1.
+   - Box Urgencias & Triage: Coco Red (#EF4444), oficial de guardia, con baliza parpadeante de emergencia y aura rubi, monitoreando la frecuencia cardiaca en el monitor ECG junto a Triage #1.
+   - Data Center & Logs: Coco Blu (#0EA5E9), lider DevOps y sysadmin, con visor LED cian y antena de datos, flotando frente a los racks de servidores Hetzner junto a DevOps #1.
+
+2. Identidad Visual Original Coucou (Superelipses Puras & Fisica Organica):
+   - Cada Mochi se renderiza mediante la ecuacion matematica exacta de la superelipse de Coucou (exponente 2.7).
+   - Animacion continua de squash & stretch respiratorio, flotabilidad sinusoidal suave y sombras de contacto proyectadas en el suelo.
+   - Ojos kawaii expresivos con parpadeo sincronizado cada 3.5 segundos (arco feliz '^ ^') y rubor rosado en mejillas.
+   - Salto elastico al interactuar o hacer clic en cualquiera de ellos.
+
+3. Voces Sintetizadas Nativas (Web Audio API):
+   - Cada Mochi posee un timbre de voz sintetizado distintivo al hacerle click:
+     * Sol: Tono triunfal tipo trompeta calida (A4 a E5).
+     * Green: Doble chirrido alegre y servicial (G5 a C6).
+     * Blanco: Timbre de campana pura y tranquilizadora (E5 a B5).
+     * Red: Pulso rapido y energico de alerta médica (A5 a D6).
+     * Blu: Arpegio electronico de telemetria digital (D5 a D6).
+
+4. Desactivacion Total del Zoom por Doble Click:
+   - Se elimino por completo el zoom por doble click para garantizar una vista panoramica 1x fija, estable y confortable.
+   - El clic en cualquier oficina o Mochi realiza la seleccion e interaccion directa sin mover la camara ni generar desorientacion.
+
+5. Flujo de Paciente con Participacion Directa de los Mochis:
+   - En la simulacion del paciente Juan Perez, Coco Green le da la bienvenida en recepcion ('Bienvenido Juan! Paso tu ficha a Blanco'), Coco Blanco lo convoca a camilla, efectua la evaluacion de la vertebra lumbar L4-L5 y despide al paciente confirmando el envio de la pauta a su WhatsApp.
+
+6. Ubicacion de Archivos y Como Ver los Cambios Esteticos en la Otra Notebook:
+   - Maqueta Interactiva Definitiva (100% autocontenida, doble click y abre en Chrome/Brave/Edge/Safari sin servidores):
+     * Archivo directo en la raiz del repo: `coco_hub_interactive_prototype.html`
+     * Archivo en prototipos de diseno: `design/prototype/coco_hub_interactive_prototype.html`
+   - Capturas y Renders de Alta Fidelidad (en `design/captures/`):
+     * `design/captures/mochis_in_offices_clean.png` (Mochis en sus oficinas con accesorios y auras)
+     * `design/captures/master_edition_desktop.png` (Vista general panoramica de escritorio)
+     * `design/captures/master_edition_mobile.png` (Simulacion de Carrusel Orbital en Smartphone)
+     * `design/captures/master_edition_modal.png` (Ficha clinica interactiva Kinesiologica L4-L5)
+     * `design/captures/master_edition_v7_night_crt.png` (Modo nocturno cyberpunk con filtro CRT retro)
+   - Sprites y Pixel Assets Originales:
+     * Carpeta `design/assets/` (personajes, mobiliario, pisos, paredes y mascotas).
+   - Pasos para sincronizar en la otra notebook:
+     1. `git fetch coco-squad`
+     2. `git checkout feat/mochi-real-responses`
+     3. `git pull coco-squad feat/mochi-real-responses`
+     4. Abrir en cualquier navegador el archivo `coco_hub_interactive_prototype.html`.
+
+
