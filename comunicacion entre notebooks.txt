@@ -1321,4 +1321,33 @@ Se perfecciono la maqueta interactiva 'Coco Squad · Autonomous Pixel HQ' cumpli
      3. `git pull coco-squad feat/mochi-real-responses`
      4. Abrir en cualquier navegador el archivo `coco_hub_interactive_prototype.html`.
 
+--------------------------------------------------------------------------------
+HITO 36: INTEGRACION BIDIRECCIONAL FLUIDA ENTRE CUARTEL PIXEL HQ Y CHAT OPERATIVO
+--------------------------------------------------------------------------------
+Fecha: 30/10/2026
+Estado: COMPLETADO, TESTEADO Y VERIFICADO
+
+Resumen:
+Se logro la conexion y navegacion fluida de ida y vuelta entre el Cuartel Pixel Art (HQ) y la aplicacion operativa de chat de Coco Squad en Vite/Tauri (`windows/`):
+
+1. Integracion en el Frontend Vite (`http://127.0.0.1:1420`):
+   - `windows/src/android/android.ts` gestiona el estado `hqMode = true` para desplegar el Cuartel Pixel Art en pantalla completa al iniciar.
+   - `windows/public/hq.html` se sirve de forma estatica y fluida dentro del webview.
+
+2. Navegacion Bidireccional Cero Friccion:
+   - De Cuartel HQ hacia Chat:
+     * Clic simple en un Mochi: el Mochi salta, reproduce su voz sintetizada y muestra su speech bubble en el cuartel.
+     * Clic en el boton 'Chat 💬' del Mochi en el panel lateral (o doble clic sobre el Mochi en el mapa): conmuta inmediatamente hacia la interfaz de conversacion operativa con ese especialista (Coco Sol, Verde, Blanco, Rojo o Azul).
+     * El switch es instantaneo y conserva el estado de sesion, herramientas y pautas de trabajo del Mochi.
+   - De Chat hacia Cuartel HQ:
+     * Se incorporo el boton permanente '🏢 HQ' en la barra superior compacta de la app (`compact-top-bar`) junto al badge de fundador y el estado en linea.
+     * Al hacer clic en '🏢 HQ', la vista regresa de inmediato al Cuartel Pixel Art interactivo sin recargar la pagina ni perder memoria de la conversacion.
+
+3. Validacion de Compilacion y Ejecucion:
+   - Compilacion de produccion validada con `npm run build` (`tsc --noEmit && vite build`) en 4.34s con 0 errores.
+   - Test E2E de navegacion verificado con navegador headless:
+     * HQ inicial -> seleccion de Coco Blanco -> transicion exitosa a pantalla de chat -> clic en '🏢 HQ' -> regreso exitoso al edificio 2D.
+   - Capturas guardadas en `design/captures/app_hq_view.png` y `design/captures/app_chat_blanco_view.png`.
+
+
 

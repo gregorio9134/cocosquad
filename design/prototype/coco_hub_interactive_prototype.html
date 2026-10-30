@@ -194,6 +194,7 @@
               </div>
             </div>
             <div class="flex items-center gap-1">
+              <button onclick="event.stopPropagation(); triggerOpenParentChat('sol')" class="text-[9px] px-2 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40" title="Abrir Chat Operativo">Chat 💬</button>
               <button onclick="event.stopPropagation(); openModal('sol_map')" class="text-[9px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700" title="Ver Red SaaS">Mapa 🗺️</button>
             </div>
           </div>
@@ -213,6 +214,7 @@
               </div>
             </div>
             <div class="flex items-center gap-1">
+              <button onclick="event.stopPropagation(); triggerOpenParentChat('green')" class="text-[9px] px-2 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40" title="Abrir Chat Operativo">Chat 💬</button>
               <button onclick="event.stopPropagation(); openModal('whatsapp_sim')" class="text-[9px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700" title="Ver Chat WhatsApp">WhatsApp 📱</button>
             </div>
           </div>
@@ -232,6 +234,7 @@
               </div>
             </div>
             <div class="flex items-center gap-1">
+              <button onclick="event.stopPropagation(); triggerOpenParentChat('blanco')" class="text-[9px] px-2 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40" title="Abrir Chat Operativo">Chat 💬</button>
               <button onclick="event.stopPropagation(); openModal('clinical_card')" class="text-[9px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700" title="Ver Ficha Clínica">Ficha 🩺</button>
             </div>
           </div>
@@ -250,7 +253,10 @@
                 <span class="text-[10px] text-slate-400">Box Urgencias · ECG Vitals Monitor</span>
               </div>
             </div>
-            <span class="text-[10px] font-mono text-emerald-400 font-semibold px-2">Guardia OK</span>
+            <div class="flex items-center gap-1">
+              <button onclick="event.stopPropagation(); triggerOpenParentChat('red')" class="text-[9px] px-2 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40" title="Abrir Chat Operativo">Chat 💬</button>
+              <span class="text-[10px] font-mono text-emerald-400 font-semibold px-1">Guardia OK</span>
+            </div>
           </div>
 
           <!-- COCO BLU -->
@@ -268,6 +274,7 @@
               </div>
             </div>
             <div class="flex items-center gap-1">
+              <button onclick="event.stopPropagation(); triggerOpenParentChat('blu')" class="text-[9px] px-2 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40" title="Abrir Chat Operativo">Chat 💬</button>
               <button onclick="event.stopPropagation(); openModal('hetzner_telemetry')" class="text-[9px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700" title="Ver Servidores Hetzner">Hetzner ⚡</button>
             </div>
           </div>
@@ -311,6 +318,10 @@
       <!-- TAB 2: INTERACTIVE CHAT WITH ACTIVE SUPERVISOR -->
       <div id="tab-content-chat" class="hidden flex-1 flex flex-col justify-between overflow-hidden">
         
+        <button onclick="triggerOpenParentChat(selectedRoom)" class="w-full mb-2 py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow transition">
+          🚀 Abrir Modo Operativo Completo
+        </button>
+
         <!-- CHAT HEADER -->
         <div class="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
           <div class="flex items-center gap-2">
@@ -1087,6 +1098,37 @@
         }
       }
     });
+
+    // Double-click opens full operational chat with Mochi
+    canvas.addEventListener('dblclick', () => {
+      if (hoveredMochi) {
+        triggerOpenParentChat(hoveredMochi.id);
+      } else if (hoveredRoom && hoveredRoom.supervisor) {
+        triggerOpenParentChat(hoveredRoom.supervisor);
+      }
+    });
+
+    function triggerOpenParentChat(mochiId) {
+      const id = mochiId || selectedRoom || 'blanco';
+      if (typeof window.triggerOpenParentChat === 'function') {
+        window.triggerOpenParentChat(id);
+      } else if (window.parent && window.parent !== window && typeof window.parent.triggerOpenParentChat === 'function') {
+        window.parent.triggerOpenParentChat(id);
+      } else if (window.parent && window.parent !== window && window.parent.__cocoApp) {
+        const map = {sol:'coco_sol', green:'coco_verde', blanco:'coco_blanco', red:'coco_rojo', blu:'coco_azul'};
+        const target = map[id] || 'coco_blanco';
+        window.parent.__cocoApp.selectSquadMember(target);
+        window.parent.__cocoApp.hqMode = false;
+        window.parent.document.documentElement.style.cssText = '';
+        window.parent.document.body.style.cssText = '';
+        const root = window.parent.document.getElementById('root');
+        if (root) root.style.cssText = '';
+        window.parent.__cocoApp.render();
+        window.parent.__cocoApp.bindEvents();
+      } else {
+        switchSidebarTab('chat');
+      }
+    }
 
     function logEvent(txt) {
       const now = new Date();

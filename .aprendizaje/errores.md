@@ -2468,3 +2468,25 @@ cd "/Users/Gregorio/Desktop/coco squad" && python3 test_viability_e2e.py 2>&1 | 
 [1m[96m========================================================================[0m
 📄 Reporte persistido en: /Users/Gregorio/.gemini/antigravity/brain/9003ef3a-a8dd-45b6-8e42-661fcb11d807/audit_viabilidad_mvp_e2e.md
 ```
+
+## 2026-10-30T12:18:18.736Z — fallo (código 2)
+
+```bash
+cd "/Users/Gregorio/Desktop/coco squad/windows" && cat > /tmp/fix_hq.css << 'EOF'
+EOF
+ && python3 << 'PYTHON'
+# Fix the hq render
+with open('/Users/Gregorio/Desktop/coco squad/windows/src/android/android.ts', 'r') as f:
+    content = f.read()
+
+old = '''    if (this.hqMode) {
+      root.innerHTML = `
+      <div id="app" style="width:100vw;height:100vh;overflow:hidden;">
+        <iframe id="hq-iframe" src="/src/hq/prototype.html" style="width:100vw;height:100vh;border:none;position:fixed;top:0;lef
+```
+
+```
+/bin/bash: -c: line 2: syntax error near unexpected token `&&'
+/bin/bash: -c: line 2: ` && python3 << 'PYTHON''
+Exited with code 2
+```

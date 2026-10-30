@@ -1043,9 +1043,46 @@ class AndroidApp {
     this.activeInspectedContact = null;
   }
 
+  private hqMode = true;
+
   public render() {
     const root = document.getElementById("root");
     if (!root) return;
+
+    if (this.hqMode) {
+      document.documentElement.style.cssText = 'height:100vh;margin:0;padding:0;overflow:hidden;';
+      document.body.style.cssText = 'height:100vh;margin:0;padding:0;background:#020617;overflow:hidden;';
+      root.style.cssText = 'width:100vw;height:100vh;margin:0;padding:0;overflow:hidden;';
+      root.innerHTML = `<iframe id="hq-iframe" style="position:fixed;inset:0;width:100vw;height:100dvh;border:0;z-index:10000;background:#020617;display:block;" allowfullscreen></iframe>`;
+      fetch('/hq.html')
+        .then(r => r.text())
+        .then(html => {
+          const iframe = document.getElementById('hq-iframe') as HTMLIFrameElement;
+          if (iframe) {
+            iframe.srcdoc = html;
+            iframe.onload = () => {
+              try {
+                const win = iframe.contentWindow as any;
+                if (win) {
+                  win.triggerOpenParentChat = (id: string) => {
+                    const map: any = {sol:'coco_sol', green:'coco_verde', blanco:'coco_blanco', red:'coco_rojo', blu:'coco_azul'};
+                    const target = map[id] || 'coco_blanco';
+                    this.selectSquadMember(target);
+                    this.hqMode = false;
+                    document.documentElement.style.cssText = '';
+                    document.body.style.cssText = '';
+                    root.style.cssText = '';
+                    this.render();
+                    this.bindEvents();
+                  };
+                }
+              } catch(e) {}
+            };
+          }
+        });
+      this.bindEvents();
+      return;
+    }
 
     root.innerHTML = `
       <div id="app">
@@ -1144,6 +1181,7 @@ class AndroidApp {
                 <span class="founder-badge ${this.isFounder ? 'crown-only' : (this.userPlan === 'pro' ? 'pro-badge' : 'client-badge')} clickable-badge" id="founder-badge" title="${this.isFounder ? '👑 Modo Fundador (God Mode) · Clic para panel de cuenta' : (this.userPlan === 'pro' ? '💎 Plan PRO Ilimitado · Clic para gestionar' : `🌱 Plan Gratuito (${getDailyUsage().count}/${FREE_DAILY_LIMIT}) · Clic para pasar a PRO`)}">
                   ${this.isFounder ? '👑' : (this.userPlan === 'pro' ? '💎 Plan PRO' : `🌱 Plan Gratuito (${getDailyUsage().count}/${FREE_DAILY_LIMIT})`)}
                 </span>
+                <button class="sol-torre-control-btn" id="btn-return-hq" style="background: rgba(99, 102, 241, 0.25); border: 1px solid rgba(129, 140, 248, 0.5); color: #c7d2fe; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Volver al Cuartel Pixel HQ">🏢 HQ</button>
                 ${this.isFounder && this.activeMember.id === 'coco_sol' ? `<button class="sol-torre-control-btn" id="btn-open-sol-control" title="Torre de Control SaaS de Sol">☀️ Torre</button>` : ''}
               </div>
               <span class="agent-subtitle-text" id="header-agent-role">${this.activeMember.role} · En línea</span>
@@ -2826,6 +2864,10 @@ class AndroidApp {
     document.addEventListener("click", () => Sound.resume(), { once: true });
 
     // ── SIDEBAR DRAWER & CLIENT MODAL EVENTS ──
+    document.getElementById("btn-return-hq")?.addEventListener("click", () => {
+      this.hqMode = true;
+      this.render();
+    });
     document.getElementById("btn-toggle-sidebar")?.addEventListener("click", () => this.toggleSidebar());
     document.getElementById("btn-close-sidebar")?.addEventListener("click", () => this.closeSidebar());
     document.getElementById("coco-sidebar-backdrop")?.addEventListener("click", () => this.closeSidebar());
