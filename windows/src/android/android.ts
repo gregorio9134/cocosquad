@@ -1068,12 +1068,48 @@ class AndroidApp {
                     const map: any = {sol:'coco_sol', green:'coco_verde', blanco:'coco_blanco', red:'coco_rojo', blu:'coco_azul'};
                     const target = map[id] || 'coco_blanco';
                     this.selectSquadMember(target);
-                    this.hqMode = false;
-                    document.documentElement.style.cssText = '';
-                    document.body.style.cssText = '';
-                    root.style.cssText = '';
-                    this.render();
-                    this.bindEvents();
+                    this.switchToChatView();
+                  };
+
+                  win.__cocoBridge = {
+                    getApiBase: () => getApiBase(),
+                    sendMochiMessage: async (mochiId: string, message: string) => {
+                      const map: any = {sol:'coco_sol', green:'coco_verde', blanco:'coco_blanco', red:'coco_rojo', blu:'coco_azul'};
+                      const target = map[mochiId] || mochiId;
+                      return await this.sendMochiMessageFromHq(target, message);
+                    },
+                    openChat: (id: string) => {
+                      win.triggerOpenParentChat(id);
+                    },
+                    openSolDashboard: () => {
+                      this.switchToChatView();
+                      setTimeout(() => {
+                        if (this.solDashboard) this.solDashboard.open();
+                      }, 100);
+                    },
+                    openGreenThreads: (channel: "whatsapp" | "instagram" | "tiktok" = "whatsapp") => {
+                      this.switchToChatView();
+                      setTimeout(() => {
+                        this.openGreenThreads(channel);
+                      }, 100);
+                    },
+                    saveClinicalPlan: (plan: string) => {
+                      this.notes.push({
+                        id: Date.now().toString(),
+                        text: `[FICHA KINESIOLÓGICA L4-L5] ${plan}`,
+                        createdAt: Date.now()
+                      });
+                      this.saveStorage();
+                    },
+                    getTelemetry: async () => {
+                      try {
+                        const res = await fetch(`${getApiBase()}/api/founder/telemetry`, {
+                          headers: this.getAuthHeaders()
+                        });
+                        if (res.ok) return await res.json();
+                      } catch(e) {}
+                      return null;
+                    }
                   };
                 }
               } catch(e) {}
@@ -3826,8 +3862,65 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
     }
   }
 
-  private switchToChatView() {
+  public switchToChatView() {
+    this.hqMode = false;
+    document.documentElement.style.cssText = '';
+    document.body.style.cssText = '';
+    const root = document.getElementById('root');
+    if (root) root.style.cssText = '';
+    this.render();
+    this.bindEvents();
     this.switchTab("chat");
+  }
+
+  public async sendMochiMessageFromHq(targetMemberId: string, messageText: string): Promise<any> {
+    const squadPayload = {
+      message: messageText,
+      current_agent: targetMemberId,
+      tenant_id: this.tenantId,
+      is_founder: this.isFounder,
+      user_plan: this.userPlan,
+      chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
+      context: {
+        chat_id: this.tenantId ? `tenant_${this.tenantId}` : "1",
+        todos: this.todos,
+        notes: this.notes,
+        agenda: this.agendaEvents,
+        is_founder: this.isFounder,
+        user_plan: this.userPlan,
+        tenant_id: this.tenantId,
+      },
+    };
+
+    const res = await fetch(`${getApiBase()}/api/squad/interact`, {
+      method: "POST",
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(squadPayload),
+    });
+    if (!res.ok) {
+      throw new Error(`Error en el servidor: ${res.statusText}`);
+    }
+    const data = await res.json();
+
+    if (!this.chatHistories[targetMemberId]) {
+      this.chatHistories[targetMemberId] = [];
+    }
+    this.chatHistories[targetMemberId].push({
+      id: Date.now(),
+      role: "user",
+      content: messageText,
+    });
+    this.chatHistories[targetMemberId].push({
+      id: Date.now() + 1,
+      role: "assistant",
+      content: data.final_reply || "Respuesta recibida.",
+      agentId: targetMemberId,
+      agentName: data.target_profile?.name || targetMemberId,
+      agentColor: data.target_profile?.color || "#ffffff",
+      agentRole: data.target_profile?.role || "Especialista",
+    });
+    this.saveStorage();
+    return data;
   }
 
   public openDevourSheet() {
