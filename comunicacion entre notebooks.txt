@@ -1438,6 +1438,50 @@ Se conecto a cada uno de los 5 Mochis (Sol, Green, Blanco, Red y Blu) con sus fu
      * `design/captures/test_hq_chat_connected.png` (Modal interactivo de chat conectado al Mochi).
      * `design/captures/test_hq_chat_blanco_live.png` (Respuesta real del backend de Coco Blanco en el Cuartel).
 
+--------------------------------------------------------------------------------
+HITO 39: ADOPCION DEFINITIVA DEL CUARTEL PIXEL HQ Y PORTABILIDAD DE ANIMACIONES COUCOU
+--------------------------------------------------------------------------------
+Fecha: 01/11/2026
+Estado: COMPLETADO, TESTEADO Y VERIFICADO
+
+Resumen:
+Se establecio el Cuartel Pixel HQ como la interfaz grafica principal y definitiva del producto (despidiendo la interfaz vieja de chatbot generico), y se portaron todas las ricas animaciones y fisicas del motor original Coucou (`BotEngine.swift` / `engine.ts`) al canvas interactivo 2D:
+
+1. Adopcion Definitiva del Cuartel Pixel HQ:
+   - Toda la experiencia de usuario, conversacion con IA, gestion de turnos y operacion clinica reside dentro del Cuartel Pixel HQ.
+   - El chat opera directamente integrado en la consola de comando inferior, con speech bubbles flotantes sobre cada especialista y modales de herramientas avanzadas.
+
+2. Integracion Completa de Animaciones Coucou:
+   - Seguimiento Ocular (Gaze Tracking): Los ojos y pupilas de los Mochis siguen suavemente la posicion del cursor del mouse en el mapa, y presentan micro-miradas autonomas cuando el usuario no mueve el puntero.
+   - Inclinacion Curiosa de Cabeza (Curious Tilt): Al pasar el mouse por encima de un Mochi, este ladea la cabeza con curiosidad.
+   - Fisica Elastica de Rebote (Squash & Stretch): Deformacion organica elástica al recibir clics, caer de saltos y ejecutar acciones.
+   - Bracitos y Manitos que Saludan ('Coucou Wave'): Brazos procedurales que brotan de los costados del cuerpo y saludan alegremente al interactuar o conversar.
+   - Emociones Oculares Kawaii Procedurales:
+     * Feliz (`happy`): ojitos en arco sonriente (`^ ^`).
+     * Amor (`heart`): ojitos de corazoncito rojo con particulas flotantes.
+     * Logro/Estrella (`star`): ojitos de estrella dorada de 4 puntas.
+     * Guiño (`wink`): guiño coqueto de un solo ojo.
+     * Sorpresa (`surprised`): ojos redondos abiertos con brillo especular.
+     * Serio/Molesto (`line`): ojos chatos horizontales ante bofetadas.
+     * Mareado (`spiral`): ojos giratorios en espiral.
+   - Mecanica Slap & Dizzy (Bofetadas y Mareo):
+     * Si el usuario hace 3 clics rapidos dentro de 1.5s sobre cualquier Mochi, este reacciona al mareo: sonido de mareo, ojos en espiral 🌀, giro 360° completo (`rollAngle`), particulas purpuras y mensaje cómico de queja.
+   - Sistema de Particulas Flotantes (Floating Particles):
+     * Corazones, estrellas, chispas celestes y espirales con fisica de ascenso, dispersion lateral y fade out.
+   - Sonidos Coucou Integrados:
+     * Se incorporaron los 28 efectos de sonido WAV originales de Coucou en `windows/public/sounds/` (slap, dizzy, greet, finish, work, etc.) con fallback procedural Web Audio sintetizado en tiempo real.
+
+3. Validacion y Compilacion:
+   - Build Vite/Tauri (`windows/`) validado al 100% (`tsc --noEmit && vite build`) en 7.93s sin errores.
+   - Sincronizacion completa en:
+     * `windows/public/hq.html`
+     * `windows/dist/hq.html`
+     * `coco_hub_interactive_prototype.html`
+     * `design/prototype/coco_hub_interactive_prototype.html`
+     * `windows/src/hq/prototype.html`
+   - Captura de pantalla generada y verificada: `design/captures/test_hq_coucou_animations.png`.
+
+
 
 
 

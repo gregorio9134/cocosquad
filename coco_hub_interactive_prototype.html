@@ -822,6 +822,16 @@
         scale: 1.25,
         speech: '14 Consultorios Conectados 👑',
         jumpTimer: 0,
+        squashTimer: 0,
+        rollTimer: 0,
+        waveTimer: 0,
+        tilt: 0,
+        targetTilt: 0,
+        eyeEmotion: 'normal',
+        eyeEmotionUntil: 0,
+        clickTimes: [],
+        gazeX: 0,
+        gazeY: 0,
         phase: 0,
         accessory: 'crown'
       },
@@ -842,6 +852,16 @@
         scale: 1.15,
         speech: '',
         jumpTimer: 0,
+        squashTimer: 0,
+        rollTimer: 0,
+        waveTimer: 0,
+        tilt: 0,
+        targetTilt: 0,
+        eyeEmotion: 'normal',
+        eyeEmotionUntil: 0,
+        clickTimes: [],
+        gazeX: 0,
+        gazeY: 0,
         phase: 1.5,
         accessory: null
       },
@@ -862,6 +882,16 @@
         scale: 1.15,
         speech: '',
         jumpTimer: 0,
+        squashTimer: 0,
+        rollTimer: 0,
+        waveTimer: 0,
+        tilt: 0,
+        targetTilt: 0,
+        eyeEmotion: 'normal',
+        eyeEmotionUntil: 0,
+        clickTimes: [],
+        gazeX: 0,
+        gazeY: 0,
         phase: 3.0,
         accessory: null
       },
@@ -882,6 +912,16 @@
         scale: 1.15,
         speech: '',
         jumpTimer: 0,
+        squashTimer: 0,
+        rollTimer: 0,
+        waveTimer: 0,
+        tilt: 0,
+        targetTilt: 0,
+        eyeEmotion: 'normal',
+        eyeEmotionUntil: 0,
+        clickTimes: [],
+        gazeX: 0,
+        gazeY: 0,
         phase: 4.5,
         accessory: null
       },
@@ -902,6 +942,16 @@
         scale: 1.15,
         speech: '',
         jumpTimer: 0,
+        squashTimer: 0,
+        rollTimer: 0,
+        waveTimer: 0,
+        tilt: 0,
+        targetTilt: 0,
+        eyeEmotion: 'normal',
+        eyeEmotionUntil: 0,
+        clickTimes: [],
+        gazeX: 0,
+        gazeY: 0,
         phase: 6.0,
         accessory: null
       }
@@ -953,6 +1003,145 @@
       activeEmotes.push({ x, y, icon, alpha: 1, vy: -0.6, life: 60 });
     }
 
+    // 🌟 COUCOU PARTICLE SYSTEM (heart, star, spark, spiral)
+    const activeParticles = [];
+    function spawnParticles(x, y, type = 'star', count = 5) {
+      for (let i = 0; i < count; i++) {
+        activeParticles.push({
+          type,
+          x: x + (Math.random() - 0.5) * 16,
+          y: y + (Math.random() - 0.5) * 8,
+          vx: (Math.random() - 0.5) * 1.0,
+          vy: -(0.8 + Math.random() * 1.0),
+          alpha: 1,
+          rot: Math.random() * Math.PI * 2,
+          vrot: (Math.random() - 0.5) * 0.1,
+          size: 3.5 + Math.random() * 2.5,
+          life: 45 + Math.random() * 20
+        });
+      }
+    }
+
+    function drawMiniHeart(c, cx, cy, size) {
+      c.beginPath();
+      c.moveTo(cx, cy + size * 0.4);
+      c.bezierCurveTo(cx - size, cy - size * 0.4, cx - size * 0.8, cy - size, cx, cy - size * 0.3);
+      c.bezierCurveTo(cx + size * 0.8, cy - size, cx + size, cy - size * 0.4, cx, cy + size * 0.4);
+      c.fill();
+    }
+
+    function drawMiniStar(c, cx, cy, r) {
+      c.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const rad = i % 2 ? r * 0.45 : r;
+        const a = -Math.PI / 2 + (i * Math.PI) / 4;
+        const x = cx + Math.cos(a) * rad;
+        const y = cy + Math.sin(a) * rad;
+        if (i === 0) c.moveTo(x, y);
+        else c.lineTo(x, y);
+      }
+      c.closePath();
+      c.fill();
+    }
+
+    function drawMiniSpiral(c, cx, cy, rot) {
+      c.beginPath();
+      for (let a = 0; a < Math.PI * 3.5; a += 0.3) {
+        const r = (a / (Math.PI * 3.5)) * 3.2;
+        const x = cx + Math.cos(a + rot) * r;
+        const y = cy + Math.sin(a + rot) * r;
+        if (a === 0) c.moveTo(x, y);
+        else c.lineTo(x, y);
+      }
+      c.stroke();
+    }
+
+    function drawParticles() {
+      for (let i = activeParticles.length - 1; i >= 0; i--) {
+        const p = activeParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vrot;
+        p.life--;
+        p.alpha = Math.max(0, p.life / 45);
+
+        if (p.life <= 0) {
+          activeParticles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+
+        if (p.type === 'heart') {
+          ctx.fillStyle = '#f43f5e';
+          drawMiniHeart(ctx, 0, 0, p.size);
+        } else if (p.type === 'star') {
+          ctx.fillStyle = '#fbbf24';
+          drawMiniStar(ctx, 0, 0, p.size);
+        } else if (p.type === 'spark') {
+          ctx.fillStyle = '#38bdf8';
+          drawMiniStar(ctx, 0, 0, p.size * 0.8);
+        } else if (p.type === 'spiral') {
+          ctx.strokeStyle = '#c084fc';
+          ctx.lineWidth = 1.3;
+          drawMiniSpiral(ctx, 0, 0, p.rot * 2);
+        }
+        ctx.restore();
+      }
+    }
+
+    function playSlapSound() {
+      if (!audioEnabled) return;
+      try {
+        const audio = new Audio('/sounds/slap.wav');
+        audio.volume = 0.25;
+        audio.play().catch(() => {
+          if (audioCtx) {
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(360, now);
+            osc.frequency.exponentialRampToValueAtTime(100, now + 0.12);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+          }
+        });
+      } catch (e) {}
+    }
+
+    function playDizzySound() {
+      if (!audioEnabled) return;
+      try {
+        const audio = new Audio('/sounds/dizzy.wav');
+        audio.volume = 0.25;
+        audio.play().catch(() => {
+          if (audioCtx) {
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'sine';
+            for (let i = 0; i < 8; i++) {
+              osc.frequency.setValueAtTime(420 + Math.sin(i * 1.2) * 160, now + i * 0.1);
+            }
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+            osc.start(now);
+            osc.stop(now + 0.85);
+          }
+        });
+      } catch (e) {}
+    }
+
     // FLOATING GOLDEN DUST MOTES IN SUNBEAMS
     const dustMotes = [];
     for (let i = 0; i < 22; i++) {
@@ -981,9 +1170,11 @@
 
       hoveredMochi = null;
       for (const m of mochis) {
-        if (Math.hypot(mousePos.x - m.x, mousePos.y - m.y) < 26) {
+        if (Math.hypot(mousePos.x - m.x, mousePos.y - m.y) < 28) {
           hoveredMochi = m;
-          break;
+          m.targetTilt = (m.id === 'sol' ? 0.08 : m.id === 'green' ? -0.1 : m.id === 'red' ? 0.09 : -0.08);
+        } else {
+          m.targetTilt = 0;
         }
       }
 
@@ -1001,6 +1192,9 @@
       mousePos.y = -1;
       hoveredEntity = null;
       hoveredRoom = null;
+      for (const m of mochis) {
+        m.targetTilt = 0;
+      }
     });
 
     // PURE CLICK HANDLER - NO ACCIDENTAL ZOOM
@@ -1042,9 +1236,44 @@
         return;
       }
 
-      // 1B. Mochi Supervisor Click
+      // 1B. Mochi Supervisor Click (Squash & Stretch, Slap & Dizzy, Coucou Wave & Heart/Star Reactions)
       if (hoveredMochi) {
-        hoveredMochi.jumpTimer = performance.now();
+        const tNow = performance.now();
+        hoveredMochi.clickTimes = (hoveredMochi.clickTimes || []).filter(t => tNow - t < 1500);
+        hoveredMochi.clickTimes.push(tNow);
+
+        if (hoveredMochi.clickTimes.length >= 3) {
+          // DIZZY COUCOU REACTION! (3 clics rápidos seguidos)
+          hoveredMochi.clickTimes = [];
+          hoveredMochi.eyeEmotion = 'spiral';
+          hoveredMochi.eyeEmotionUntil = tNow + 2600;
+          hoveredMochi.rollTimer = tNow;
+          hoveredMochi.squashTimer = tNow;
+          playDizzySound();
+          spawnParticles(hoveredMochi.x, hoveredMochi.y - 12, 'spiral', 6);
+          showTemporarySpeech(hoveredMochi, '¡Uff, qué mareo! 🌀😵');
+          logEvent(`🌀 ${hoveredMochi.name} se mareó con espirales por clics rápidos!`);
+          selectSupervisor(hoveredMochi.id);
+          return;
+        }
+
+        // Clic normal afectuoso / Coucou Greeting
+        hoveredMochi.jumpTimer = tNow;
+        hoveredMochi.squashTimer = tNow;
+        hoveredMochi.waveTimer = tNow; // Bracitos saludando
+
+        // Emoción ocular y partículas según especialidad
+        const emoMap = {
+          sol: 'star',
+          green: 'heart',
+          blanco: 'happy',
+          red: 'surprised',
+          blu: 'wink'
+        };
+        hoveredMochi.eyeEmotion = emoMap[hoveredMochi.id] || 'happy';
+        hoveredMochi.eyeEmotionUntil = tNow + 2000;
+        spawnParticles(hoveredMochi.x, hoveredMochi.y - 14, hoveredMochi.eyeEmotion === 'heart' ? 'heart' : 'spark', 5);
+
         playMochiVoice(hoveredMochi.id);
         const emoteIcon = hoveredMochi.id === 'sol' ? '👑' : hoveredMochi.id === 'green' ? '🌱' : hoveredMochi.id === 'blanco' ? '🤍' : hoveredMochi.id === 'red' ? '🚨' : '⚡';
         spawnEmote(hoveredMochi.x, hoveredMochi.y - 18, emoteIcon);
@@ -1176,7 +1405,14 @@
       }
       const targetMochi = mochis.find(m => m.id === mochiId);
       if (targetMochi) {
-        targetMochi.jumpTimer = performance.now();
+        const tNow = performance.now();
+        targetMochi.jumpTimer = tNow;
+        targetMochi.squashTimer = tNow;
+        targetMochi.waveTimer = tNow;
+        targetMochi.eyeEmotion = (mochiId === 'sol' ? 'star' : mochiId === 'green' ? 'heart' : 'happy');
+        targetMochi.eyeEmotionUntil = tNow + 2000;
+        spawnParticles(targetMochi.x, targetMochi.y - 12, targetMochi.eyeEmotion === 'heart' ? 'heart' : 'spark', 4);
+
         playMochiVoice(targetMochi.id);
         const emoteIcon = targetMochi.id === 'sol' ? '👑' : targetMochi.id === 'green' ? '🌱' : targetMochi.id === 'blanco' ? '🤍' : targetMochi.id === 'red' ? '🚨' : '⚡';
         spawnEmote(targetMochi.x, targetMochi.y - 18, emoteIcon);
@@ -1468,7 +1704,14 @@
 
         const targetMochi = mochis.find(m => m.id === mochiId);
         if (targetMochi) {
-          targetMochi.jumpTimer = performance.now();
+          const tNow = performance.now();
+          targetMochi.jumpTimer = tNow;
+          targetMochi.squashTimer = tNow;
+          targetMochi.waveTimer = tNow;
+          targetMochi.eyeEmotion = 'happy';
+          targetMochi.eyeEmotionUntil = tNow + 2500;
+          spawnParticles(targetMochi.x, targetMochi.y - 12, 'star', 5);
+
           playMochiVoice(targetMochi.id);
           const shortSpeech = reply.length > 55 ? reply.slice(0, 52) + '...' : reply;
           showTemporarySpeech(targetMochi, shortSpeech);
@@ -2064,8 +2307,9 @@
       // 11. Speech Bubbles
       drawSpeechBubbles();
 
-      // 12. Floating Emotes
+      // 12. Floating Emotes & Coucou Particles
       drawEmotes();
+      drawParticles();
 
       // 13. Hover Reticle
       drawHoverInfo();
@@ -2747,15 +2991,31 @@
       mochis.forEach(m => {
         ctx.save();
 
+        // 1. Jump & Elastic Squash & Stretch Transforms
         let jumpY = 0;
         let jumpScaleX = 1;
         let jumpScaleY = 1;
-        if (m.jumpTimer && (time - m.jumpTimer) < 450) {
-          const t = (time - m.jumpTimer) / 450;
-          jumpY = -Math.sin(t * Math.PI) * 14;
-          jumpScaleX = 1 - Math.sin(t * Math.PI) * 0.15;
-          jumpScaleY = 1 + Math.sin(t * Math.PI) * 0.22;
+        if (m.jumpTimer && (time - m.jumpTimer) < 480) {
+          const t = (time - m.jumpTimer) / 480;
+          jumpY = -Math.sin(t * Math.PI) * 16;
+          jumpScaleX = 1 - Math.sin(t * Math.PI) * 0.16;
+          jumpScaleY = 1 + Math.sin(t * Math.PI) * 0.24;
         }
+
+        if (m.squashTimer && (time - m.squashTimer) < 420) {
+          const t = (time - m.squashTimer) / 420;
+          const decay = (1 - t);
+          jumpScaleX += Math.sin(t * Math.PI * 3) * 0.18 * decay;
+          jumpScaleY -= Math.sin(t * Math.PI * 3) * 0.16 * decay;
+        }
+
+        // 2. 360° Roll & Smooth Curious Tilt
+        let rollAngle = 0;
+        if (m.rollTimer && (time - m.rollTimer) < 750) {
+          const t = (time - m.rollTimer) / 750;
+          rollAngle = t * Math.PI * 2;
+        }
+        m.tilt = (m.tilt || 0) + ((m.targetTilt || 0) - (m.tilt || 0)) * 0.14;
 
         const breath = Math.sin(animTick * 0.06 + m.phase) * 0.04;
         const floatY = Math.sin(animTick * 0.045 + m.phase) * 2.5;
@@ -2767,13 +3027,13 @@
         const rx = baseR * 1.15 * (1 + breath) * jumpScaleX;
         const ry = baseR * 0.88 * (1 - breath) * jumpScaleY;
 
-        // 1. Soft Floor Shadow
+        // 3. Soft Floor Shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
         ctx.beginPath();
         ctx.ellipse(cx, m.baseY + ry + 4, rx * 0.85, 3.8, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // 2. Departmental Glowing Aura
+        // 4. Departmental Glowing Aura
         const aura = ctx.createRadialGradient(cx, cy, 2, cx, cy, rx * 1.9);
         aura.addColorStop(0, m.glow);
         aura.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -2782,9 +3042,30 @@
         ctx.ellipse(cx, cy, rx * 1.8, ry * 1.6, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // 3. Superellipse Body
+        // 5. Waving Arms ("Coucou Wave" - Mano izquierda y derecha)
+        if (m.waveTimer && (time - m.waveTimer) < 1800) {
+          const waveArmY = Math.sin(animTick * 0.4) * 4.5;
+          ctx.save();
+          ctx.fillStyle = m.colors[1];
+          ctx.strokeStyle = 'rgba(15, 23, 42, 0.45)';
+          ctx.lineWidth = 1;
+          // Mano izquierda
+          ctx.beginPath();
+          ctx.ellipse(cx - rx * 0.95 - 2, cy + waveArmY, 3.2, 5.2, -0.35, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          // Mano derecha
+          ctx.beginPath();
+          ctx.ellipse(cx + rx * 0.95 + 2, cy - waveArmY, 3.2, 5.2, 0.35, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 6. Superellipse Body with Tilt & Roll
         ctx.save();
         ctx.translate(cx, cy);
+        ctx.rotate(rollAngle + m.tilt);
         const path = mochiPath(rx, ry);
 
         const grad = ctx.createLinearGradient(-rx * 0.7, -ry * 0.85, rx * 0.7, ry * 0.9);
@@ -2804,37 +3085,134 @@
         ctx.lineWidth = 1.2;
         ctx.stroke(path);
 
-        // 4. Kawaii Expressive Eyes with Blinking
+        // 7. Expressive Kawaii Eyes, Emotes & Gaze Tracking
+        if (m.eyeEmotionUntil && time > m.eyeEmotionUntil) {
+          m.eyeEmotion = 'normal';
+          m.eyeEmotionUntil = 0;
+        }
+        const curEmotion = m.eyeEmotion || 'normal';
         const blinkCycle = (animTick * 16 + m.phase * 500) % 3600;
-        const isBlinking = blinkCycle < 180;
+        const isBlinking = (curEmotion === 'normal' && blinkCycle < 180);
         const eyeDist = rx * 0.38;
         const eyeY = -ry * 0.05;
-        const eyeW = 2.2;
-        const eyeH = isBlinking ? 0.6 : 3.8;
 
-        ctx.fillStyle = '#1c1917';
-        for (const sd of [-1, 1]) {
-          const ex = sd * eyeDist;
-          if (isBlinking) {
+        // Smooth gaze tracking towards mouse
+        let lookDx = 0;
+        let lookDy = 0;
+        if (mousePos.x >= 0 && mousePos.y >= 0) {
+          const dX = mousePos.x - cx;
+          const dY = mousePos.y - cy;
+          if (Math.hypot(dX, dY) < 300) {
+            lookDx = Math.max(-1.8, Math.min(1.8, dX / 45));
+            lookDy = Math.max(-1.4, Math.min(1.4, dY / 45));
+          }
+        }
+        m.gazeX = (m.gazeX || 0) + (lookDx - (m.gazeX || 0)) * 0.15;
+        m.gazeY = (m.gazeY || 0) + (lookDy - (m.gazeY || 0)) * 0.15;
+
+        if (curEmotion === 'happy') {
+          // Curved arch happy smiling eyes (^ ^)
+          ctx.strokeStyle = '#1c1917';
+          ctx.lineWidth = 1.6;
+          ctx.lineCap = 'round';
+          for (const sd of [-1, 1]) {
+            const ex = sd * eyeDist;
             ctx.beginPath();
-            ctx.moveTo(ex - 2.5, eyeY);
-            ctx.quadraticCurveTo(ex, eyeY - 1.8, ex + 2.5, eyeY);
-            ctx.lineWidth = 1.3;
-            ctx.strokeStyle = '#1c1917';
+            ctx.arc(ex, eyeY + 0.8, 2.6, Math.PI * 1.15, -Math.PI * 0.15, false);
             ctx.stroke();
-          } else {
+          }
+        } else if (curEmotion === 'heart') {
+          // Heart eyes ❤️
+          ctx.fillStyle = '#f43f5e';
+          for (const sd of [-1, 1]) {
+            const ex = sd * eyeDist + m.gazeX * 0.5;
+            drawMiniHeart(ctx, ex, eyeY + m.gazeY * 0.5, 3.2);
+          }
+        } else if (curEmotion === 'star') {
+          // Star eyes ⭐
+          ctx.fillStyle = '#fbbf24';
+          for (const sd of [-1, 1]) {
+            const ex = sd * eyeDist + m.gazeX * 0.5;
+            drawMiniStar(ctx, ex, eyeY + m.gazeY * 0.5, 3.5);
+          }
+        } else if (curEmotion === 'spiral') {
+          // Dizzy rotating spiral eyes 🌀
+          ctx.strokeStyle = '#1c1917';
+          ctx.lineWidth = 1.2;
+          for (const sd of [-1, 1]) {
+            drawMiniSpiral(ctx, sd * eyeDist, eyeY, animTick * 0.25);
+          }
+        } else if (curEmotion === 'line') {
+          // Annoyed flat line eyes ➖
+          ctx.strokeStyle = '#1c1917';
+          ctx.lineWidth = 1.6;
+          ctx.lineCap = 'round';
+          for (const sd of [-1, 1]) {
+            const ex = sd * eyeDist;
             ctx.beginPath();
-            ctx.ellipse(ex, eyeY, eyeW, eyeH, 0, 0, Math.PI * 2);
+            ctx.moveTo(ex - 2.8, eyeY);
+            ctx.lineTo(ex + 2.8, eyeY);
+            ctx.stroke();
+          }
+        } else if (curEmotion === 'wink') {
+          // Wink: left eye wink line, right eye normal open with pupil
+          ctx.strokeStyle = '#1c1917';
+          ctx.lineWidth = 1.6;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(-eyeDist - 2.8, eyeY);
+          ctx.lineTo(-eyeDist + 2.8, eyeY);
+          ctx.stroke();
+          // Ojo derecho
+          const ex = eyeDist;
+          ctx.beginPath();
+          ctx.ellipse(ex + m.gazeX, eyeY + m.gazeY, 2.2, 3.8, 0, 0, Math.PI * 2);
+          ctx.fillStyle = '#1c1917';
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.beginPath();
+          ctx.arc(ex + m.gazeX - 0.7, eyeY + m.gazeY - 1.2, 0.85, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (curEmotion === 'surprised') {
+          // Surprised wide eyes 😳
+          ctx.fillStyle = '#1c1917';
+          for (const sd of [-1, 1]) {
+            const ex = sd * eyeDist + m.gazeX;
+            ctx.beginPath();
+            ctx.arc(ex, eyeY + m.gazeY, 3.6, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
             ctx.beginPath();
-            ctx.arc(ex - 0.7, eyeY - 1.2, 0.8, 0, Math.PI * 2);
+            ctx.arc(ex - 1.0, eyeY + m.gazeY - 1.2, 1.2, 0, Math.PI * 2);
             ctx.fill();
             ctx.fillStyle = '#1c1917';
           }
+        } else {
+          // Normal mode with natural blinking & dynamic gaze tracking
+          ctx.fillStyle = '#1c1917';
+          for (const sd of [-1, 1]) {
+            const ex = sd * eyeDist;
+            if (isBlinking) {
+              ctx.beginPath();
+              ctx.moveTo(ex - 2.5, eyeY);
+              ctx.quadraticCurveTo(ex, eyeY - 1.8, ex + 2.5, eyeY);
+              ctx.lineWidth = 1.3;
+              ctx.strokeStyle = '#1c1917';
+              ctx.stroke();
+            } else {
+              ctx.beginPath();
+              ctx.ellipse(ex + m.gazeX, eyeY + m.gazeY, 2.2, 3.8, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+              ctx.beginPath();
+              ctx.arc(ex + m.gazeX - 0.7, eyeY + m.gazeY - 1.2, 0.85, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#1c1917';
+            }
+          }
         }
 
-        // 5. Accessories (Only Sol has the SaaS crown)
+        // 8. Accessories (Only Sol has the SaaS crown, rotated with body)
         if (m.accessory === 'crown') {
           const crownY = -ry - 2;
           ctx.fillStyle = '#F59E0B';
@@ -2859,7 +3237,7 @@
 
         ctx.restore();
 
-        // 7. Supervisor Badge & Name Pill
+        // 9. Supervisor Badge & Name Pill
         ctx.save();
         ctx.font = 'bold 8.5px monospace';
         const nameText = m.name;
