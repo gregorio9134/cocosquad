@@ -1530,3 +1530,22 @@ Fecha: 01 de Noviembre de 2026
      * `design/captures/test_hq_floating_chat_modal_blanco.png` (ventana flotante de chat).
      * `design/captures/test_hq_floating_chat_modal_reply.png` (chat en vivo con pedido rápido y respuesta clínica).
 ================================================================================
+
+--------------------------------------------------------------------------------
+FIX HITBOX & EVENTOS TOUCH / CLIC EN MOCHIS (PIXEL HQ)
+--------------------------------------------------------------------------------
+1. Causa Raíz Detectada:
+   - El listener `canvas.addEventListener('click')` dependía exclusivamente de `mousePos` generado en `mousemove`.
+   - En pantallas táctiles, trackpads con tap o clics rápidos sin movimiento previo, `mousePos` quedaba en (-1, -1) o no se actualizaba, provocando que `hoveredMochi` fuera null y la ventana no abriera.
+   - Las hitboxes de utilería (mapa y camilla) se evaluaban antes que los Mochis y tenían radios que se solapaban.
+   - Si `openMochiChatWindow` recibía el ID de la habitación (ej. 'kinesio', 'reception', 'triage', 'servers'), no encontraba la metadata del Mochi.
+
+2. Solución Aplicada:
+   - Nueva función `resolveMochiId(rawId)`: traduce instantáneamente nombres de salas o variantes ('kinesio', 'coco_blanco', 'reception', 'triage', 'servers', etc.) al ID del Mochi correspondiente.
+   - Nueva función `getCanvasCoordinates(e)`: calcula con precisión milimétrica las coordenadas del canvas tanto para eventos de mouse como `touchstart`, `touchend` y `pointerup`.
+   - Nueva función `findMochiAt(x, y, 48)`: detección con prioridad máxima sobre los 5 Mochis con un radio generoso de 48px.
+   - Los Mochis ahora se evalúan en PRIORIDAD 1 absoluta al tocar o hacer clic en el mapa.
+   - Las tarjetas de supervisores en la barra lateral ahora abren directamente la ventana flotante del Mochi al tocarlas en cualquier parte (`openMochiChatWindow(id)`).
+   - En `windows/src/android/android.ts`, el iframe ahora se carga de forma directa y sincronizada en same-origin.
+   - Z-index de la ventana flotante elevado a `z-[9999]`.
+   - Verificado con test automatizado de clics directos sobre los 5 Mochis: 100% de éxito.

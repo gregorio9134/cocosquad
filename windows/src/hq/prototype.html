@@ -187,7 +187,7 @@
           </div>
 
           <!-- COCO SOL -->
-          <div onclick="selectSupervisor('sol')" id="card-sol" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-amber-500/40 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
+          <div onclick="openMochiChatWindow('sol')" id="card-sol" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-amber-500/40 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-lg shadow">
                 ☀️
@@ -207,7 +207,7 @@
           </div>
 
           <!-- COCO GREEN -->
-          <div onclick="selectSupervisor('green')" id="card-green" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-emerald-500/30 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
+          <div onclick="openMochiChatWindow('green')" id="card-green" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-emerald-500/30 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-lg shadow">
                 🌿
@@ -227,7 +227,7 @@
           </div>
 
           <!-- COCO BLANCO -->
-          <div onclick="selectSupervisor('blanco')" id="card-blanco" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-slate-700/60 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
+          <div onclick="openMochiChatWindow('blanco')" id="card-blanco" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-slate-700/60 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center text-lg shadow">
                 🤍
@@ -247,7 +247,7 @@
           </div>
 
           <!-- COCO RED -->
-          <div onclick="selectSupervisor('red')" id="card-red" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-rose-500/30 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
+          <div onclick="openMochiChatWindow('red')" id="card-red" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-rose-500/30 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-lg shadow">
                 🚨
@@ -267,7 +267,7 @@
           </div>
 
           <!-- COCO BLU -->
-          <div onclick="selectSupervisor('blu')" id="card-blu" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-blue-500/30 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
+          <div onclick="openMochiChatWindow('blu')" id="card-blu" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-blue-500/30 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-lg shadow">
                 🔷
@@ -496,7 +496,7 @@
   </div>
 
   <!-- ── 4. FLOATING PIXEL CHAT MODAL (DIRECT CHAT & PEDIDOS CON CADA MOCHI) ── -->
-  <div id="mochi-pixel-chat-backdrop" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-3" style="display: none;" onclick="if(event.target===this) closeMochiChatWindow()">
+  <div id="mochi-pixel-chat-backdrop" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[9999] flex items-center justify-center p-3" style="display: none;" onclick="if(event.target===this) closeMochiChatWindow()">
     <div id="mochi-pixel-chat-panel" class="bg-slate-900 border-2 border-indigo-500/70 rounded-2xl max-w-xl w-full p-0 shadow-[0_0_35px_rgba(99,102,241,0.35)] relative overflow-hidden flex flex-col max-h-[92vh] animate-pixel-modal">
       <!-- RETRO PIXEL HEADER -->
       <div id="mochi-pixel-chat-header" class="px-4 py-3 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950/60 border-b border-indigo-500/30 flex items-center justify-between">
@@ -1241,26 +1241,82 @@
     let hoveredEntity = null;
     let hoveredMochi = null;
 
-    canvas.addEventListener('mousemove', e => {
+    function resolveMochiId(rawId) {
+      if (!rawId) return 'blanco';
+      const s = String(rawId).toLowerCase().trim();
+      if (s === 'sol' || s.includes('sol') || s === 'saas') return 'sol';
+      if (s === 'green' || s.includes('green') || s.includes('verde') || s === 'reception' || s === 'lounge') return 'green';
+      if (s === 'blanco' || s.includes('blanco') || s.includes('white') || s === 'kinesio' || s === 'clinica') return 'blanco';
+      if (s === 'red' || s.includes('red') || s.includes('rojo') || s === 'triage' || s === 'urgencias') return 'red';
+      if (s === 'blu' || s === 'blue' || s.includes('blu') || s.includes('azul') || s === 'servers' || s === 'devops') return 'blu';
+      return 'blanco';
+    }
+
+    function getCanvasCoordinates(e) {
+      if (!e) return mousePos;
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
-      mousePos.x = (e.clientX - rect.left) * scaleX;
-      mousePos.y = (e.clientY - rect.top) * scaleY;
+      let clientX = e.clientX;
+      let clientY = e.clientY;
+      if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else if (e.changedTouches && e.changedTouches.length > 0) {
+        clientX = e.changedTouches[0].clientX;
+        clientY = e.changedTouches[0].clientY;
+      }
+      if (typeof clientX === 'number' && typeof clientY === 'number') {
+        return {
+          x: (clientX - rect.left) * scaleX,
+          y: (clientY - rect.top) * scaleY
+        };
+      }
+      return mousePos;
+    }
 
-      hoveredMochi = null;
+    function findMochiAt(x, y, maxDist = 48) {
+      let found = null;
+      let bestDist = Infinity;
       for (const m of mochis) {
-        if (Math.hypot(mousePos.x - m.x, mousePos.y - m.y) < 28) {
-          hoveredMochi = m;
+        const d = Math.hypot(x - m.x, y - m.y);
+        if (d < maxDist && d < bestDist) {
+          bestDist = d;
+          found = m;
+        }
+      }
+      return found;
+    }
+
+    canvas.addEventListener('mousemove', e => {
+      const pos = getCanvasCoordinates(e);
+      mousePos.x = pos.x;
+      mousePos.y = pos.y;
+
+      hoveredMochi = findMochiAt(pos.x, pos.y, 48);
+      for (const m of mochis) {
+        if (hoveredMochi && m.id === hoveredMochi.id) {
           m.targetTilt = (m.id === 'sol' ? 0.08 : m.id === 'green' ? -0.1 : m.id === 'red' ? 0.09 : -0.08);
         } else {
           m.targetTilt = 0;
         }
       }
 
+      hoveredEntity = null;
+      for (const c of characters) {
+        if (Math.hypot(pos.x - c.x, pos.y - c.y) < 22) {
+          hoveredEntity = c;
+          break;
+        }
+      }
+      if (!hoveredEntity) {
+        if (Math.hypot(pos.x - petCat.x, pos.y - petCat.y) < 22) hoveredEntity = petCat;
+        else if (Math.hypot(pos.x - petDog.x, pos.y - petDog.y) < 22) hoveredEntity = petDog;
+      }
+
       hoveredRoom = null;
       for (const r of rooms) {
-        if (mousePos.x >= r.x && mousePos.x <= r.x + r.w && mousePos.y >= r.y && mousePos.y <= r.y + r.h) {
+        if (pos.x >= r.x && pos.x <= r.x + r.w && pos.y >= r.y && pos.y <= r.y + r.h) {
           hoveredRoom = r;
           break;
         }
@@ -1271,78 +1327,27 @@
       mousePos.x = -1;
       mousePos.y = -1;
       hoveredEntity = null;
+      hoveredMochi = null;
       hoveredRoom = null;
       for (const m of mochis) {
         m.targetTilt = 0;
       }
     });
 
-    // PURE CLICK HANDLER - NO ACCIDENTAL ZOOM
-    canvas.addEventListener('click', () => {
-      // 1. Check Interactive Prop Click (Modals & Sounds)
-      // Sol Map click (340, 203)
-      if (Math.hypot(mousePos.x - 374, mousePos.y - 218) < 32) {
-        openModal('sol_map');
-        return;
-      }
-      // Camilla click (360, 110)
-      if (Math.hypot(mousePos.x - 360, mousePos.y - 110) < 36) {
-        openModal('clinical_card');
-        return;
-      }
-      // Water Cooler click (226, 315)
-      if (Math.hypot(mousePos.x - 226, mousePos.y - 315) < 22) {
-        playWaterGlug();
-        spawnEmote(226, 295, '💧');
-        logEvent('💧 Dispenser de agua: Glug-glug (Agua mineral fresca)');
-        return;
-      }
-      // Espresso machine click (572, 65)
-      if (Math.hypot(mousePos.x - 572, mousePos.y - 65) < 24) {
-        playCoffeeHiss();
-        spawnEmote(572, 50, '☕');
-        logEvent('☕ Máquina de espresso: Vapor activo');
-        return;
-      }
-      // Server racks click (640, 240)
-      if (Math.hypot(mousePos.x - 640, mousePos.y - 240) < 45) {
-        playServerBeep();
-        openModal('hetzner_telemetry');
-        return;
-      }
-      // Vending machine click (725, 95)
-      if (Math.hypot(mousePos.x - 725, mousePos.y - 95) < 25) {
-        openModal('vending');
-        return;
-      }
+    // PURE CLICK & TOUCH HANDLER - MOCHIS HAVE TOP PRIORITY
+    function handleCanvasInteraction(e) {
+      const pos = getCanvasCoordinates(e);
+      mousePos.x = pos.x;
+      mousePos.y = pos.y;
 
-      // 1B. Mochi Supervisor Click (Squash & Stretch, Slap & Dizzy, Coucou Wave & Heart/Star Reactions)
-      if (hoveredMochi) {
+      // 🌟 PRIORITY 1: TOUCHING / CLICKING A MOCHI SUPERVISOR OPENS CHAT IMMEDIATELY!
+      const targetMochi = findMochiAt(pos.x, pos.y, 48);
+      if (targetMochi) {
         const tNow = performance.now();
-        hoveredMochi.clickTimes = (hoveredMochi.clickTimes || []).filter(t => tNow - t < 1500);
-        hoveredMochi.clickTimes.push(tNow);
+        targetMochi.jumpTimer = tNow;
+        targetMochi.squashTimer = tNow;
+        targetMochi.waveTimer = tNow;
 
-        if (hoveredMochi.clickTimes.length >= 3) {
-          // DIZZY COUCOU REACTION! (3 clics rápidos seguidos)
-          hoveredMochi.clickTimes = [];
-          hoveredMochi.eyeEmotion = 'spiral';
-          hoveredMochi.eyeEmotionUntil = tNow + 2600;
-          hoveredMochi.rollTimer = tNow;
-          hoveredMochi.squashTimer = tNow;
-          playDizzySound();
-          spawnParticles(hoveredMochi.x, hoveredMochi.y - 12, 'spiral', 6);
-          showTemporarySpeech(hoveredMochi, '¡Uff, qué mareo! 🌀😵');
-          logEvent(`🌀 ${hoveredMochi.name} se mareó con espirales por clics rápidos!`);
-          selectSupervisor(hoveredMochi.id);
-          return;
-        }
-
-        // Clic normal afectuoso / Coucou Greeting
-        hoveredMochi.jumpTimer = tNow;
-        hoveredMochi.squashTimer = tNow;
-        hoveredMochi.waveTimer = tNow; // Bracitos saludando
-
-        // Emoción ocular y partículas según especialidad
         const emoMap = {
           sol: 'star',
           green: 'heart',
@@ -1350,28 +1355,64 @@
           red: 'surprised',
           blu: 'wink'
         };
-        hoveredMochi.eyeEmotion = emoMap[hoveredMochi.id] || 'happy';
-        hoveredMochi.eyeEmotionUntil = tNow + 2000;
-        spawnParticles(hoveredMochi.x, hoveredMochi.y - 14, hoveredMochi.eyeEmotion === 'heart' ? 'heart' : 'spark', 5);
+        targetMochi.eyeEmotion = emoMap[targetMochi.id] || 'happy';
+        targetMochi.eyeEmotionUntil = tNow + 2500;
+        spawnParticles(targetMochi.x, targetMochi.y - 14, targetMochi.eyeEmotion === 'heart' ? 'heart' : 'spark', 6);
 
-        playMochiVoice(hoveredMochi.id);
-        const emoteIcon = hoveredMochi.id === 'sol' ? '👑' : hoveredMochi.id === 'green' ? '🌱' : hoveredMochi.id === 'blanco' ? '🤍' : hoveredMochi.id === 'red' ? '🚨' : '⚡';
-        spawnEmote(hoveredMochi.x, hoveredMochi.y - 18, emoteIcon);
-        selectSupervisor(hoveredMochi.id);
+        playMochiVoice(targetMochi.id);
+        const emoteIcon = targetMochi.id === 'sol' ? '👑' : targetMochi.id === 'green' ? '🌱' : targetMochi.id === 'blanco' ? '🤍' : targetMochi.id === 'red' ? '🚨' : '⚡';
+        spawnEmote(targetMochi.x, targetMochi.y - 18, emoteIcon);
+        selectSupervisor(targetMochi.id);
 
-        if (hoveredMochi.id === 'sol') showTemporarySpeech(hoveredMochi, '👑 ¡SaaS 100% operativo! $18,450 MRR');
-        else if (hoveredMochi.id === 'green') showTemporarySpeech(hoveredMochi, '🌱 ¡Recepción al día! WhatsApp listo');
-        else if (hoveredMochi.id === 'blanco') showTemporarySpeech(hoveredMochi, '🤍 ¡Pautas L4-L5 listas en camilla!');
-        else if (hoveredMochi.id === 'red') showTemporarySpeech(hoveredMochi, '🚨 ¡Guardia sin novedades! 75 bpm');
-        else if (hoveredMochi.id === 'blu') showTemporarySpeech(hoveredMochi, '⚡ ¡Hetzner 99.99%! Latencia 12ms');
-        
-        // Despliegue de ventana flotante estilo Pixel HQ para chatear y realizar pedidos
-        openMochiChatWindow(hoveredMochi.id);
+        if (targetMochi.id === 'sol') showTemporarySpeech(targetMochi, '👑 ¡SaaS 100% operativo! $18,450 MRR');
+        else if (targetMochi.id === 'green') showTemporarySpeech(targetMochi, '🌱 ¡Recepción al día! WhatsApp listo');
+        else if (targetMochi.id === 'blanco') showTemporarySpeech(targetMochi, '🤍 ¡Pautas L4-L5 listas en camilla!');
+        else if (targetMochi.id === 'red') showTemporarySpeech(targetMochi, '🚨 ¡Guardia sin novedades! 75 bpm');
+        else if (targetMochi.id === 'blu') showTemporarySpeech(targetMochi, '⚡ ¡Hetzner 99.99%! Latencia 12ms');
+
+        openMochiChatWindow(targetMochi.id);
         return;
       }
 
-      // 2. Pet Click
-      if (hoveredEntity === petCat) {
+      // 2. Interactive Props
+      // Water Cooler (226, 315)
+      if (Math.hypot(pos.x - 226, pos.y - 315) < 24) {
+        playWaterGlug();
+        spawnEmote(226, 295, '💧');
+        logEvent('💧 Dispenser de agua: Glug-glug (Agua mineral fresca)');
+        return;
+      }
+      // Espresso machine (572, 65)
+      if (Math.hypot(pos.x - 572, pos.y - 65) < 24) {
+        playCoffeeHiss();
+        spawnEmote(572, 50, '☕');
+        logEvent('☕ Máquina de espresso: Vapor activo');
+        return;
+      }
+      // Server racks (640, 240)
+      if (Math.hypot(pos.x - 640, pos.y - 240) < 42) {
+        playServerBeep();
+        openModal('hetzner_telemetry');
+        return;
+      }
+      // Vending machine (725, 95)
+      if (Math.hypot(pos.x - 725, pos.y - 95) < 25) {
+        openModal('vending');
+        return;
+      }
+      // Camilla (360, 110)
+      if (Math.hypot(pos.x - 360, pos.y - 110) < 30) {
+        openModal('clinical_card');
+        return;
+      }
+      // Sol Map (374, 218)
+      if (Math.hypot(pos.x - 374, pos.y - 218) < 28) {
+        openModal('sol_map');
+        return;
+      }
+
+      // 3. Pets (Cat & Dog)
+      if (Math.hypot(pos.x - petCat.x, pos.y - petCat.y) < 24) {
         playMeow();
         petCat.state = 'meow';
         spawnEmote(petCat.x + 12, petCat.y, '🐾');
@@ -1379,35 +1420,47 @@
         setTimeout(() => petCat.state = 'sleeping', 2500);
         return;
       }
-      if (hoveredEntity === petDog) {
+      if (Math.hypot(pos.x - petDog.x, pos.y - petDog.y) < 24) {
         playBark();
         spawnEmote(petDog.x + 12, petDog.y, '❤️');
         showTemporarySpeech(petDog, '¡Guau! 🐶 (Pausa de café)');
         return;
       }
 
-      // 3. Character Click
-      if (hoveredEntity && hoveredEntity.id) {
-        if (hoveredEntity.id === 'sol') { selectSupervisor('sol'); spawnEmote(hoveredEntity.x + 8, hoveredEntity.y - 10, '☀️'); openMochiChatWindow('sol'); }
-        else if (hoveredEntity.id.startsWith('green')) { selectSupervisor('green'); spawnEmote(hoveredEntity.x + 8, hoveredEntity.y - 10, '💬'); openMochiChatWindow('green'); }
-        else if (hoveredEntity.id.startsWith('blanco')) { selectSupervisor('blanco'); spawnEmote(hoveredEntity.x + 8, hoveredEntity.y - 10, '🩺'); openMochiChatWindow('blanco'); }
-        else if (hoveredEntity.id.startsWith('red')) { selectSupervisor('red'); spawnEmote(hoveredEntity.x + 8, hoveredEntity.y - 10, '🚨'); openMochiChatWindow('red'); }
-        else if (hoveredEntity.id.startsWith('blu')) { selectSupervisor('blu'); spawnEmote(hoveredEntity.x + 8, hoveredEntity.y - 10, '💻'); openMochiChatWindow('blu'); }
-        else if (hoveredEntity.id === 'patient') {
-          openModal('clinical_card');
-          playChime();
+      // 4. Character Click
+      for (const c of characters) {
+        if (Math.hypot(pos.x - c.x, pos.y - c.y) < 24) {
+          if (c.id.startsWith('green')) { selectSupervisor('green'); spawnEmote(c.x + 8, c.y - 10, '💬'); openMochiChatWindow('green'); }
+          else if (c.id.startsWith('blanco')) { selectSupervisor('blanco'); spawnEmote(c.x + 8, c.y - 10, '🩺'); openMochiChatWindow('blanco'); }
+          else if (c.id.startsWith('red')) { selectSupervisor('red'); spawnEmote(c.x + 8, c.y - 10, '🚨'); openMochiChatWindow('red'); }
+          else if (c.id.startsWith('blu')) { selectSupervisor('blu'); spawnEmote(c.x + 8, c.y - 10, '💻'); openMochiChatWindow('blu'); }
+          else if (c.id === 'patient') { openModal('clinical_card'); playChime(); }
+          return;
         }
-        return;
       }
 
-      // 4. Room Click (Smooth selection without zooming camera)
-      if (hoveredRoom) {
-        selectedRoom = hoveredRoom.id;
-        playClick();
-        updateRoomOverlay(hoveredRoom);
-        if (hoveredRoom.supervisor) {
-          selectSupervisor(hoveredRoom.supervisor);
+      // 5. Room Click
+      for (const r of rooms) {
+        if (pos.x >= r.x && pos.x <= r.x + r.w && pos.y >= r.y && pos.y <= r.y + r.h) {
+          selectedRoom = r.id;
+          playClick();
+          updateRoomOverlay(r);
+          if (r.supervisor) {
+            selectSupervisor(r.supervisor);
+          }
+          break;
         }
+      }
+    }
+
+    canvas.addEventListener('click', handleCanvasInteraction);
+    canvas.addEventListener('touchend', e => {
+      e.preventDefault();
+      handleCanvasInteraction(e);
+    }, { passive: false });
+    canvas.addEventListener('pointerup', e => {
+      if (e.pointerType === 'touch') {
+        handleCanvasInteraction(e);
       }
     });
 
@@ -1437,6 +1490,7 @@
     }
 
     function selectSupervisor(mochiId) {
+      const id = resolveMochiId(mochiId);
       playChime();
       const meta = {
         sol: { name: 'Coco Sol', role: 'SaaS Lead · Supervisión Central', avatar: '☀️', color: 'text-amber-400', room: 'sol' },
@@ -1446,18 +1500,18 @@
         blu: { name: 'Coco Blu', role: 'Sistemas · Data Center Hetzner', avatar: '🔷', color: 'text-blue-400', room: 'servers' }
       };
 
-      const m = meta[mochiId];
+      const m = meta[id];
       if (!m) return;
 
       selectedRoom = m.room;
       const rObj = rooms.find(r => r.id === m.room);
       if (rObj) updateRoomOverlay(rObj);
 
-      ['sol', 'green', 'blanco', 'red', 'blu'].forEach(id => {
-        const card = document.getElementById('card-' + id);
+      ['sol', 'green', 'blanco', 'red', 'blu'].forEach(k => {
+        const card = document.getElementById('card-' + k);
         if (card) card.classList.remove('ring-2', 'ring-indigo-500', 'bg-slate-800');
       });
-      const activeCard = document.getElementById('card-' + mochiId);
+      const activeCard = document.getElementById('card-' + id);
       if (activeCard) activeCard.classList.add('ring-2', 'ring-indigo-500', 'bg-slate-800');
 
       document.getElementById('chat-mochi-name').innerText = m.name;
@@ -1465,11 +1519,11 @@
       document.getElementById('chat-mochi-role').className = 'text-[10px] block ' + m.color;
       document.getElementById('chat-avatar-box').innerText = m.avatar;
 
-      const char = characters.find(c => c.id.startsWith(mochiId));
+      const char = characters.find(c => c.id.startsWith(id));
       if (char) {
         showTemporarySpeech(char, '¿Qué orden tenés para mí?');
       }
-      const targetMochi = mochis.find(m => m.id === mochiId);
+      const targetMochi = mochis.find(m => m.id === id);
       if (targetMochi) {
         const tNow = performance.now();
         targetMochi.jumpTimer = tNow;
@@ -1999,7 +2053,7 @@
     };
 
     function openMochiChatWindow(mochiId) {
-      const id = mochiId || selectedRoom || 'blanco';
+      const id = resolveMochiId(mochiId || activeFloatingMochi || selectedRoom || 'blanco');
       activeFloatingMochi = id;
       selectedRoom = id;
       selectSupervisor(id);

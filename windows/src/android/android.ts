@@ -1053,72 +1053,68 @@ class AndroidApp {
       document.documentElement.style.cssText = 'height:100vh;margin:0;padding:0;overflow:hidden;';
       document.body.style.cssText = 'height:100vh;margin:0;padding:0;background:#020617;overflow:hidden;';
       root.style.cssText = 'width:100vw;height:100vh;margin:0;padding:0;overflow:hidden;';
-      root.innerHTML = `<iframe id="hq-iframe" style="position:fixed;inset:0;width:100vw;height:100dvh;border:0;z-index:10000;background:#020617;display:block;" allowfullscreen></iframe>`;
-      fetch('/hq.html')
-        .then(r => r.text())
-        .then(html => {
-          const iframe = document.getElementById('hq-iframe') as HTMLIFrameElement;
-          if (iframe) {
-            iframe.srcdoc = html;
-            iframe.onload = () => {
-              try {
-                const win = iframe.contentWindow as any;
-                if (win) {
-                  win.triggerOpenParentChat = (id: string) => {
-                    const map: any = {sol:'coco_sol', green:'coco_verde', blanco:'coco_blanco', red:'coco_rojo', blu:'coco_azul'};
-                    const target = map[id] || 'coco_blanco';
-                    this.selectSquadMember(target);
-                    if (typeof win.openMochiChatWindow === 'function') {
-                      win.openMochiChatWindow(id);
-                    }
-                  };
-
-                  win.__cocoBridge = {
-                    getApiBase: () => getApiBase(),
-                    sendMochiMessage: async (mochiId: string, message: string) => {
-                      const map: any = {sol:'coco_sol', green:'coco_verde', blanco:'coco_blanco', red:'coco_rojo', blu:'coco_azul'};
-                      const target = map[mochiId] || mochiId;
-                      return await this.sendMochiMessageFromHq(target, message);
-                    },
-                    openChat: (id: string) => {
-                      if (typeof win.openMochiChatWindow === 'function') {
-                        win.openMochiChatWindow(id);
-                      }
-                    },
-                    openSolDashboard: () => {
-                      if (typeof win.openModal === 'function') {
-                        win.openModal('sol_map');
-                      }
-                    },
-                    openGreenThreads: (_channel: "whatsapp" | "instagram" | "tiktok" = "whatsapp") => {
-                      if (typeof win.openModal === 'function') {
-                        win.openModal('whatsapp_sim');
-                      }
-                    },
-                    saveClinicalPlan: (plan: string) => {
-                      this.notes.push({
-                        id: Date.now().toString(),
-                        text: `[FICHA KINESIOLÓGICA L4-L5] ${plan}`,
-                        createdAt: Date.now()
-                      });
-                      this.saveStorage();
-                    },
-                    getTelemetry: async () => {
-                      try {
-                        const res = await fetch(`${getApiBase()}/api/founder/telemetry`, {
-                          headers: this.getAuthHeaders()
-                        });
-                        if (res.ok) return await res.json();
-                      } catch(e) {}
-                      return null;
-                    }
-                  };
+      root.innerHTML = `<iframe id="hq-iframe" src="/hq.html" style="position:fixed;inset:0;width:100vw;height:100dvh;border:0;z-index:10000;background:#020617;display:block;" allowfullscreen></iframe>`;
+      const iframe = document.getElementById('hq-iframe') as HTMLIFrameElement;
+      if (iframe) {
+        const attachBridge = () => {
+          try {
+            const win = iframe.contentWindow as any;
+            if (win) {
+              win.triggerOpenParentChat = (id: string) => {
+                const map: any = {sol:'coco_sol', green:'coco_verde', blanco:'coco_blanco', red:'coco_rojo', blu:'coco_azul'};
+                const target = map[id] || 'coco_blanco';
+                this.selectSquadMember(target);
+                if (typeof win.openMochiChatWindow === 'function') {
+                  win.openMochiChatWindow(id);
                 }
-              } catch(e) {}
-            };
-          }
-        });
-      this.bindEvents();
+              };
+
+              win.__cocoBridge = {
+                getApiBase: () => getApiBase(),
+                sendMochiMessage: async (mochiId: string, message: string) => {
+                  const map: any = {sol:'coco_sol', green:'coco_verde', blanco:'coco_blanco', red:'coco_rojo', blu:'coco_azul'};
+                  const target = map[mochiId] || mochiId;
+                  return await this.sendMochiMessageFromHq(target, message);
+                },
+                openChat: (id: string) => {
+                  if (typeof win.openMochiChatWindow === 'function') {
+                    win.openMochiChatWindow(id);
+                  }
+                },
+                openSolDashboard: () => {
+                  if (typeof win.openModal === 'function') {
+                    win.openModal('sol_map');
+                  }
+                },
+                openGreenThreads: (_channel: "whatsapp" | "instagram" | "tiktok" = "whatsapp") => {
+                  if (typeof win.openModal === 'function') {
+                    win.openModal('whatsapp_sim');
+                  }
+                },
+                saveClinicalPlan: (plan: string) => {
+                  this.notes.push({
+                    id: Date.now().toString(),
+                    text: `[FICHA KINESIOLÓGICA L4-L5] ${plan}`,
+                    createdAt: Date.now()
+                  });
+                  this.saveStorage();
+                },
+                getTelemetry: async () => {
+                  try {
+                    const res = await fetch(`${getApiBase()}/api/founder/telemetry`, {
+                      headers: this.getAuthHeaders()
+                    });
+                    if (res.ok) return await res.json();
+                  } catch(e) {}
+                  return null;
+                }
+              };
+            }
+          } catch(e) {}
+        };
+        iframe.onload = attachBridge;
+        attachBridge();
+      }
       return;
     }
 
