@@ -1486,3 +1486,47 @@ Se establecio el Cuartel Pixel HQ como la interfaz grafica principal y definitiv
 
 
 
+
+================================================================================
+HITO 40: ELIMINACIÓN DE INTERFAZ CHATBOT VIEJA Y VENTANA FLOTANTE PIXEL CHAT HQ
+================================================================================
+Fecha: 01 de Noviembre de 2026
+
+1. Eliminación Definitiva de la Pantalla Chatbot Legada:
+   - Se removió por completo la vista chatbot genérica ("¿Qué creamos hoy, Gregorio? Coco está a tus órdenes", barra superior de mochis y pestañas inferiores Chat/Devorar/Tareas).
+   - En `windows/src/android/android.ts`, `this.hqMode` queda permanentemente en `true`. Cualquier invocación de chat (`openChat`, `triggerOpenParentChat`, `openSolDashboard`, `openGreenThreads`, `switchToChatView`) redirige directamente al entorno Pixel HQ y abre el chat flotante del Mochi especialista (`openMochiChatWindow(id)`).
+   - Verificado mediante captura de arranque: el 100% del sistema inicia y opera dentro del Cuartel General Pixel HQ.
+
+2. Ventana Flotante de Chat Pixel HQ (`#mochi-pixel-chat-backdrop` & `#mochi-pixel-chat-panel`):
+   - Al tocar o hacer clic sobre cualquier Mochi en el mapa o en los botones "Chat 💬" del panel lateral, se despliega una ventana flotante con estética retro Pixel HQ y borde de neón índigo pulsante.
+   - Encabezado con avatar de Mochi, badge de rol y oficina correspondiente (ej: Coco Blanco · Director Médico & Kinesiología · Box 1 de Fisiatría).
+   - Botón de cierre arcade "✕ Cerrar".
+
+3. Chips de Pedidos Rápidos Sugeridos (Quick Action Chips):
+   - Cada Mochi cuenta con acciones rápidas específicas de su especialidad que se envían con un solo clic:
+     * Coco Sol: Métricas MRR SaaS, captación de consultorios, cobros y facturación.
+     * Coco Green: Turnos de pacientes en WhatsApp, estado de recordatorios, reprogramaciones.
+     * Coco Blanco: Pauta de rehabilitación L4-L5, apertura de ficha médica Box 1, cervicalgia aguda, altas médicas.
+     * Coco Red: Triage de urgencias, monitor ECG, signos vitales, derivaciones críticas.
+     * Coco Blu: Estado de servidores Hetzner, consumo de memoria Docker, clusters de sub-agentes swarms.
+
+4. Conexión Backend y Reacciones en Vivo:
+   - El chat flotante está conectado a:
+     * Parent bridge (`window.parent.__cocoBridge.sendMochiMessage`).
+     * Endpoint FastAPI `/api/squad/interact` con AbortController (timeout de 4s para evitar bloqueos).
+     * Motor de fallbacks inteligentes especializados por Mochi.
+   - Al enviar o recibir mensajes, el Mochi correspondiente en el canvas salta, mueve sus bracitos (wave arms), muestra ojitos sonrientes (`happy`), genera partículas de estrellas y emite su voz sintetizada única.
+
+5. Archivos Actualizados y Compilados:
+   - `windows/src/android/android.ts`
+   - `windows/public/hq.html`
+   - `windows/dist/hq.html`
+   - `coco_hub_interactive_prototype.html`
+   - `design/prototype/coco_hub_interactive_prototype.html`
+   - `windows/src/hq/prototype.html`
+   - Build Vite/Tauri verificado con éxito (`tsc --noEmit && vite build`).
+   - Capturas de verificación:
+     * `design/captures/test_hq_no_legacy_screen.png` (pantalla vieja 100% eliminada).
+     * `design/captures/test_hq_floating_chat_modal_blanco.png` (ventana flotante de chat).
+     * `design/captures/test_hq_floating_chat_modal_reply.png` (chat en vivo con pedido rápido y respuesta clínica).
+================================================================================

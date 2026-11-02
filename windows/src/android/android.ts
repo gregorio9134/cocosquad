@@ -1068,7 +1068,9 @@ class AndroidApp {
                     const map: any = {sol:'coco_sol', green:'coco_verde', blanco:'coco_blanco', red:'coco_rojo', blu:'coco_azul'};
                     const target = map[id] || 'coco_blanco';
                     this.selectSquadMember(target);
-                    this.switchToChatView();
+                    if (typeof win.openMochiChatWindow === 'function') {
+                      win.openMochiChatWindow(id);
+                    }
                   };
 
                   win.__cocoBridge = {
@@ -1079,19 +1081,19 @@ class AndroidApp {
                       return await this.sendMochiMessageFromHq(target, message);
                     },
                     openChat: (id: string) => {
-                      win.triggerOpenParentChat(id);
+                      if (typeof win.openMochiChatWindow === 'function') {
+                        win.openMochiChatWindow(id);
+                      }
                     },
                     openSolDashboard: () => {
-                      this.switchToChatView();
-                      setTimeout(() => {
-                        if (this.solDashboard) this.solDashboard.open();
-                      }, 100);
+                      if (typeof win.openModal === 'function') {
+                        win.openModal('sol_map');
+                      }
                     },
-                    openGreenThreads: (channel: "whatsapp" | "instagram" | "tiktok" = "whatsapp") => {
-                      this.switchToChatView();
-                      setTimeout(() => {
-                        this.openGreenThreads(channel);
-                      }, 100);
+                    openGreenThreads: (_channel: "whatsapp" | "instagram" | "tiktok" = "whatsapp") => {
+                      if (typeof win.openModal === 'function') {
+                        win.openModal('whatsapp_sim');
+                      }
                     },
                     saveClinicalPlan: (plan: string) => {
                       this.notes.push({
@@ -3863,14 +3865,17 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
   }
 
   public switchToChatView() {
-    this.hqMode = false;
-    document.documentElement.style.cssText = '';
-    document.body.style.cssText = '';
-    const root = document.getElementById('root');
-    if (root) root.style.cssText = '';
-    this.render();
-    this.bindEvents();
-    this.switchTab("chat");
+    this.hqMode = true; // El cuartel HQ es la interfaz definitiva y permanente
+    const iframe = document.getElementById('hq-iframe') as HTMLIFrameElement;
+    if (iframe && iframe.contentWindow) {
+      const win = iframe.contentWindow as any;
+      if (typeof win.openMochiChatWindow === 'function') {
+        const idMap: any = {coco_sol:'sol', coco_verde:'green', coco_blanco:'blanco', coco_rojo:'red', coco_azul:'blu'};
+        const cur = this.activeMember?.id || 'coco_blanco';
+        const shortId = idMap[cur] || 'blanco';
+        win.openMochiChatWindow(shortId);
+      }
+    }
   }
 
   public async sendMochiMessageFromHq(targetMemberId: string, messageText: string): Promise<any> {
