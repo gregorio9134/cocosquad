@@ -93,6 +93,15 @@
         <span class="text-white font-bold">14 Activos</span>
       </div>
 
+      <!-- LOW-COST TOKEN LEDGER INDICATOR (TIER ESTUDIANTE: 2M TOKENS / MES) -->
+      <div id="token-budget-badge" class="bg-indigo-950/80 border border-indigo-500/40 px-2.5 py-1.5 rounded-xl flex items-center gap-2 shadow-inner cursor-pointer hover:border-indigo-400 transition" title="Filosofía Low-Cost Argentina: Límite diario de 66.666 tokens (2.000.000/mes) para estudiantes">
+        <span class="text-indigo-300 font-medium flex items-center gap-1 text-[11px]">
+          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span> Tokens:
+        </span>
+        <span class="text-white font-bold text-[11px]" id="stat-tokens-used">0 / 66.6k</span>
+        <span class="text-[10px] text-cyan-300 font-mono bg-cyan-950/80 px-1 py-0.5 rounded border border-cyan-800/40" id="stat-tokens-cost">~$0.00 USD</span>
+      </div>
+
       <!-- DESKTOP / MOBILE VIEW TOGGLE -->
       <div class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-0.5 text-[11px] font-sans">
         <button onclick="setViewMode('desktop')" id="view-btn-desktop" class="px-2 py-1 rounded-lg bg-indigo-600 text-white font-semibold transition">🖥️ Planta</button>
@@ -1037,17 +1046,27 @@
       }
     ];
 
-    // SUBAGENTES OBREROS & PACIENTES (Personal subordinado a los Mochis)
+    // SUBAGENTES OBREROS & PACIENTES (Swarm Tier Estudiantes & Consultorios)
     const characters = [
-      // Green's Workers (Subagentes)
+      // ── SQUAD COCO VERDE (Recepción WhatsApp) ──
       { id: 'green_worker1', name: 'Mensajero #1', sprite: 'char1', x: 95, y: 138, baseDeskX: 95, baseDeskY: 138, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Subagente WhatsApp' },
       { id: 'green_worker2', name: 'Archivador #2', sprite: 'char2', x: 165, y: 138, baseDeskX: 165, baseDeskY: 138, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Subagente Sincronizador' },
-      // Blanco's Clinician (Subagente)
-      { id: 'blanco_worker', name: 'Kinesiólogo #1', sprite: 'char4', x: 440, y: 72, baseDeskX: 440, baseDeskY: 72, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Asistente de Camilla' },
-      // Red's Triage Officer (Subagente)
-      { id: 'red_worker', name: 'Triage #1', sprite: 'char5', x: 375, y: 445, baseDeskX: 375, baseDeskY: 445, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Operador de ECG' },
-      // Blu's DevOps Sysadmin (Subagente)
+
+      // ── SQUAD COCO BLANCO: 4 SUBAGENTES DE KINESIOLOGÍA (Low-Cost) ──
+      { id: 'blanco_evaluacion', name: 'Eval #1', sprite: 'char4', x: 375, y: 56, baseDeskX: 375, baseDeskY: 56, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Kinesio-Eval (Anamnesis & Banderas Rojas)', skills: ['intake_assessment', 'red_flag_screen', 'pain_scale_log'] },
+      { id: 'blanco_rehabilitacion', name: 'Rehab #2', sprite: 'char1', x: 465, y: 56, baseDeskX: 465, baseDeskY: 56, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Kinesio-Rehab (Ejercicios & Rutinas)', skills: ['generate_routine', 'adjust_progression', 'exercise_library'] },
+      { id: 'blanco_historia', name: 'Ficha #3', sprite: 'char2', x: 375, y: 124, baseDeskX: 375, baseDeskY: 124, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Kinesio-Ficha (SOAP Médico & Epicrisis)', skills: ['write_session_note', 'update_clinical_record', 'discharge_summary'] },
+      { id: 'blanco_seguimiento', name: 'Seguim #4', sprite: 'char5', x: 465, y: 124, baseDeskX: 465, baseDeskY: 124, state: 'typing', frame: 2, row: 0, speech: '', roleDesc: 'Kinesio-Check (Adherencia & EVA)', skills: ['adherence_check', 'homework_reminder', 'outcome_metrics'] },
+
+      // ── SQUAD COCO RED: 4 SUBAGENTES DE TRIAGE Y URGENCIAS (Low-Cost) ──
+      { id: 'red_triage', name: 'Triage #1', sprite: 'char5', x: 320, y: 442, baseDeskX: 320, baseDeskY: 442, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Triage-Prioridad (Manchester ESI)', skills: ['classify_urgency', 'vitals_check', 'escalate_rule'] },
+      { id: 'red_ecg_telemetria', name: 'ECG #2', sprite: 'char1', x: 375, y: 442, baseDeskX: 375, baseDeskY: 442, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Triage-ECG (Telemetría & ST)', skills: ['parse_ecg_summary', 'alert_thresholds', 'trend_vitals'] },
+      { id: 'red_derivaciones', name: 'Pase #3', sprite: 'char2', x: 320, y: 512, baseDeskX: 320, baseDeskY: 512, state: 'typing', frame: 2, row: 0, speech: '', roleDesc: 'Triage-Pase (Derivaciones)', skills: ['referral_letter', 'find_specialist', 'transport_coord'] },
+      { id: 'red_guardia', name: 'Box #4', sprite: 'char4', x: 375, y: 512, baseDeskX: 375, baseDeskY: 512, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Triage-Box (Camas & Alertas)', skills: ['shift_roster', 'box_status', 'emergency_broadcast'] },
+
+      // ── SQUAD COCO BLU (DevOps Hetzner) ──
       { id: 'blu_worker', name: 'DevOps #1', sprite: 'char1', x: 675, y: 355, baseDeskX: 675, baseDeskY: 355, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Operador de Consola Hetzner' },
+
       // Dynamic Patient (driven by simulation)
       { id: 'patient', name: 'Juan Pérez (Paciente)', sprite: 'char3', x: 70, y: 410, baseDeskX: 70, baseDeskY: 410, state: 'sitting', frame: 0, row: 0, speech: '', roleDesc: 'Paciente de las 11:30 hs' }
     ];
@@ -2207,10 +2226,11 @@
           }
         }
 
+        let rawData = null;
         if (!reply) {
           try {
             const controller = new AbortController();
-            const fetchTimeout = setTimeout(() => controller.abort(), 4000);
+            const fetchTimeout = setTimeout(() => controller.abort(), 18000);
             const resp = await fetch('http://127.0.0.1:8080/api/squad/interact', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -2225,7 +2245,26 @@
             clearTimeout(fetchTimeout);
             if (resp.ok) {
               const data = await resp.json();
+              rawData = data;
               if (data && data.final_reply) reply = data.final_reply;
+              if (data && data.token_stats) {
+                const elUsed = document.getElementById('stat-tokens-used');
+                const elCost = document.getElementById('stat-tokens-cost');
+                if (elUsed && data.token_stats.used_today !== undefined) {
+                  elUsed.textContent = `${data.token_stats.used_today.toLocaleString()} / 66.6k`;
+                }
+                if (elCost && data.token_stats.cost_today_usd !== undefined) {
+                  elCost.textContent = `~$${data.token_stats.cost_today_usd.toFixed(4)} USD`;
+                }
+              }
+              if (data && data.subagent) {
+                const sub = characters.find(c => c.id === data.subagent.id);
+                if (sub) {
+                  sub.state = 'typing';
+                  spawnEmote(sub.x, sub.y - 12, '⚡');
+                  showTemporarySpeech(sub, `${data.subagent.name}: skill '${data.subagent.skills[0]}'`);
+                }
+              }
             }
           } catch(err) {
             console.warn("Direct fetch error:", err);
@@ -2236,12 +2275,17 @@
           reply = getSmartMochiFallback(mochiId, val);
         }
 
+        let displayReply = reply;
+        if (rawData && rawData.subagent) {
+          displayReply = `_⚡ Delegado al subagente [${rawData.subagent.name}] (${rawData.subagent.desk})_\n\n` + reply;
+        }
+
         if (typingEl) typingEl.classList.add('hidden');
 
         const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         mochiChatHistories[mochiId].push({
           sender: meta.name,
-          text: reply,
+          text: displayReply,
           isUser: false,
           time: replyTime
         });
@@ -3786,9 +3830,26 @@
       drawDeskCoffeeMug(152, 146);
       drawSprite('bin', 195, 158, 16, 16);
 
-      // Kinesiología Front Desk & PC
-      drawSprite('desk', 420, 78, 48, 32);
-      drawAnimatedPC(436, 70, 'pcOn1', 'pcOn2');
+      // Kinesiología 4 Subagent Desks (Box 1-4: Swarm Tier Estudiantes)
+      // Box 1: Eval #1 (375, 56)
+      drawSprite('desk', 356, 62, 40, 26);
+      drawAnimatedPC(372, 54, 'pcOn1', 'pcOn2');
+      drawDeskCoffeeMug(362, 66);
+
+      // Box 2: Rehab #2 (465, 56)
+      drawSprite('desk', 446, 62, 40, 26);
+      drawAnimatedPC(462, 54, 'pcOn2', 'pcOn3');
+      drawDeskCoffeeMug(452, 66);
+
+      // Box 3: Ficha #3 (375, 124)
+      drawSprite('desk', 356, 130, 40, 26);
+      drawAnimatedPC(372, 122, 'pcOn3', 'pcOn1');
+      drawDeskCoffeeMug(362, 134);
+
+      // Box 4: Seguim #4 (465, 124)
+      drawSprite('desk', 446, 130, 40, 26);
+      drawAnimatedPC(462, 122, 'pcOn1', 'pcOn2');
+      drawDeskCoffeeMug(452, 134);
 
       // Despacho Sol Executive Desk & DUAL Monitors
       drawSprite('desk', 385, 268, 52, 32);
@@ -3796,10 +3857,23 @@
       drawAnimatedPC(412, 258, 'pcOn3', 'pcOn1');
       drawSprite('cushionedChairFront', 400, 310, 16, 16);
 
-      // Triage Front Desk & Bedside Vitals Oscilloscope
-      drawSprite('desk', 355, 452, 48, 32);
-      drawAnimatedPC(370, 444, 'pcOn3', 'pcOn2');
-      drawBedsideOscilloscope(410, 448);
+      // Triage 4 Subagent Desks (Puestos 1-4: Swarm Tier Estudiantes)
+      // Puesto 1: Triage #1 (320, 442)
+      drawSprite('desk', 302, 448, 38, 26);
+      drawAnimatedPC(316, 440, 'pcOn3', 'pcOn2');
+
+      // Puesto 2: ECG #2 (375, 442) + Osciloscopio
+      drawSprite('desk', 356, 448, 38, 26);
+      drawAnimatedPC(370, 440, 'pcOn2', 'pcOn1');
+      drawBedsideOscilloscope(400, 446);
+
+      // Puesto 3: Pase #3 (320, 512)
+      drawSprite('desk', 302, 518, 38, 26);
+      drawAnimatedPC(316, 510, 'pcOn1', 'pcOn3');
+
+      // Puesto 4: Box #4 (375, 512)
+      drawSprite('desk', 356, 518, 38, 26);
+      drawAnimatedPC(370, 510, 'pcOn2', 'pcOn3');
 
       // Data Center DevOps Front Desk & Dual Terminal
       drawSprite('desk', 655, 362, 48, 32);
@@ -4076,6 +4150,49 @@
         ctx.fillText(tipText, mousePos.x + 20, mousePos.y - 11);
       }
     }
+
+    // ── 14. TOKEN BUDGET AUTO-UPDATER & AUTONOMOUS SWARM TICKER ──
+    async function updateTokenBudgetBadge() {
+      try {
+        const res = await fetch('http://127.0.0.1:8080/api/tokens/budget');
+        if (res.ok) {
+          const data = await res.json();
+          const elUsed = document.getElementById('stat-tokens-used');
+          const elCost = document.getElementById('stat-tokens-cost');
+          if (elUsed && data.used_today !== undefined) {
+            elUsed.textContent = `${data.used_today.toLocaleString()} / 66.6k`;
+          }
+          if (elCost && data.cost_today_usd !== undefined) {
+            elCost.textContent = `~$${data.cost_today_usd.toFixed(4)} USD`;
+          }
+        }
+      } catch(e) {}
+    }
+    setInterval(updateTokenBudgetBadge, 12000);
+    setTimeout(updateTokenBudgetBadge, 800);
+
+    // Autonomous Swarm Inter-Communication:
+    // Los mochis y sus subagentes intercambian paquetes tácticos de forma continua en pantalla
+    const swarmPairings = [
+      { from: 'blanco', to: 'blanco_rehabilitacion', icon: '🦴', msg: 'Pauta L4-L5 verificada' },
+      { from: 'blanco_evaluacion', to: 'blanco', icon: '🩺', msg: 'Sin banderas rojas' },
+      { from: 'red', to: 'red_ecg_telemetria', icon: '💓', msg: 'Telemetría 72 bpm estable' },
+      { from: 'red_triage', to: 'red', icon: '🚨', msg: 'Prioridad 3 Verde asignada' },
+      { from: 'blanco_historia', to: 'blanco_seguimiento', icon: '📋', msg: 'Ficha SOAP sincronizada' }
+    ];
+    setInterval(() => {
+      if (document.hidden) return;
+      const pair = swarmPairings[Math.floor(Math.random() * swarmPairings.length)];
+      const fromObj = mochis.find(m => m.id === pair.from) || characters.find(c => c.id === pair.from);
+      const toObj = mochis.find(m => m.id === pair.to) || characters.find(c => c.id === pair.to);
+      if (fromObj && toObj) {
+        spawnEmote(fromObj.x, fromObj.y - 14, pair.icon);
+        spawnParticles(toObj.x, toObj.y - 10, 'spark', 3);
+        if (Math.random() < 0.4) {
+          showTemporarySpeech(fromObj, pair.msg);
+        }
+      }
+    }, 8500);
 
     // Auto-open floating chat if specified via URL param (e.g. ?chat=blanco)
     try {
