@@ -300,11 +300,11 @@
         <div class="mt-2 pt-2 border-t border-slate-800/80 space-y-1.5">
           <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block px-1">Simulación Autónoma</span>
           
-          <!-- FULL PATIENT JOURNEY BUTTON -->
-          <button onclick="triggerFullPatientJourney()" class="w-full p-2 bg-gradient-to-r from-indigo-600/30 to-purple-600/30 hover:from-indigo-600/45 hover:to-purple-600/45 border border-indigo-500/50 rounded-xl text-left transition flex items-center justify-between shadow-md">
+          <!-- AUTONOMOUS SWARM SIMULATION BUTTON -->
+          <button onclick="triggerAutonomousSwarmSimulation()" class="w-full p-2 bg-gradient-to-r from-indigo-600/30 to-purple-600/30 hover:from-indigo-600/45 hover:to-purple-600/45 border border-indigo-500/50 rounded-xl text-left transition flex items-center justify-between shadow-md">
             <div>
-              <span class="text-xs font-bold text-indigo-200 block">🏥 Simular Flujo Completo de Paciente</span>
-              <span class="text-[9px] text-slate-400">Entrada → Recepción → Camilla → Tratamiento → Salida</span>
+              <span class="text-xs font-bold text-indigo-200 block">⚡ Simular Flujo Autónomo de Swarm</span>
+              <span class="text-[9px] text-slate-400">Sol → Green (WhatsApp) → Blanco (Kinesio) → Ficha #3</span>
             </div>
             <span class="text-xs px-2 py-1 rounded bg-indigo-500 text-white font-bold">PLAY ▶</span>
           </button>
@@ -316,15 +316,15 @@
             </button>
             <button onclick="triggerSimAction('plan_clinico')" class="p-2 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-left transition shadow-sm">
               🤍 <span class="font-semibold block text-[10px]">Plan Kinesiológico</span>
-              <span class="text-[8.5px] text-slate-400">Blanco analiza lumbar</span>
+              <span class="text-[8.5px] text-slate-400">Blanco & 4 subagentes</span>
             </button>
             <button onclick="triggerSimAction('alerta_triage')" class="p-2 bg-rose-600/15 hover:bg-rose-600/25 border border-rose-500/30 text-rose-300 rounded-xl text-left transition shadow-sm">
               🚨 <span class="font-semibold block text-[10px]">Alerta Triage</span>
-              <span class="text-[8.5px] text-slate-400">Sirena & ECG activo</span>
+              <span class="text-[8.5px] text-slate-400">4 subagentes urgencias</span>
             </button>
-            <button onclick="triggerSimAction('pausa_cafe')" class="p-2 bg-amber-600/15 hover:bg-amber-600/25 border border-amber-500/30 text-amber-300 rounded-xl text-left transition shadow-sm">
-              ☕ <span class="font-semibold block text-[10px]">Pausa de Café</span>
-              <span class="text-[8.5px] text-slate-400">Subagente al Lounge</span>
+            <button onclick="triggerSimAction('audit_hetzner')" class="p-2 bg-sky-600/15 hover:bg-sky-600/25 border border-sky-500/30 text-sky-300 rounded-xl text-left transition shadow-sm">
+              🔷 <span class="font-semibold block text-[10px]">Servidores DevOps</span>
+              <span class="text-[8.5px] text-slate-400">Coco Blu & Hetzner</span>
             </button>
           </div>
         </div>
@@ -464,7 +464,6 @@
       <button onclick="setMobileDept('blanco')" id="mob-dept-blanco" class="whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 border border-slate-700">🤍 Kinesio</button>
       <button onclick="setMobileDept('red')" id="mob-dept-red" class="whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 border border-slate-700">🚨 Triage</button>
       <button onclick="setMobileDept('blu')" id="mob-dept-blu" class="whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 border border-slate-700">🔷 Servidores</button>
-      <button onclick="setMobileDept('cafe')" id="mob-dept-cafe" class="whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 border border-slate-700">☕ Cafetería</button>
     </div>
 
     <!-- MOBILE CARD CONTENT -->
@@ -855,7 +854,7 @@
 
     function setMobileDept(deptId) {
       playClick();
-      ['sol', 'green', 'blanco', 'red', 'blu', 'cafe'].forEach(d => {
+      ['sol', 'green', 'blanco', 'red', 'blu'].forEach(d => {
         const b = document.getElementById('mob-dept-' + d);
         if (b) b.className = (d === deptId) ? 'whitespace-nowrap px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/40' : 'whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 border border-slate-700';
       });
@@ -865,8 +864,7 @@
         green: { title: 'Coco Green · Recepción', sub: '2 Subagentes (WhatsApp)', avatar: '🌿', desc: '"Confirmando 35 turnos agendados hoy. Recordatorios automáticos en curso."' },
         blanco: { title: 'Coco Blanco · Kinesiología', sub: 'Box 1 · Camilla & Pautas', avatar: '🤍', desc: '"Protocolo de descarga miofascial listo para el próximo paciente lumbar."' },
         red: { title: 'Coco Red · Guardia Triage', sub: 'Box Urgencias · ECG Activo', avatar: '🚨', desc: '"Sin emergencias agudas. Monitor de signos vitales registrando ritmo sinusal regular."' },
-        blu: { title: 'Coco Blu · Data Center', sub: 'Servidores Hetzner Falkenstein', avatar: '🔷', desc: '"Cluster al 99.9% uptime. 142k tokens Gemini consumidos hoy en pay-as-you-go."' },
-        cafe: { title: 'Cafetería & Break Room', sub: 'Área de Descanso & Mascotas', avatar: '☕', desc: '"Claudio y Michi descansando. Máquina de espresso con vapor activo."' }
+        blu: { title: 'Coco Blu · Data Center', sub: 'Servidores Hetzner Falkenstein', avatar: '🔷', desc: '"Cluster al 99.9% uptime. 142k tokens Gemini consumidos hoy en pay-as-you-go."' }
       };
 
       const d = depts[deptId];
@@ -878,13 +876,12 @@
       }
     }
 
-    // ROOM DEFINITIONS (FIXED PANORAMIC VIEW - NO ZOOM DISTORTIONS)
+    // ROOM DEFINITIONS (5 ACTIVE OFFICES - CLEAN MINIMALIST SWARM)
     const rooms = [
-      { id: 'reception', name: 'Recepción & Espera', supervisor: 'green', x: 20, y: 20, w: 240, h: 540, icon: '🌿', desc: 'Atención a pacientes, WhatsApp y espera' },
+      { id: 'reception', name: 'Recepción WhatsApp', supervisor: 'green', x: 20, y: 20, w: 240, h: 260, icon: '🌿', desc: 'Atención omnicanal y gestión de turnos WhatsApp' },
       { id: 'sol', name: 'Despacho Central Sol', supervisor: 'sol', x: 280, y: 200, w: 250, h: 180, icon: '☀️', desc: 'Torre de control SaaS y supervisión multitenant' },
-      { id: 'kinesio', name: 'Box Kinesiología', supervisor: 'blanco', x: 280, y: 20, w: 250, h: 160, icon: '🤍', desc: 'Camilla clínica, rehabilitación y fichas' },
-      { id: 'triage', name: 'Box Urgencias & Triage', supervisor: 'red', x: 280, y: 400, w: 250, h: 160, icon: '🚨', desc: 'Monitor ECG de signos vitales y botiquín de guardia' },
-      { id: 'cafe', name: 'Cafetería & Lounge', supervisor: null, x: 550, y: 20, w: 250, h: 160, icon: '☕', desc: 'Máquina de espresso, descanso y mascota Claudio' },
+      { id: 'kinesio', name: 'Box Kinesiología', supervisor: 'blanco', x: 280, y: 20, w: 250, h: 160, icon: '🤍', desc: 'Camilla clínica, rehabilitación y 4 subagentes' },
+      { id: 'triage', name: 'Box Urgencias & Triage', supervisor: 'red', x: 280, y: 400, w: 250, h: 160, icon: '🚨', desc: 'Monitor ECG de signos vitales y 4 subagentes de triage' },
       { id: 'servers', name: 'Data Center & Logs', supervisor: 'blu', x: 550, y: 200, w: 250, h: 360, icon: '🔷', desc: 'Racks de servidores, terminal DevOps y telemetría Hetzner' }
     ];
 
@@ -1065,38 +1062,10 @@
       { id: 'red_guardia', name: 'Box #4', sprite: 'char4', x: 375, y: 512, baseDeskX: 375, baseDeskY: 512, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Triage-Box (Camas & Alertas)', skills: ['shift_roster', 'box_status', 'emergency_broadcast'] },
 
       // ── SQUAD COCO BLU (DevOps Hetzner) ──
-      { id: 'blu_worker', name: 'DevOps #1', sprite: 'char1', x: 675, y: 355, baseDeskX: 675, baseDeskY: 355, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Operador de Consola Hetzner' },
-
-      // Dynamic Patient (driven by simulation)
-      { id: 'patient', name: 'Juan Pérez (Paciente)', sprite: 'char3', x: 70, y: 410, baseDeskX: 70, baseDeskY: 410, state: 'sitting', frame: 0, row: 0, speech: '', roleDesc: 'Paciente de las 11:30 hs' }
+      { id: 'blu_worker', name: 'DevOps #1', sprite: 'char1', x: 675, y: 355, baseDeskX: 675, baseDeskY: 355, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Operador de Consola Hetzner' }
     ];
 
-    // CLINIC PETS
-    const petCat = {
-      id: 'michi',
-      name: 'Michi 🐾',
-      x: 145,
-      y: 450,
-      targetX: 145,
-      targetY: 450,
-      state: 'sleeping',
-      frame: 2,
-      row: 0
-    };
-
-    const petDog = {
-      id: 'claudio',
-      name: 'Claudio 🐶',
-      x: 725,
-      y: 110,
-      targetX: 725,
-      targetY: 110,
-      state: 'sitting',
-      frame: 0,
-      row: 0
-    };
-
-    // FLOATING POPUP EMOTES (💡, ☕, 🩺, ⚡, 🐾, 📈)
+    // FLOATING POPUP EMOTES (💡, 🩺, ⚡, 📈)
     const activeEmotes = [];
     function spawnEmote(x, y, icon) {
       activeEmotes.push({ x, y, icon, alpha: 1, vy: -0.6, life: 60 });
@@ -1328,10 +1297,6 @@
           break;
         }
       }
-      if (!hoveredEntity) {
-        if (Math.hypot(pos.x - petCat.x, pos.y - petCat.y) < 22) hoveredEntity = petCat;
-        else if (Math.hypot(pos.x - petDog.x, pos.y - petDog.y) < 22) hoveredEntity = petDog;
-      }
 
       hoveredRoom = null;
       for (const r of rooms) {
@@ -1393,34 +1358,9 @@
         return;
       }
 
-      // 2. Interactive Props
-      // Water Cooler (226, 315)
-      if (Math.hypot(pos.x - 226, pos.y - 315) < 24) {
-        playWaterGlug();
-        spawnEmote(226, 295, '💧');
-        logEvent('💧 Dispenser de agua: Glug-glug (Agua mineral fresca)');
-        return;
-      }
-      // Espresso machine (572, 65)
-      if (Math.hypot(pos.x - 572, pos.y - 65) < 24) {
-        playCoffeeHiss();
-        spawnEmote(572, 50, '☕');
-        logEvent('☕ Máquina de espresso: Vapor activo');
-        return;
-      }
-      // Server racks (640, 240)
-      if (Math.hypot(pos.x - 640, pos.y - 240) < 42) {
-        playServerBeep();
-        openModal('hetzner_telemetry');
-        return;
-      }
-      // Vending machine (725, 95)
-      if (Math.hypot(pos.x - 725, pos.y - 95) < 25) {
-        openModal('vending');
-        return;
-      }
-      // Camilla (360, 110)
-      if (Math.hypot(pos.x - 360, pos.y - 110) < 30) {
+      // 2. Interactive Props (Clinical Camilla, Sol SaaS Map & Server Racks)
+      // Camilla Kinesiología (335, 105)
+      if (Math.hypot(pos.x - 335, pos.y - 105) < 32) {
         openModal('clinical_card');
         return;
       }
@@ -1429,31 +1369,20 @@
         openModal('sol_map');
         return;
       }
-
-      // 3. Pets (Cat & Dog)
-      if (Math.hypot(pos.x - petCat.x, pos.y - petCat.y) < 24) {
-        playMeow();
-        petCat.state = 'meow';
-        spawnEmote(petCat.x + 12, petCat.y, '🐾');
-        showTemporarySpeech(petCat, '¡Miau! 🐾 (Turnos en orden)');
-        setTimeout(() => petCat.state = 'sleeping', 2500);
-        return;
-      }
-      if (Math.hypot(pos.x - petDog.x, pos.y - petDog.y) < 24) {
-        playBark();
-        spawnEmote(petDog.x + 12, petDog.y, '❤️');
-        showTemporarySpeech(petDog, '¡Guau! 🐶 (Pausa de café)');
+      // Server racks (640, 240)
+      if (Math.hypot(pos.x - 640, pos.y - 240) < 42) {
+        playServerBeep();
+        openModal('hetzner_telemetry');
         return;
       }
 
-      // 4. Character Click
+      // 3. Squad Subagent Click
       for (const c of characters) {
         if (Math.hypot(pos.x - c.x, pos.y - c.y) < 24) {
           if (c.id.startsWith('green')) { selectSupervisor('green'); spawnEmote(c.x + 8, c.y - 10, '💬'); openMochiChatWindow('green'); }
           else if (c.id.startsWith('blanco')) { selectSupervisor('blanco'); spawnEmote(c.x + 8, c.y - 10, '🩺'); openMochiChatWindow('blanco'); }
           else if (c.id.startsWith('red')) { selectSupervisor('red'); spawnEmote(c.x + 8, c.y - 10, '🚨'); openMochiChatWindow('red'); }
           else if (c.id.startsWith('blu')) { selectSupervisor('blu'); spawnEmote(c.x + 8, c.y - 10, '💻'); openMochiChatWindow('blu'); }
-          else if (c.id === 'patient') { openModal('clinical_card'); playChime(); }
           return;
         }
       }
@@ -1583,122 +1512,74 @@
       playClick();
     }
 
-    // ── 4. FULL AUTONOMOUS PATIENT JOURNEY SIMULATION ──
-    let patientJourneyActive = false;
-    function triggerFullPatientJourney() {
-      if (patientJourneyActive) return;
-      patientJourneyActive = true;
+    // ── 4. AUTONOMOUS SWARM COLLABORATION SIMULATION ──
+    let swarmSimulationActive = false;
+    function triggerAutonomousSwarmSimulation() {
+      if (swarmSimulationActive) return;
+      swarmSimulationActive = true;
       playChime();
 
-      const p = characters.find(c => c.id === 'patient');
+      const mSol = mochis.find(m => m.id === 'sol');
+      const mGreen = mochis.find(m => m.id === 'green');
+      const mBlanco = mochis.find(m => m.id === 'blanco');
+      const subRehab = characters.find(c => c.id === 'blanco_rehabilitacion');
+      const subFicha = characters.find(c => c.id === 'blanco_historia');
       const w1 = characters.find(c => c.id === 'green_worker1');
-      const doc = characters.find(c => c.id === 'blanco_worker');
 
-      logEvent('🏥 [INICIO DE FLUJO] Paciente Juan Pérez ingresa por el felpudo');
-      // Step 1: Patient walks in
-      p.state = 'walking';
-      p.x = 140;
-      p.y = 520;
-      p.targetX = 110;
-      p.targetY = 195;
-      p.speech = 'Hola! Turno con Blanco';
+      logEvent('⚡ [ENJAMBRE AUTÓNOMO] Sol detecta nuevo requerimiento multidepartamental');
+      if (mSol) {
+        mSol.jumpTimer = performance.now();
+        showTemporarySpeech(mSol, '👑 Delegando orden a Recepción y Kinesio');
+        spawnEmote(mSol.x, mSol.y - 18, '👑');
+      }
 
-      // Step 2: At reception counter (Coco Green & Mensajero greet)
+      // Step 2: Green confirms with WhatsApp worker
       setTimeout(() => {
-        const mGreen = mochis.find(m => m.id === 'green');
         if (mGreen) {
           mGreen.jumpTimer = performance.now();
-          mGreen.speech = '¡Bienvenido Juan! Paso tu ficha a Blanco 🌱';
+          showTemporarySpeech(mGreen, '🌱 Sincronizando turno vía WhatsApp');
           spawnEmote(mGreen.x, mGreen.y - 18, '🌱');
         }
-        w1.speech = '¡Anotado Juan! Box 1 en 2 min';
-        spawnEmote(w1.x + 8, w1.y - 10, '💬');
+        if (w1) {
+          w1.speech = '💬 Mensaje enviado al paciente';
+          spawnEmote(w1.x + 8, w1.y - 10, '💬');
+        }
+        logEvent('🌿 Coco Green: Turno confirmado. Derivando caso clínico a Coco Blanco');
         playChime();
 
-        // Step 3: Patient walks to waiting couch
+        // Step 3: Blanco delegates to Subagent Rehab #2
         setTimeout(() => {
-          p.targetX = 70;
-          p.targetY = 410;
-          p.speech = 'Esperando en el sillón';
-          logEvent('🏥 Paciente toma asiento en la sala de espera');
+          if (mBlanco) {
+            mBlanco.jumpTimer = performance.now();
+            showTemporarySpeech(mBlanco, '🤍 Delegando protocolo a Rehab #2');
+            spawnEmote(mBlanco.x, mBlanco.y - 18, '🤍');
+          }
+          if (subRehab) {
+            subRehab.speech = '⚡ Generando 3 ejercicios L4-L5...';
+            spawnEmote(subRehab.x + 8, subRehab.y - 10, '🦴');
+          }
+          logEvent('🤍 Coco Blanco → Kinesio-Rehab: skill "generate_routine" ejecutada');
+          playChime();
 
-          // Step 4: Coco Blanco calls patient to box
+          // Step 4: Subagent Ficha #3 records SOAP note
           setTimeout(() => {
-            const mBlanco = mochis.find(m => m.id === 'blanco');
-            if (mBlanco) {
-              mBlanco.jumpTimer = performance.now();
-              mBlanco.speech = '¡Juan Pérez, Box 1 por favor! 🤍';
-              spawnEmote(mBlanco.x, mBlanco.y - 18, '🤍');
+            if (subFicha) {
+              subFicha.speech = '📋 Nota SOAP archivada en legajo';
+              spawnEmote(subFicha.x + 8, subFicha.y - 10, '📋');
             }
-            doc.speech = 'Preparando camilla...';
-            spawnEmote(doc.x + 8, doc.y - 10, '🩺');
+            logEvent('🤍 Kinesio-Ficha: Evolución guardada sin intervención del usuario');
+            showTemporaryToast('⚡ Swarm Autónomo: Flujo completado en 0 tokens extras');
             playChime();
-            logEvent('🤍 Coco Blanco llama a Juan Pérez al Box Kinesiología');
 
-            // Step 5: Patient walks to kinesiology box
             setTimeout(() => {
-              p.targetX = 350;
-              p.targetY = 100;
-              p.speech = 'Voy para el Box 1';
-
-              // Step 6: Patient lies on camilla
-              setTimeout(() => {
-                p.state = 'sitting';
-                p.x = 350;
-                p.y = 96;
-                p.speech = 'Listo en la camilla';
-                doc.targetX = 385;
-                doc.targetY = 96;
-                const mBlanco = mochis.find(m => m.id === 'blanco');
-                if (mBlanco) {
-                  mBlanco.jumpTimer = performance.now();
-                  mBlanco.speech = '🩺 Evaluando vértebras L4-L5...';
-                  spawnEmote(mBlanco.x, mBlanco.y - 18, '🩺');
-                }
-                doc.speech = 'Aplicando calor y tracción';
-                logEvent('🤍 Coco Blanco inicia maniobra de descarga lumbar en camilla');
-                playChime();
-
-                // Step 7: Treatment completed & patient exits
-                setTimeout(() => {
-                  if (mBlanco) {
-                    mBlanco.speech = '✓ Listo! Pauta enviada a tu WhatsApp 🤍';
-                    spawnEmote(mBlanco.x, mBlanco.y - 18, '🤍');
-                  }
-                  doc.speech = 'Paciente de alta';
-                  p.speech = '¡Muchas gracias Coco Blanco!';
-                  logEvent('🏥 Tratamiento kinesiológico completado con éxito');
-                  playChime();
-
-                  setTimeout(() => {
-                    doc.targetX = doc.baseDeskX;
-                    doc.targetY = doc.baseDeskY;
-                    p.state = 'walking';
-                    p.targetX = 140;
-                    p.targetY = 530;
-
-                    setTimeout(() => {
-                      p.x = 70;
-                      p.y = 410;
-                      p.state = 'sitting';
-                      p.speech = '';
-                      doc.speech = '';
-                      patientJourneyActive = false;
-                      logEvent('✓ Flujo de paciente finalizado · Consultorio listo para el próximo turno');
-                    }, 4000);
-                  }, 2500);
-
-                }, 4000);
-
-              }, 3000);
-
-            }, 1200);
-
-          }, 3200);
+              if (mSol) showTemporarySpeech(mSol, '👑 Red 100% coordinada');
+              swarmSimulationActive = false;
+            }, 2500);
+          }, 2400);
 
         }, 2200);
 
-      }, 3000);
+      }, 2000);
     }
 
     // SIMULATED ACTIONS & TASKS
@@ -1734,22 +1615,18 @@
         }, 2000);
 
       } else if (act === 'plan_clinico') {
-        const bw = characters.find(c => c.id === 'blanco_worker');
+        const subRehab = characters.find(c => c.id === 'blanco_rehabilitacion');
         const mBlanco = mochis.find(m => m.id === 'blanco');
-        if (bw) {
-          bw.speech = '🩺 Analizando dolor lumbar L4-L5...';
-          spawnEmote(bw.x + 8, bw.y - 12, '🩺');
+        if (subRehab) {
+          subRehab.speech = '🩺 Analizando dolor lumbar L4-L5...';
+          spawnEmote(subRehab.x + 8, subRehab.y - 12, '🩺');
         }
         if (mBlanco) { mBlanco.jumpTimer = performance.now(); playMochiVoice('blanco'); showTemporarySpeech(mBlanco, '🤍 ¡Plan miofascial listo!'); }
 
         logEvent('🤍 Coco Blanco: Generando rutina de descarga miofascial L4-L5');
 
-        if (window.parent && window.parent.__cocoBridge && typeof window.parent.__cocoBridge.saveClinicalPlan === 'function') {
-          window.parent.__cocoBridge.saveClinicalPlan('Paciente Juan Pérez: 15 min descompresión miofascial + estabilización pélvica en balón suizo');
-        }
-
         setTimeout(() => {
-          if (bw) bw.speech = '✓ Plan guardado en Bóveda';
+          if (subRehab) subRehab.speech = '✓ Pauta guardada en ficha';
           logEvent('🤍 Coco Blanco: Protocolo clínico L4-L5 incorporado a ficha.');
           playChime();
           showTemporaryToast('🤍 Kinesiología: Pauta L4-L5 archivada en Bóveda Local');
@@ -1757,16 +1634,21 @@
 
       } else if (act === 'alerta_triage') {
         openModal('ecg_triage');
-      } else if (act === 'pausa_cafe') {
-        const w2 = characters.find(c => c.id === 'green_worker2');
-        if (w2 && w2.state === 'typing') {
-          w2.state = 'walking';
-          w2.speech = '☕ Pausa en cafetería...';
-          spawnEmote(w2.x + 8, w2.y - 12, '☕');
-          w2.targetX = 645;
-          w2.targetY = 80;
-          logEvent('☕ Archivador #2: Pausa activa en cafetería');
+      } else if (act === 'audit_hetzner') {
+        const blu = mochis.find(m => m.id === 'blu');
+        const devops = characters.find(c => c.id === 'blu_worker');
+        if (blu) {
+          blu.jumpTimer = performance.now();
+          playMochiVoice('blu');
+          showTemporarySpeech(blu, '⚡ ¡Hetzner 99.99%! Latencia 12ms');
+          spawnEmote(blu.x, blu.y - 14, '🔷');
         }
+        if (devops) {
+          devops.speech = '✓ 0 paquetes perdidos en cluster';
+          spawnEmote(devops.x + 8, devops.y - 10, '💻');
+        }
+        logEvent('🔷 Coco Blu: Racks Hetzner auditados con éxito. 0 anomalías.');
+        showTemporaryToast('🔷 Data Center: Cluster Hetzner 100% operativo');
       }
     }
 
@@ -2543,29 +2425,6 @@
           </div>
         `;
         startEcgCanvas();
-      } else if (type === 'vending') {
-        box.innerHTML = `
-          <div class="flex items-center gap-2 mb-3">
-            <span class="text-2xl">☕</span>
-            <div>
-              <h2 class="text-sm font-bold text-white">Máquina de Refrigerios & Café</h2>
-              <span class="text-[10px] text-amber-400 font-mono">Cafetería de la Clínica</span>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2 text-xs font-medium">
-            <button onclick="dispenseSnack('Espresso Doble ☕'); closeModal();" class="p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left">
-              ☕ <span class="font-bold text-white block">Espresso Doble</span>
-              <span class="text-[10px] text-slate-400">Recarga de energía</span>
-            </button>
-            <button onclick="dispenseSnack('Alfajor de Maicena 🍪'); closeModal();" class="p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left">
-              🍪 <span class="font-bold text-white block">Alfajor</span>
-              <span class="text-[10px] text-slate-400">Snack de guardia</span>
-            </button>
-          </div>
-          <div class="mt-3 pt-3 border-t border-slate-800 flex justify-end">
-            <button onclick="closeModal()" class="px-3 py-1 bg-slate-800 text-slate-300 rounded-lg text-xs">Cerrar</button>
-          </div>
-        `;
       }
     }
 
@@ -2642,18 +2501,14 @@
 
     function ejecutarManiobraCamilla() {
       closeModal();
-      const p = characters.find(c => c.id === 'patient');
-      const doc = characters.find(c => c.id === 'blanco_worker');
+      const sub = characters.find(c => c.id === 'blanco_rehabilitacion');
       const mBlanco = mochis.find(m => m.id === 'blanco');
-      if (p) {
-        p.state = 'walking';
-        p.targetX = 270;
-        p.targetY = 100;
-        p.speech = 'A la camilla';
+      if (sub) {
+        sub.speech = 'Iniciando descompresión L4-L5...';
+        spawnEmote(sub.x + 8, sub.y - 10, '🩺');
       }
-      if (doc) doc.speech = 'Iniciando descompresión L4-L5...';
       if (mBlanco) { mBlanco.jumpTimer = performance.now(); playMochiVoice('blanco'); showTemporarySpeech(mBlanco, '🤍 Descomprimiendo L4-L5'); }
-      logEvent('🤍 Coco Blanco: Paciente en camilla · Descompresión miofascial activa');
+      logEvent('🤍 Coco Blanco & Rehab #2: Protocolo lumbar en camilla iniciado');
       showTemporaryToast('🤍 Kinesiología: Maniobra de camilla iniciada');
     }
 
@@ -2687,17 +2542,6 @@
           log.scrollTop = log.scrollHeight;
           playChime();
         }, 800);
-      }
-    }
-
-    function dispenseSnack(name) {
-      playCoffeeHiss();
-      playChime();
-      logEvent('☕ ' + name + ' dispensado en la cafetería');
-      const w2 = characters.find(c => c.id === 'green_worker2');
-      if (w2) {
-        showTemporarySpeech(w2, '¡Qué rico ' + name + '!');
-        spawnEmote(w2.x + 8, w2.y - 10, '☕');
       }
     }
 
@@ -2752,23 +2596,11 @@
           } else {
             c.x = c.targetX;
             c.y = c.targetY;
-            if (c.state === 'walking' && c.id !== 'patient') {
-              c.state = 'at_coffee';
-              c.speech = '☕ Tomando espresso con Claudio';
-              spawnEmote(c.x + 8, c.y - 10, '☕');
-              c.row = 0;
-              c.frame = 3;
-              setTimeout(() => {
-                c.state = 'walking_back';
-                c.speech = 'Volviendo a recepción';
-                c.targetX = c.baseDeskX;
-                c.targetY = c.baseDeskY;
-              }, 4000);
-            } else if (c.state === 'walking_back') {
+            if (c.state === 'walking' || c.state === 'walking_back') {
               c.state = 'typing';
               c.speech = '';
               c.row = 0;
-              c.frame = 4;
+              c.frame = 3;
             }
           }
         }
@@ -2776,12 +2608,7 @@
     }
 
     function updatePets() {
-      if (animTick % 25 === 0 && petCat.state === 'sleeping') {
-        petCat.frame = (petCat.frame === 2) ? 0 : 2;
-      }
-      if (animTick % 16 === 0) {
-        petDog.frame = (petDog.frame === 0) ? 1 : 0;
-      }
+      // Mascotas retiradas para diseño limpio y profesional
     }
 
     function updateEmotes() {
@@ -2831,9 +2658,8 @@
       // 9. Particles, Steam, Conduit Packets
       drawMicroAnimations();
 
-      // 10. Ambient Lighting & Floating Dust Motes
+      // 10. Ambient Lighting
       drawLightingGlows();
-      drawDustMotes();
 
       // 11. Speech Bubbles
       drawSpeechBubbles();
@@ -2847,10 +2673,8 @@
     }
 
     function drawRoomFloors() {
-      // 1. RECEPCIÓN & ESPERA
-      drawParquetFloor(20, 20, 240, 540, '#382212', '#442a17');
-      drawEntranceMat(110, 520, 60, 20);
-      drawCozyRug(38, 350, 195, 175, '#3b1c32', '#702d5a', '#a24b82');
+      // 1. RECEPCIÓN & ATENCIÓN WHATSAPP (Solo mitad superior limpia: 240x260)
+      drawParquetFloor(20, 20, 240, 260, '#382212', '#442a17');
 
       // 2. DESPACHO CENTRAL SOL
       drawParquetFloor(280, 200, 250, 180, '#2e2513', '#3d321a');
@@ -2862,10 +2686,7 @@
       // 4. BOX URGENCIAS & TRIAGE
       drawTileFloor(280, 400, 250, 160, '#261518', '#381f23', 20);
 
-      // 5. CAFETERÍA (12px Refined Checkers)
-      drawCheckeredFloor(550, 20, 250, 160, '#f1f5f9', '#475569', 12);
-
-      // 6. DATA CENTER
+      // 5. DATA CENTER & SERVIDORES (Cafetería eliminada completamente)
       drawGridFloor(550, 200, 250, 360, '#101726', '#17233a');
 
       rooms.forEach(r => {
@@ -2993,11 +2814,10 @@
     }
 
     function drawHallways() {
-      drawDoorway(260, 275, 20, 36);
-      drawDoorway(530, 275, 20, 36);
-      drawDoorway(385, 180, 36, 20);
-      drawDoorway(385, 380, 36, 20);
-      drawDoorway(655, 180, 36, 20);
+      drawDoorway(260, 225, 20, 36); // Recepción <-> Despacho Sol
+      drawDoorway(530, 275, 20, 36); // Despacho Sol <-> Data Center
+      drawDoorway(385, 180, 36, 20); // Kinesio <-> Despacho Sol
+      drawDoorway(385, 380, 36, 20); // Despacho Sol <-> Triage
     }
 
     function drawDoorway(x, y, w, h) {
@@ -3026,32 +2846,20 @@
 
     // ── 4. BACK WALL DECORATIONS & TICKING CLOCKS ──
     function drawBackWallDecor() {
-      // 1. Recepción
+      // 1. Recepción (Limpia: ventana luminosa y reloj de pared funcional)
       drawWindow(32, 22);
       drawSprite('clock', 85, 24, 16, 32);
       drawClockSecondHand(93, 38, 5); // Real-time ticking second hand
-      drawSprite('largePainting', 125, 22, 32, 32);
-      drawSwayingPlant('hangingPlant', 180, 24, 16, 32, 0.5);
 
-      // 2. Kinesiología
+      // 2. Kinesiología (Limpia: pizarra clínica minimalista)
       drawSprite('whiteboard', 295, 22, 32, 32);
-      drawPostureGrid(340, 24);
-      drawSprite('smallPainting', 375, 24, 16, 32);
-      drawSwedishBars(490, 24);
 
-      // 3. Despacho Sol
+      // 3. Despacho Sol (Limpio: radar SaaS holográfico)
       drawSaaSGlobalMap(340, 203); // Animated holographic radar sweep
-      drawSprite('whiteboard', 295, 202, 32, 32);
-      drawSprite('doubleBookshelf', 480, 202, 32, 32);
 
-      // 4. Cafetería
-      drawWindow(565, 22);
-      drawSprite('clock', 615, 24, 16, 32);
-      drawClockSecondHand(623, 38, 5); // Real-time ticking second hand
-      drawSwayingPlant('hangingPlant', 665, 24, 16, 32, 1.2);
-      drawSprite('smallPainting2', 715, 24, 16, 32);
+      // 4. Cafetería: ELIMINADA COMPLETAMENTE
 
-      // 5. Triage
+      // 5. Triage (Limpio: placa de cruz roja médica)
       ctx.fillStyle = '#dc2626';
       ctx.fillRect(475, 410, 28, 28);
       ctx.fillStyle = '#ffffff';
@@ -3060,9 +2868,8 @@
       ctx.strokeStyle = '#991b1b';
       ctx.lineWidth = 1;
       ctx.strokeRect(475, 410, 28, 28);
-      drawEmergencyBeacon(440, 404);
 
-      // 6. Data Center: 3 Full Server Racks
+      // 6. Data Center: 3 Full Server Racks (Diseño sobrio y profesional)
       drawServerRack(570, 206);
       drawServerRack(640, 206);
       drawServerRack(710, 206);
@@ -3194,45 +3001,19 @@
 
     // ── 5. FURNITURE BACKGROUND LAYER ──
     function drawFurnitureBackLayer() {
+      // Recepción: Sillas ergonómicas de los operadores de atención
       drawSprite('cushionedChairBack', 95, 140, 16, 16);
       drawSprite('cushionedChairBack', 165, 140, 16, 16);
-      drawSwayingPlant('largePlant', 26, 36, 32, 48, 0.2);
+      drawSprite('plant', 26, 42, 16, 32);
 
-      drawSprite('sofa', 50, 415, 32, 16);
-      drawSprite('coffeeTable', 105, 420, 32, 32);
-      drawSprite('sofa', 160, 415, 32, 16);
-      drawSwayingPlant('plant', 220, 475, 16, 32, 0.8);
+      // Kinesiología: Camilla médica de evaluación lumbar
+      drawPixelCamilla(300, 95);
 
-      // Water Cooler with Animated Air Bubble
-      drawWaterCooler(218, 305);
-
-      drawSprite('chairBack', 440, 75, 16, 32);
-      drawSwayingPlant('plant2', 295, 125, 16, 32, 0.4);
-      drawPixelCamilla(325, 95);
-      drawPhysioBall(405, 125);
-
+      // Despacho Central Sol: Sillón ejecutivo
       drawSprite('cushionedChairBack', 405, 260, 16, 16);
-      drawSprite('cactus', 485, 335, 16, 32);
-      drawSwayingPlant('largePlant', 290, 325, 32, 48, 1.0);
 
-      drawSprite('coffeeTable', 645, 80, 32, 32);
-      drawSprite('chairFront', 653, 62, 16, 32);
-      drawSprite('chairBack', 653, 105, 16, 32);
-      drawSprite('coffee', 565, 55, 16, 16);
-      drawEspressoDetails(565, 55); // Espresso animated coffee drip & cup
-      drawSprite('bin', 565, 115, 16, 16);
-      drawVendingMachine(715, 75);
-
-      drawSprite('chairBack', 375, 450, 16, 32);
-      drawSprite('cushionedBench', 445, 455, 16, 16);
-      drawIVDripStand(325, 445);
-      drawSprite('bin', 330, 460, 16, 16);
-
+      // Data Center: Silla de consola DevOps
       drawSprite('cushionedChairBack', 675, 358, 16, 16);
-      drawSprite('smallTable', 585, 360, 32, 32);
-      drawSprite('pcBack', 592, 348, 16, 32);
-      drawSprite('bin', 735, 360, 16, 16);
-      drawSprite('doubleBookshelf', 725, 280, 32, 32);
     }
 
     function drawWaterCooler(x, y) {
@@ -3380,68 +3161,8 @@
       ctx.fillRect(x + 46, y + 1, 2, 4);
     }
 
-    // ── 6. PETS & PET ANIMATIONS ──
-    function drawPets() {
-      // Michi the Cat on Purple Cushion + ZZZ floating bubbles
-      if (images.gitcat) {
-        const frameW = 32;
-        const frameH = 32;
-        const sx = petCat.frame * frameW;
-        const sy = petCat.row * frameH;
-
-        ctx.fillStyle = '#6b21a8';
-        ctx.beginPath();
-        ctx.ellipse(petCat.x + 12, petCat.y + 16, 15, 9, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#c084fc';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.fillStyle = 'rgba(0,0,0,0.35)';
-        ctx.beginPath();
-        ctx.ellipse(petCat.x + 12, petCat.y + 18, 10, 4, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.drawImage(images.gitcat, sx, sy, frameW, frameH, petCat.x - 4, petCat.y - 4, 32, 32);
-
-        // Michi ZZZ Bubbles
-        const zCycle = (animTick % 120);
-        if (petCat.state === 'sleeping' && zCycle < 90) {
-          const zProgress = zCycle / 90;
-          const zx = petCat.x + 14 + Math.sin(zProgress * 4) * 3;
-          const zy = petCat.y - 4 - (zProgress * 16);
-          const zAlpha = 1 - zProgress;
-          ctx.save();
-          ctx.font = 'bold 8px monospace';
-          ctx.fillStyle = `rgba(192, 132, 252, ${zAlpha})`;
-          ctx.fillText('z', zx, zy);
-          if (zCycle > 30) {
-            ctx.font = 'bold 9px monospace';
-            ctx.fillText('Z', zx + 4, zy - 6);
-          }
-          ctx.restore();
-        }
-      }
-
-      // Claudio the Dog
-      if (images.claudio) {
-        const frameW = 32;
-        const frameH = 32;
-        const sx = petDog.frame * frameW;
-        const sy = petDog.row * frameH;
-        ctx.fillStyle = 'rgba(0,0,0,0.35)';
-        ctx.beginPath();
-        ctx.ellipse(petDog.x + 12, petDog.y + 22, 11, 4, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.drawImage(images.claudio, sx, sy, frameW, frameH, petDog.x - 4, petDog.y - 4, 32, 32);
-
-        // Claudio cute tongue panting
-        const pant = (Math.floor(animTick / 16) % 2 === 0);
-        if (pant && petDog.state === 'sitting') {
-          ctx.fillStyle = '#f43f5e';
-          ctx.fillRect(petDog.x + 11, petDog.y + 13, 2.5, 2);
-        }
-      }
-    }
+    // ── 6. PETS & PET ANIMATIONS (Retirados para diseño profesional limpio) ──
+    function drawPets() {}
 
     // ── 7. CHARACTERS ──
 
@@ -3819,43 +3540,34 @@
 
     // ── 8. FOREGROUND FURNITURE (DESKS IN FRONT!) ──
     function drawFurnitureFrontLayer() {
-      // Recepción Desks, PCs & Coffee Mugs
+      // Recepción Desks & PCs (Limpio y ordenado)
       drawSprite('desk', 75, 142, 48, 32);
       drawAnimatedPC(92, 134, 'pcOn1', 'pcOn2');
-      drawDeskCoffeeMug(82, 146);
-      drawSprite('bin', 125, 158, 16, 16);
 
       drawSprite('desk', 145, 142, 48, 32);
       drawAnimatedPC(162, 134, 'pcOn2', 'pcOn3');
-      drawDeskCoffeeMug(152, 146);
-      drawSprite('bin', 195, 158, 16, 16);
 
       // Kinesiología 4 Subagent Desks (Box 1-4: Swarm Tier Estudiantes)
       // Box 1: Eval #1 (375, 56)
       drawSprite('desk', 356, 62, 40, 26);
       drawAnimatedPC(372, 54, 'pcOn1', 'pcOn2');
-      drawDeskCoffeeMug(362, 66);
 
       // Box 2: Rehab #2 (465, 56)
       drawSprite('desk', 446, 62, 40, 26);
       drawAnimatedPC(462, 54, 'pcOn2', 'pcOn3');
-      drawDeskCoffeeMug(452, 66);
 
       // Box 3: Ficha #3 (375, 124)
       drawSprite('desk', 356, 130, 40, 26);
       drawAnimatedPC(372, 122, 'pcOn3', 'pcOn1');
-      drawDeskCoffeeMug(362, 134);
 
       // Box 4: Seguim #4 (465, 124)
       drawSprite('desk', 446, 130, 40, 26);
       drawAnimatedPC(462, 122, 'pcOn1', 'pcOn2');
-      drawDeskCoffeeMug(452, 134);
 
       // Despacho Sol Executive Desk & DUAL Monitors
       drawSprite('desk', 385, 268, 52, 32);
       drawAnimatedPC(390, 258, 'pcOn1', 'pcOn2');
       drawAnimatedPC(412, 258, 'pcOn3', 'pcOn1');
-      drawSprite('cushionedChairFront', 400, 310, 16, 16);
 
       // Triage 4 Subagent Desks (Puestos 1-4: Swarm Tier Estudiantes)
       // Puesto 1: Triage #1 (320, 442)
@@ -3879,14 +3591,6 @@
       drawSprite('desk', 655, 362, 48, 32);
       drawAnimatedPC(662, 354, 'pcOn1', 'pcOn3');
       drawAnimatedPC(684, 354, 'pcOn2', 'pcOn1');
-    }
-
-    function drawDeskCoffeeMug(x, y) {
-      // Tiny steaming coffee mug on desk
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(x, y, 4, 5);
-      ctx.fillStyle = '#451a03'; // Coffee inside
-      ctx.fillRect(x + 0.5, y + 0.5, 3, 2);
     }
 
     function drawAnimatedPC(x, y, k1, k2) {
@@ -3927,13 +3631,6 @@
 
     // ── 9. MICRO-ANIMATIONS ──
     function drawMicroAnimations() {
-      // Coffee Steam in Cafeteria
-      const steamY = 52 - ((animTick % 40) * 0.35);
-      const steamAlpha = 1 - ((animTick % 40) / 40);
-      ctx.fillStyle = `rgba(241, 245, 249, ${steamAlpha * 0.7})`;
-      ctx.fillRect(572 + Math.sin(animTick * 0.1) * 2, steamY, 2, 2);
-      ctx.fillRect(575 + Math.cos(animTick * 0.1) * 2, steamY - 4, 2.5, 2.5);
-
       // Data Center Glowing Conduit Lines & Fiber-Optic Packets
       const pulse = Math.abs(Math.sin(animTick * 0.05));
       ctx.fillStyle = `rgba(56, 189, 248, ${0.15 + pulse * 0.2})`;
@@ -4016,33 +3713,15 @@
         ctx.fillStyle = dcGrad;
         ctx.fillRect(550, 200, 250, 360);
       }
-
-      // Micro fluorescent flicker in Kinesio
-      const kFlicker = (animTick % 500 === 499) ? 0.05 : 0;
-      if (kFlicker > 0) {
-        ctx.fillStyle = `rgba(255, 255, 255, ${kFlicker})`;
-        ctx.fillRect(280, 20, 250, 160);
-      }
     }
 
     function drawDustMotes() {
-      if (lightingMode === 'night') return;
-      dustMotes.forEach(m => {
-        m.x += m.vx + Math.sin(animTick * 0.03 + m.phase) * 0.15;
-        m.y += m.vy;
-        if (m.y > 200) { m.y = 55; m.x = 35 + Math.random() * 40; }
-        if (m.x < 32 || m.x > 120) m.vx = -m.vx;
-
-        const flicker = Math.sin(animTick * 0.08 + m.phase);
-        const alpha = Math.max(0.1, m.baseAlpha + flicker * 0.25);
-        ctx.fillStyle = (lightingMode === 'cozy') ? `rgba(253, 230, 138, ${alpha})` : `rgba(255, 255, 255, ${alpha * 0.75})`;
-        ctx.fillRect(Math.floor(m.x), Math.floor(m.y), m.size, m.size);
-      });
+      // Dust motes retirados para limpieza visual
     }
 
     // ── 11. SPEECH BUBBLES ──
     function drawSpeechBubbles() {
-      characters.concat([petCat, petDog]).concat(mochis).forEach(c => {
+      characters.concat(mochis).forEach(c => {
         if (!c.speech) return;
 
         ctx.font = 'bold 8.5px sans-serif';
@@ -4095,12 +3774,6 @@
           hoveredEntity = c;
           break;
         }
-      }
-      if (!hoveredEntity && Math.hypot(petCat.x + 12 - mousePos.x, petCat.y + 12 - mousePos.y) < 22) {
-        hoveredEntity = petCat;
-      }
-      if (!hoveredEntity && Math.hypot(petDog.x + 12 - mousePos.x, petDog.y + 12 - mousePos.y) < 22) {
-        hoveredEntity = petDog;
       }
 
       if (hoveredMochi) {
