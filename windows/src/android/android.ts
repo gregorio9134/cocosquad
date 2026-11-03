@@ -118,7 +118,7 @@ interface QuickToolItem {
   title: string;
   desc: string;
   prompt?: string;
-  actionType?: "todo" | "note" | "vault" | "billing" | "agenda";
+  actionType?: "todo" | "note" | "vault" | "billing" | "agenda" | "red_investigaciones" | "red_ruta" | "red_corregir";
 }
 
 const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
@@ -200,28 +200,46 @@ const SQUAD_TOOLS: Record<string, QuickToolItem[]> = {
   ],
   coco_rojo: [
     {
-      icon: "🔬",
+      icon: "🔍",
       title: "Investigación profunda",
-      desc: "Análisis exhaustivo de un tema o técnica",
-      prompt: "Iniciar una investigación profunda sobre tendencias y protocolos clínicos.",
+      desc: "Informe académico con índice para aprobar",
+      prompt: "Activa modo investigación. Quiero generar un informe académico con índice detallado para aprobar antes de redactarlo.",
+    },
+    {
+      icon: "🎓",
+      title: "Modo Tutor",
+      desc: "Repaso socrático con pistas escalonadas",
+      prompt: "Activa modo tutor. Guíame con preguntas, pistas por pasos y corregí mis intentos sin dar la respuesta completa.",
     },
     {
       icon: "📚",
-      title: "Buscar evidencia / papers",
-      desc: "Revisión bibliográfica y científica",
-      prompt: "Buscá evidencia clínica y papers científicos recientes sobre este caso.",
+      title: "Aprender desde cero",
+      desc: "Crear ruta de estudio personalizada",
+      prompt: "Activa modo aprender desde cero. Creá un syllabus paso a paso para este tema y preguntame si lo apruebo.",
+    },
+    {
+      icon: "📂",
+      title: "Mis investigaciones",
+      desc: "Ver/listar informes en curso o listos",
+      actionType: "red_investigaciones",
+    },
+    {
+      icon: "🗺️",
+      title: "Mi ruta / Maestría",
+      desc: "Módulos, progreso y repaso",
+      actionType: "red_ruta",
+    },
+    {
+      icon: "✍️",
+      title: "Corregir mi intento",
+      desc: "Feedback sin dar la respuesta completa (solo Tutor)",
+      actionType: "red_corregir",
     },
     {
       icon: "📑",
       title: "Sintetizar documento",
       desc: "Resumir puntos clave de un archivo o PDF",
       prompt: "Sintetizá los puntos clave del documento o archivo adjunto.",
-    },
-    {
-      icon: "🧪",
-      title: "Comparar tratamientos",
-      desc: "Contraste de protocolos clínicos",
-      prompt: "Compará ventajas y desventajas de los distintos enfoques terapéuticos.",
     },
   ],
   coco_azul: [
@@ -1045,7 +1063,33 @@ class AndroidApp {
 
   private hqMode = true;
 
+  public redMode: 'tutor' | 'learn' | 'research' = (typeof localStorage !== "undefined" && localStorage.getItem("coco_red_mode") as any) || 'tutor';
+  public learningMemory: any = {};
+  public researchJobs: any[] = [];
+  public showRedModeModal: boolean = false;
+
+  private initRedState() {
+    try {
+      const lm = localStorage.getItem("coco_red_learning_memory");
+      if (lm) this.learningMemory = JSON.parse(lm);
+      const rm = localStorage.getItem("coco_red_mode");
+      if (rm === 'tutor' || rm === 'learn' || rm === 'research') this.redMode = rm;
+      else this.showRedModeModal = true; // mostrar modal si no hay modo guardado
+    } catch { this.showRedModeModal = true; }
+  }
+
+  private saveRedState() {
+    try {
+      localStorage.setItem("coco_red_mode", this.redMode);
+      localStorage.setItem("coco_red_learning_memory", JSON.stringify(this.learningMemory));
+    } catch {}
+  }
+
   public render() {
+    this.initRedState();
+    if (this.activeMember?.id === 'coco_rojo' && this.showRedModeModal) {
+      setTimeout(() => this.showRedModeSelectionModal(), 200);
+    }
     const root = document.getElementById("root");
     if (!root) return;
 
@@ -1212,13 +1256,11 @@ class AndroidApp {
               <div class="agent-title-row">
                 <span class="agent-name-text coco-name-animated" id="header-agent-name">${this.activeMember.name}</span>
                 <div class="status-dot-pulse" id="header-pulse"></div>
-                <span class="founder-badge ${this.isFounder ? 'crown-only' : (this.userPlan === 'pro' ? 'pro-badge' : 'client-badge')} clickable-badge" id="founder-badge" title="${this.isFounder ? '👑 Modo Fundador (God Mode) · Clic para panel de cuenta' : (this.userPlan === 'pro' ? '💎 Plan PRO Ilimitado · Clic para gestionar' : `🌱 Plan Gratuito (${getDailyUsage().count}/${FREE_DAILY_LIMIT}) · Clic para pasar a PRO`)}">
-                  ${this.isFounder ? '👑' : (this.userPlan === 'pro' ? '💎 Plan PRO' : `🌱 Plan Gratuito (${getDailyUsage().count}/${FREE_DAILY_LIMIT})`)}
-                </span>
+                ${this.activeMember.id === 'coco_rojo' ? `<span class="founder-badge clickable-badge" id="btn-red-mode-toggle" title="Cambiar modo de RED" style="background:rgba(239,68,68,0.2);border-color:rgba(239,68,68,0.6);color:#fca5a5;">🔴 ${this.redMode === 'tutor' ? 'Tutor' : this.redMode === 'learn' ? 'Aprender' : 'Investigación'}</span>` : `<span class="founder-badge ${this.isFounder ? 'crown-only' : (this.userPlan === 'pro' ? 'pro-badge' : 'client-badge')} clickable-badge" id="founder-badge" title="${this.isFounder ? '👑 Modo Fundador (God Mode) · Clic para panel de cuenta' : (this.userPlan === 'pro' ? '💎 Plan PRO Ilimitado · Clic para gestionar' : `🌱 Plan Gratuito (${getDailyUsage().count}/${FREE_DAILY_LIMIT}) · Clic para pasar a PRO`)}">${this.isFounder ? '👑' : (this.userPlan === 'pro' ? '💎 Plan PRO' : `🌱 Plan Gratuito (${getDailyUsage().count}/${FREE_DAILY_LIMIT})`)}</span>`}
                 <button class="sol-torre-control-btn" id="btn-return-hq" style="background: rgba(99, 102, 241, 0.25); border: 1px solid rgba(129, 140, 248, 0.5); color: #c7d2fe; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Volver al Cuartel Pixel HQ">🏢 HQ</button>
                 ${this.isFounder && this.activeMember.id === 'coco_sol' ? `<button class="sol-torre-control-btn" id="btn-open-sol-control" title="Torre de Control SaaS de Sol">☀️ Torre</button>` : ''}
               </div>
-              <span class="agent-subtitle-text" id="header-agent-role">${this.activeMember.role} · En línea</span>
+              <span class="agent-subtitle-text" id="header-agent-role">${this.activeMember.id === 'coco_rojo' ? (this.redMode === 'tutor' ? 'RED · Modo Tutor Académico' : this.redMode === 'learn' ? 'RED · Modo Aprendizaje' : 'RED · Modo Investigación') : this.activeMember.role + ' · En línea'}</span>
             </div>
           </div>
 
@@ -2025,7 +2067,13 @@ class AndroidApp {
     const roleEl = document.getElementById("header-agent-role");
     const pulseEl = document.getElementById("header-pulse");
     if (nameEl) nameEl.textContent = memberObj.name;
-    if (roleEl) roleEl.textContent = `${memberObj.role} · En línea`;
+    if (roleEl) {
+      if (memberObj.id === 'coco_rojo') {
+        roleEl.textContent = this.redMode === 'tutor' ? 'RED · Modo Tutor Académico' : this.redMode === 'learn' ? 'RED · Modo Aprendizaje' : 'RED · Modo Investigación';
+      } else {
+        roleEl.textContent = `${memberObj.role} · En línea`;
+      }
+    }
     if (pulseEl) {
       pulseEl.style.backgroundColor = memberObj.color;
       if (this.thinkingByAgent[memberObj.id]) {
@@ -2035,6 +2083,23 @@ class AndroidApp {
       }
     }
     this.updateHeaderBadge();
+    // Actualizar badge de modo RED si existe
+    const redModeBtn = document.getElementById("btn-red-mode-toggle");
+    if (redModeBtn && memberObj.id === 'coco_rojo') {
+      redModeBtn.textContent = `🔴 ${this.redMode === 'tutor' ? 'Tutor' : this.redMode === 'learn' ? 'Aprender' : 'Investigación'}`;
+      redModeBtn.onclick = (e:any) => {
+        e.stopPropagation();
+        const modes: Array<'tutor'|'learn'|'research'> = ['tutor','learn','research'];
+        const idx = modes.indexOf(this.redMode);
+        this.redMode = modes[(idx+1)%modes.length];
+        this.saveRedState();
+        const roleEl2 = document.getElementById("header-agent-role");
+        if (roleEl2) roleEl2.textContent = this.redMode === 'tutor' ? 'RED · Modo Tutor Académico' : this.redMode === 'learn' ? 'RED · Modo Aprendizaje' : 'RED · Modo Investigación';
+        redModeBtn.textContent = `🔴 ${this.redMode === 'tutor' ? 'Tutor' : this.redMode === 'learn' ? 'Aprender' : 'Investigación'}`;
+      };
+    } else if (redModeBtn) {
+      redModeBtn.onclick = null;
+    }
 
     // Update Empty State subtitle if visible
     const emptyHint = document.getElementById("empty-state-agent-hint");
@@ -2215,6 +2280,258 @@ class AndroidApp {
     if (plusBtn) plusBtn.classList.remove("active");
   }
 
+  private async openRedInvestigacionesModal() {
+    try {
+      const existing = document.getElementById("red-investigaciones-overlay");
+      if (existing) existing.remove();
+      const overlay = document.createElement("div");
+      overlay.id = "red-investigaciones-overlay";
+      overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(8px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;";
+      overlay.innerHTML = `
+        <div style="width:100%;max-width:420px;background:radial-gradient(circle at top,rgba(239,68,68,0.12),transparent),linear-gradient(180deg,#1a1010 0%,#0a0a0a 100%);border:1px solid rgba(239,68,68,0.5);border-radius:16px;box-shadow:0 40px 80px rgba(0,0,0,0.8);overflow:hidden;max-height:80vh;display:flex;flex-direction:column;">
+          <div style="padding:16px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span>📂</span>
+              <div style="display:flex;flex-direction:column;">
+                <span style="font-weight:700;color:#fca5a5;">Mis investigaciones</span>
+                <span style="font-size:11px;color:rgba(255,255,255,0.5);">Jobs en curso / listos</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button id="btn-red-inv-new" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.6);color:#fca5a5;border-radius:8px;padding:5px 9px;font-size:11px;cursor:pointer;">+ Nueva investigación</button>
+              <button id="btn-red-inv-close" style="background:transparent;border:none;color:rgba(255,255,255,0.6);cursor:pointer;">✕</button>
+            </div>
+          </div>
+          <div id="red-inv-list" style="flex:1;overflow:auto;padding:12px 18px;display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+      `;
+      overlay.querySelector("#btn-red-inv-close")?.addEventListener("click", () => overlay.remove());
+      overlay.querySelector("#btn-red-inv-new")?.addEventListener("click", () => {
+        overlay.remove();
+        if (this.activeMember.id !== 'coco_rojo') {
+          const red = SQUAD.find((m:any)=>m.id==='coco_rojo');
+          if (red) this.selectSquadMember(red);
+        }
+        this.redMode = 'research';
+        this.saveRedState();
+        const roleEl2 = document.getElementById("header-agent-role");
+        if (roleEl2) roleEl2.textContent = 'RED · Modo Investigación';
+        const redModeBtn = document.getElementById("btn-red-mode-toggle");
+        if (redModeBtn) redModeBtn.textContent = `🔴 Investigación`;
+        const topic = prompt("Tema para la nueva investigación:");
+        if (topic && topic.trim()) {
+          this.sendChatMessage(`Iniciar investigación sobre: ${topic.trim()}`);
+        }
+      });
+      document.body.appendChild(overlay);
+      const listEl = overlay.querySelector("#red-inv-list") as HTMLElement;
+      listEl.innerHTML = `<div style="color:rgba(255,255,255,0.5);font-size:12px;">Cargando...</div>`;
+      try {
+        const chatId = this.currentSessionId || this.tenantId || "1";
+        const res = await fetch(`${getApiBase()}/api/red/jobs?chat_id=${encodeURIComponent(chatId)}`, { headers: this.getAuthHeaders() });
+        const data = await res.json();
+        const jobs = data?.jobs || [];
+        if (jobs.length === 0) {
+          listEl.innerHTML = `<div style="color:rgba(255,255,255,0.5);font-size:12px;">Sin investigaciones aún. Usa "Investigación profunda" o mandale un tema en modo Investigación.</div>`;
+          return;
+        }
+        listEl.innerHTML = "";
+        jobs.slice().reverse().forEach((job:any) => {
+          const approved = job.outline?.approved || job.outlineApproved;
+          const status = job.status || 'pending';
+          const item = document.createElement("div");
+          item.style.cssText = "border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px;background:rgba(255,255,255,0.02);";
+          item.innerHTML = `
+            <div style="display:flex;justify-content:space-between;gap:8px;">
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <span style="font-weight:600;font-size:13px;">${this.escapeHtml(job.topic || 'Sin título')}</span>
+                <span style="font-size:11px;color:rgba(255,255,255,0.5);">Estado: ${status} · Progreso: ${job.progress||0}%</span>
+              </div>
+              <span style="font-size:11px;color:${approved?'#22c55e':'#f59e0b'};">${approved?'Índice aprobado':'Pendiente aprobar índice'}</span>
+            </div>
+            ${!approved ? `<button data-approve="${job.id}" style="align-self:flex-start;background:rgba(239,68,68,0.25);border:1px solid rgba(239,68,68,0.6);color:#fca5a5;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;">Aprobar índice</button>` : ''}
+            ${job.fileUrl ? `<a href="${job.fileUrl}" target="_blank" style="align-self:flex-start;color:#93c5fd;font-size:12px;">Descargar informe</a>` : ''}
+          `;
+          item.querySelector('[data-approve]')?.addEventListener('click', async (e:any) => {
+            try {
+              const btn = e.currentTarget as HTMLButtonElement;
+              btn.disabled = true;
+              btn.textContent = 'Aprobando...';
+              const res = await fetch(`${getApiBase()}/api/red/jobs/approve`, { method:'POST', headers: this.getAuthHeaders(), body: JSON.stringify({job_id: job.id}) });
+              const j = await res.json();
+              if (j.ok) {
+                // refrescar sin cerrar
+                overlay.remove();
+                setTimeout(() => this.openRedInvestigacionesModal(), 150);
+              } else {
+                btn.disabled = false;
+                btn.textContent = 'Aprobar índice';
+              }
+            } catch {
+              const btn = e.currentTarget as HTMLButtonElement;
+              btn.disabled = false;
+              btn.textContent = 'Aprobar índice';
+            }
+          });
+          listEl.appendChild(item);
+        });
+      } catch (e:any) {
+        listEl.innerHTML = `<div style="color:#f87171;font-size:12px;">Error: ${e?.message||e}</div>`;
+      }
+    } catch(e) {}
+  }
+
+  private openRedRutaModal() {
+    try {
+      const existing = document.getElementById("red-ruta-overlay");
+      if (existing) existing.remove();
+      const overlay = document.createElement("div");
+      overlay.id = "red-ruta-overlay";
+      overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(8px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;";
+      overlay.innerHTML = `
+        <div style="width:100%;max-width:420px;background:radial-gradient(circle at top,rgba(99,102,241,0.12),transparent),linear-gradient(180deg,#10121a 0%,#0a0a0a 100%);border:1px solid rgba(129,140,248,0.5);border-radius:16px;box-shadow:0 40px 80px rgba(0,0,0,0.8);overflow:hidden;max-height:80vh;display:flex;flex-direction:column;">
+          <div style="padding:16px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span>🗺️</span>
+              <div style="display:flex;flex-direction:column;">
+                <span style="font-weight:700;color:#c7d2fe;">Mi ruta / Maestría</span>
+                <span style="font-size:11px;color:rgba(255,255,255,0.5);">Módulos, dominio y repaso</span>
+              </div>
+            </div>
+            <button id="btn-red-ruta-close" style="background:transparent;border:none;color:rgba(255,255,255,0.6);cursor:pointer;">✕</button>
+          </div>
+          <div id="red-ruta-body" style="flex:1;overflow:auto;padding:12px 18px;display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
+      `;
+      overlay.querySelector("#btn-red-ruta-close")?.addEventListener("click", () => overlay.remove());
+      document.body.appendChild(overlay);
+      const body = overlay.querySelector("#red-ruta-body") as HTMLElement;
+      try {
+        const lm = this.learningMemory || {};
+        const route = lm.activeRoute || {modules:[],currentModule:null,completed:[]};
+        const learner = lm.learnerModel || {topics:{},weakPoints:[],reviewQueue:[],masteryThreshold:0.8};
+        let html = `<div style="display:flex;flex-direction:column;gap:6px;"><span style="font-weight:600;">Modo: ${this.redMode === 'learn' ? 'Aprender desde cero' : 'Tutor'}</span><span style="font-size:12px;color:rgba(255,255,255,0.6);">Umbral maestría: ${Math.round((learner.masteryThreshold||0.8)*100)}%</span></div>`;
+        if (route.modules && route.modules.length > 0) {
+          html += `<div style="display:flex;flex-direction:column;gap:6px;"><span style="font-weight:600;font-size:13px;">Módulos</span>`;
+          route.modules.forEach((m:any, idx:number) => {
+            const done = (route.completed||[]).includes(m.id);
+            html += `<div style="border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;"><div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:13px;">${idx+1}. ${this.escapeHtml(m.title||m.id)}</span><span style="font-size:11px;color:rgba(255,255,255,0.5);">${m.desc||''}</span></div><span style="font-size:11px;color:${done?'#22c55e':'#f59e0b'};">${done?'Completado':'Pendiente'}</span></div>`;
+          });
+          html += `</div>`;
+        } else {
+          html += `<div style="border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;font-size:12px;color:rgba(255,255,255,0.6);">Sin ruta creada aún. En modo "Aprender desde cero" pedile a RED que te arme el syllabus.</div>`;
+        }
+        if (learner.weakPoints && learner.weakPoints.length > 0) {
+          html += `<div style="display:flex;flex-direction:column;gap:6px;"><span style="font-weight:600;font-size:13px;">Puntos débiles</span><div style="display:flex;flex-wrap:wrap;gap:6px;">${learner.weakPoints.map((w:any)=>`<span style="border:1px solid rgba(248,113,113,0.6);color:#fca5a5;border-radius:999px;padding:3px 8px;font-size:11px;">${this.escapeHtml(typeof w==='string'?w:w.topic||'')}</span>`).join('')}</div></div>`;
+        }
+        if (learner.reviewQueue && learner.reviewQueue.length > 0) {
+          html += `<div style="display:flex;flex-direction:column;gap:6px;"><span style="font-weight:600;font-size:13px;">Cola de repaso</span><div style="display:flex;flex-direction:column;gap:4px;">${learner.reviewQueue.slice(0,5).map((r:any)=>`<div style="font-size:12px;color:rgba(255,255,255,0.7);">• ${this.escapeHtml(r.topic||r.item||'')}</div>`).join('')}</div></div>`;
+        }
+        body.innerHTML = html;
+      } catch(e:any) {
+        body.innerHTML = `<div style="color:#f87171;font-size:12px;">Error: ${e?.message||e}</div>`;
+      }
+    } catch(e) {}
+  }
+
+  private openRedCorregirModal() {
+    try {
+      if (this.activeMember.id !== 'coco_rojo') {
+        const red = SQUAD.find((m:any)=>m.id==='coco_rojo');
+        if (red) this.selectSquadMember(red);
+      }
+      if (this.redMode !== 'tutor') {
+        this.redMode = 'tutor';
+        this.saveRedState();
+        const roleEl2 = document.getElementById("header-agent-role");
+        if (roleEl2) roleEl2.textContent = 'RED · Modo Tutor Académico';
+        const redModeBtn = document.getElementById("btn-red-mode-toggle");
+        if (redModeBtn) redModeBtn.textContent = `🔴 Tutor`;
+      }
+      const existing = document.getElementById("red-corregir-overlay");
+      if (existing) existing.remove();
+      const overlay = document.createElement("div");
+      overlay.id = "red-corregir-overlay";
+      overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(8px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;";
+      overlay.innerHTML = `
+        <div style="width:100%;max-width:420px;background:radial-gradient(circle at top,rgba(239,68,68,0.12),transparent),linear-gradient(180deg,#1a1010 0%,#0a0a0a 100%);border:1px solid rgba(239,68,68,0.5);border-radius:16px;box-shadow:0 40px 80px rgba(0,0,0,0.8);overflow:hidden;display:flex;flex-direction:column;">
+          <div style="padding:16px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span>✍️</span>
+              <div style="display:flex;flex-direction:column;">
+                <span style="font-weight:700;color:#fca5a5;">Corregir mi intento</span>
+                <span style="font-size:11px;color:rgba(255,255,255,0.5);">Feedback sin dar la respuesta completa</span>
+              </div>
+            </div>
+            <button id="btn-red-corregir-close" style="background:transparent;border:none;color:rgba(255,255,255,0.6);cursor:pointer;">✕</button>
+          </div>
+          <div style="padding:12px 18px;display:flex;flex-direction:column;gap:10px;">
+            <textarea id="red-corregir-text" placeholder="Pegá tu intento, respuesta o desarrollo..." style="width:100%;min-height:140px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;padding:10px;resize:vertical;font-family:inherit;"></textarea>
+            <button id="btn-red-corregir-send" style="align-self:flex-end;background:rgba(239,68,68,0.25);border:1px solid rgba(239,68,68,0.6);color:#fca5a5;border-radius:10px;padding:8px 14px;cursor:pointer;">Corregir</button>
+          </div>
+        </div>
+      `;
+      overlay.querySelector("#btn-red-corregir-close")?.addEventListener("click", () => overlay.remove());
+      overlay.querySelector("#btn-red-corregir-send")?.addEventListener("click", () => {
+        const ta = overlay.querySelector("#red-corregir-text") as HTMLTextAreaElement;
+        const val = ta?.value || '';
+        if (!val.trim()) return;
+        overlay.remove();
+        this.sendChatMessage(`CORREGIR MI INTENTO (modo tutor, sin dar respuesta completa):\n${val}`);
+      });
+      document.body.appendChild(overlay);
+    } catch(e) {}
+  }
+
+  private showRedModeSelectionModal() {
+    try {
+      const existing = document.getElementById("red-mode-select-overlay");
+      if (existing) existing.remove();
+      const overlay = document.createElement("div");
+      overlay.id = "red-mode-select-overlay";
+      overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;";
+      overlay.innerHTML = `
+        <div style="width:100%;max-width:380px;background:radial-gradient(circle at top,rgba(239,68,68,0.15),transparent),linear-gradient(180deg,#1a1010 0%,#0a0a0a 100%);border:1px solid rgba(239,68,68,0.5);border-radius:16px;box-shadow:0 40px 80px rgba(0,0,0,0.8);overflow:hidden;">
+          <div style="padding:18px 18px 10px;display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:20px;">🔴</span>
+              <div style="display:flex;flex-direction:column;">
+                <span style="font-weight:700;color:#fca5a5;">Coco Rojo · ¿Cómo querés empezar?</span>
+                <span style="font-size:12px;color:rgba(255,255,255,0.6);">Elegí el modo para este estudio</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:10px 18px 16px;">
+            <button data-mode="tutor" style="text-align:left;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.12);color:#fff;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px;cursor:pointer;">
+              <span style="font-weight:700;">🎓 Modo Tutor</span>
+              <span style="font-size:12px;color:rgba(255,255,255,0.7);">Socrático, pistas escalonadas, corregir intentos</span>
+            </button>
+            <button data-mode="learn" style="text-align:left;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:#fff;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px;cursor:pointer;">
+              <span style="font-weight:700;">📚 Aprender desde cero</span>
+              <span style="font-size:12px;color:rgba(255,255,255,0.7);">Ruta de estudio, Feynman, glosario</span>
+            </button>
+            <button data-mode="research" style="text-align:left;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:#fff;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px;cursor:pointer;">
+              <span style="font-weight:700;">🔍 Modo Investigación</span>
+              <span style="font-size:12px;color:rgba(255,255,255,0.7);">Informe académico con índice para aprobar</span>
+            </button>
+          </div>
+        </div>
+      `;
+      overlay.querySelectorAll('button[data-mode]').forEach((btn:any) => {
+        btn.onclick = () => {
+          this.redMode = btn.getAttribute('data-mode');
+          this.saveRedState();
+          overlay.remove();
+          this.showRedModeModal = false;
+          if (this.activeMember.id === 'coco_rojo') {
+            this.render();
+          }
+        };
+      });
+      document.body.appendChild(overlay);
+    } catch(e) {}
+  }
+
   private renderToolsMenu() {
     const titleEl = document.getElementById("tools-popup-title");
     const dotEl = document.getElementById("tools-popup-dot");
@@ -2244,7 +2561,23 @@ class AndroidApp {
       btn.addEventListener("click", () => {
         this.closeToolsMenu();
         if (t.prompt) {
+          if (this.activeMember.id === 'coco_rojo' && (t.title.includes('Modo Tutor') || t.title.includes('Aprender') || t.title.includes('Investigación'))) {
+            if (t.title.includes('Modo Tutor')) this.redMode = 'tutor';
+            if (t.title.includes('Aprender')) this.redMode = 'learn';
+            if (t.title.includes('Investigación')) this.redMode = 'research';
+            this.saveRedState();
+            const roleEl2 = document.getElementById("header-agent-role");
+            if (roleEl2) roleEl2.textContent = this.redMode === 'tutor' ? 'RED · Modo Tutor Académico' : this.redMode === 'learn' ? 'RED · Modo Aprendizaje' : 'RED · Modo Investigación';
+            const redModeBtn = document.getElementById("btn-red-mode-toggle");
+            if (redModeBtn) redModeBtn.textContent = `🔴 ${this.redMode === 'tutor' ? 'Tutor' : this.redMode === 'learn' ? 'Aprender' : 'Investigación'}`;
+          }
           this.sendChatMessage(t.prompt);
+        } else if (t.actionType === "red_investigaciones") {
+          this.openRedInvestigacionesModal();
+        } else if (t.actionType === "red_ruta") {
+          this.openRedRutaModal();
+        } else if (t.actionType === "red_corregir") {
+          this.openRedCorregirModal();
         } else if (t.actionType === "todo") {
           const text = prompt("Nueva tarea para Coco Squad:");
           if (text && text.trim()) {
@@ -2290,8 +2623,78 @@ class AndroidApp {
     const container = document.getElementById("chat-history");
     if (!container) return;
 
+    // Limpiar chips rápidos si hay mensajes
+    const existingChips = document.getElementById('red-quick-chips');
+    if (this.messages.length > 0 && existingChips) existingChips.remove();
+
+    // Actualizar badge con pendientes
+    if (this.activeMember.id === 'coco_rojo') {
+      try {
+        const chatId = this.currentSessionId || this.tenantId || "1";
+        fetch(`${getApiBase()}/api/red/jobs?chat_id=${encodeURIComponent(chatId)}`, { headers: this.getAuthHeaders() })
+          .then(r=>r.json())
+          .then(d=>{
+            const jobs = d?.jobs||[];
+            const pending = jobs.filter((j:any)=> !(j.outline?.approved||j.outlineApproved) && j.status !== 'done').length;
+            const btn = document.getElementById('btn-red-mode-toggle');
+            if (btn && this.activeMember.id === 'coco_rojo') {
+              btn.textContent = pending>0 ? `🔴 ${this.redMode === 'tutor' ? 'Tutor' : this.redMode === 'learn' ? 'Aprender' : 'Investigación'} (${pending})` : `🔴 ${this.redMode === 'tutor' ? 'Tutor' : this.redMode === 'learn' ? 'Aprender' : 'Investigación'}`;
+            }
+          }).catch(()=>{});
+      } catch(e){}
+    }
+
     if (this.messages.length === 0) {
-      if (emptyState) emptyState.style.display = "flex";
+      if (emptyState) {
+        emptyState.style.display = "flex";
+        // Chips rápidos para Coco Rojo
+        if (this.activeMember.id === 'coco_rojo') {
+          let chipsHtml = '';
+          if (this.redMode === 'tutor') {
+            chipsHtml = `
+              <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px;max-width:420px;">
+                <button class="red-quick-chip" data-prompt="Ayudame a repasar: ¿qué tema querés que trabajemos hoy?">🎓 Empezar repaso</button>
+                <button class="red-quick-chip" data-action="corregir">✍️ Corregir mi intento</button>
+                <button class="red-quick-chip" data-prompt="Creame un test corto sobre este tema para evaluar mi nivel.">📝 Test diagnóstico</button>
+              </div>
+            `;
+          } else if (this.redMode === 'learn') {
+            chipsHtml = `
+              <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px;max-width:420px;">
+                <button class="red-quick-chip" data-prompt="Aprender desde cero: creame un syllabus con módulos, objetivos y ejercicios para este tema.">📚 Crear ruta de estudio</button>
+                <button class="red-quick-chip" data-action="ruta">🗺️ Ver mi ruta</button>
+                <button class="red-quick-chip" data-prompt="Empecemos con el módulo 1 paso a paso.">▶️ Empezar módulo 1</button>
+              </div>
+            `;
+          } else {
+            chipsHtml = `
+              <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px;max-width:420px;">
+                <button class="red-quick-chip" data-prompt="Generar un informe académico: dame el índice para aprobar primero.">🔍 Nuevo informe con índice</button>
+                <button class="red-quick-chip" data-action="investigaciones">📂 Mis investigaciones</button>
+                <button class="red-quick-chip" data-prompt="Hacer una investigación breve con fuentes confiables.">⚡ Investigación rápida</button>
+              </div>
+            `;
+          }
+          const existingChips = document.getElementById('red-quick-chips');
+          if (existingChips) existingChips.remove();
+          const chipsDiv = document.createElement('div');
+          chipsDiv.id = 'red-quick-chips';
+          chipsDiv.innerHTML = chipsHtml;
+          emptyState.appendChild(chipsDiv);
+          chipsDiv.querySelectorAll('.red-quick-chip').forEach((btn:any) => {
+            btn.style.cssText = "border:1px solid rgba(239,68,68,0.5);background:rgba(239,68,68,0.12);color:#fca5a5;padding:6px 12px;border-radius:999px;font-size:12px;cursor:pointer;";
+            btn.onclick = () => {
+              if (btn.getAttribute('data-action') === 'corregir') this.openRedCorregirModal();
+              else if (btn.getAttribute('data-action') === 'ruta') this.openRedRutaModal();
+              else if (btn.getAttribute('data-action') === 'investigaciones') this.openRedInvestigacionesModal();
+              else if (btn.getAttribute('data-prompt')) this.sendChatMessage(btn.getAttribute('data-prompt'));
+            };
+          });
+        } else {
+          const existingChips = document.getElementById('red-quick-chips');
+          if (existingChips) existingChips.remove();
+        }
+      }
       container.style.display = "none";
       container.innerHTML = "";
       return;
@@ -2339,7 +2742,40 @@ class AndroidApp {
           badge.className = "chat-agent-badge";
           badge.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${speakerColor};box-shadow:0 0 6px ${speakerColor}88;"></span> <span class="coco-name-animated" style="color:${speakerColor};">${speakerName}</span><span style="font-size:10.5px;color:#94a3b8;margin-left:4px;">${speakerRole}</span>`;
           row.appendChild(badge);
-          bubble.innerHTML = `<div class="message-content">${marked.parse(msg.content, { async: false }) as string}</div>`;
+          let contentHtml = marked.parse(msg.content, { async: false }) as string;
+          if (this.activeMember.id === 'coco_rojo' && /aprobar.*índice|¿Aprobás.*índice|aprob.*este.*índice/i.test(msg.content)) {
+            contentHtml += `<div style="margin-top:10px;"><button id="btn-approve-inline-${msg.id}" style="background:rgba(239,68,68,0.25);border:1px solid rgba(239,68,68,0.6);color:#fca5a5;border-radius:10px;padding:7px 12px;cursor:pointer;">Aprobar índice y generar informe</button></div>`;
+          }
+          bubble.innerHTML = `<div class="message-content">${contentHtml}</div>`;
+          setTimeout(() => {
+            const btn = document.getElementById(`btn-approve-inline-${msg.id}`);
+            if (btn) {
+              btn.onclick = async () => {
+                try {
+                  btn.setAttribute('disabled','true');
+                  (btn as HTMLButtonElement).textContent = 'Aprobando...';
+                  const chatId = this.currentSessionId || this.tenantId || "1";
+                  const jobsRes = await fetch(`${getApiBase()}/api/red/jobs?chat_id=${encodeURIComponent(chatId)}`, { headers: this.getAuthHeaders() });
+                  const jobsData = await jobsRes.json();
+                  const pending = (jobsData.jobs||[]).find((j:any)=> !(j.outline?.approved||j.outlineApproved) && j.status !== 'done');
+                  if (pending) {
+                    const res = await fetch(`${getApiBase()}/api/red/jobs/approve`, { method:'POST', headers: this.getAuthHeaders(), body: JSON.stringify({job_id: pending.id}) });
+                    const j = await res.json();
+                    if (j.ok) {
+                      (btn as HTMLButtonElement).textContent = 'Aprobado ✓';
+                    } else {
+                      (btn as HTMLButtonElement).textContent = 'Error al aprobar';
+                    }
+                  } else {
+                    this.sendChatMessage('Aprobado. Generá el informe siguiendo el índice.');
+                    (btn as HTMLButtonElement).textContent = 'Enviado ✓';
+                  }
+                } catch(e:any) {
+                  (btn as HTMLButtonElement).textContent = 'Error';
+                }
+              };
+            }
+          }, 30);
         }
       } else {
         const ch = msg.channel || (this.activeMember.id === "coco_verde" ? "whatsapp" : undefined);

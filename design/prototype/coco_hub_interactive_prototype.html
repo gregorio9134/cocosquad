@@ -158,68 +158,162 @@
 
     </div>
 
-    <!-- 2. MEDIO: PANEL CENTRAL LIBRE (FLEX-1) -->
-    <div id="center-workspace-panel" class="flex-1 min-w-[260px] min-h-[580px] flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 shadow-2xl relative overflow-hidden justify-between">
-      <!-- HEADER DEL PANEL CENTRAL -->
-      <div class="flex items-center justify-between pb-3 border-b border-slate-800/80">
+        <!-- 2. MEDIO: RED COGNITIVE STUDIO & LAB (FLEX-1) -->
+    <div id="center-workspace-panel" class="flex-1 min-w-[340px] min-h-[580px] flex flex-col bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 shadow-2xl relative overflow-hidden justify-between">
+      
+      <!-- HEADER DEL PANEL CENTRAL: RED STUDIO -->
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
         <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
-          <span class="text-xs font-bold text-white uppercase tracking-wider">Panel Central</span>
+          <span class="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-sm shadow">🚨</span>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-bold text-white tracking-wide">Red Studio</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-mono font-bold border border-rose-500/30">Pedagogía & Research</span>
+            </div>
+            <p class="text-[10px] text-slate-400">Modos cognitivos autónomos · Tier Estudiantes & Consultorios</p>
+          </div>
         </div>
-        <span class="text-[10px] font-mono text-indigo-300 bg-indigo-950/60 px-2.5 py-0.5 rounded-lg border border-indigo-800/60 font-semibold">Espacio Central Libre</span>
+        <div class="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-800/50">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>FastAPI 8080</span>
+        </div>
       </div>
 
-      <!-- CONTENIDO RESERVADO DEL MEDIO -->
-      <div class="flex-1 flex flex-col items-center justify-center p-6 text-center my-auto">
-        <div class="w-16 h-16 rounded-2xl bg-slate-950/80 border-2 border-dashed border-indigo-500/40 flex items-center justify-center text-3xl mb-3 shadow-inner text-indigo-400">
-          ⚡
-        </div>
-        <h3 class="text-xs font-bold text-slate-200">Panel central libre</h3>
-        <p class="text-[11px] text-slate-400 mt-1.5 max-w-[240px] leading-relaxed">
-          Espacio del medio de la pantalla despejado y listo para integrar el flujo de trabajo, agentes o widgets que necesites.
-        </p>
-        <span class="inline-flex items-center gap-1 text-[10px] font-mono text-indigo-400 bg-indigo-950/40 px-3 py-1 rounded-full border border-indigo-900/60 mt-3">
-          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span> Listo para nuevos componentes
+      <!-- SELECTOR DE MODOS DE RED (TUTOR / APRENDER / INVESTIGAR) -->
+      <div class="my-2 bg-slate-950/80 p-1 rounded-xl border border-slate-800 flex items-center gap-1 text-xs">
+        <button id="btn-mode-tutor" onclick="switchRedMode('tutor')" class="flex-1 py-1.5 px-2 rounded-lg text-[11px] font-medium transition flex items-center justify-center gap-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm">
+          <span>🎓</span>
+          <span>Tutor Socrático</span>
+        </button>
+        <button id="btn-mode-learn" onclick="switchRedMode('learn')" class="flex-1 py-1.5 px-2 rounded-lg text-[11px] font-medium transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-slate-200 border border-transparent">
+          <span>📖</span>
+          <span>Aprender (Feynman)</span>
+        </button>
+        <button id="btn-mode-research" onclick="switchRedMode('research')" class="flex-1 py-1.5 px-2 rounded-lg text-[11px] font-medium transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-slate-200 border border-transparent">
+          <span>🔬</span>
+          <span>Investigación (Outline)</span>
+        </button>
+      </div>
+
+      <!-- DESCRIPCIÓN DINÁMICA DEL MODO ACTIVO -->
+      <div id="red-mode-banner" class="mb-2 px-2.5 py-1.5 rounded-lg bg-rose-950/30 border border-rose-900/40 text-[10px] font-mono text-rose-300 flex items-center justify-between">
+        <span id="red-mode-desc">🎯 <b>Regla Attempt-First:</b> Red te exige qué intentaste antes de darte respuestas. Basado 100% en apuntes.</span>
+        <span id="red-mode-pills" class="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">Pistas 0/5</span>
+      </div>
+
+      <!-- CHAT STREAM CON RED -->
+      <div id="red-studio-messages" class="flex-1 overflow-y-auto space-y-2.5 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/60 max-h-[290px] min-h-[200px] text-xs font-sans">
+        <!-- populated dynamically -->
+      </div>
+
+      <!-- INDICADOR DE TIPEO -->
+      <div id="red-studio-typing" class="px-2 py-1 text-[10px] font-mono text-rose-400 flex items-center gap-1.5 hidden">
+        <span class="inline-flex gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-bounce"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-bounce [animation-delay:0.2s]"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-bounce [animation-delay:0.4s]"></span>
         </span>
+        <span id="red-studio-typing-txt">Red está razonando paso a paso...</span>
       </div>
 
-      <!-- FOOTER DEL PANEL CENTRAL -->
-      <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-500">
-        <span>Área de Operaciones Central</span>
-        <span class="text-indigo-400 font-semibold">● Disponible</span>
+      <!-- ACCIONES RÁPIDAS DE PRUEBA -->
+      <div class="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar pb-1 text-[10px]">
+        <button onclick="sendRedStudioPreset('attempt_test')" class="whitespace-nowrap px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono">
+          🧪 Probar Attempt-First
+        </button>
+        <button onclick="sendRedStudioPreset('research_lca')" class="whitespace-nowrap px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono">
+          🔬 Investigar LCA (Outline)
+        </button>
+        <button onclick="sendRedStudioPreset('feynman_test')" class="whitespace-nowrap px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono">
+          📖 Syllabus Feynman
+        </button>
       </div>
+
+      <!-- INPUT FORM -->
+      <form onsubmit="event.preventDefault(); submitRedStudio();" class="mt-1.5 flex items-center gap-2">
+        <input id="red-studio-input" type="text" autocomplete="off" placeholder="Escribí a Red o pedile una consigna de estudio..." class="flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-sans" />
+        <button type="submit" id="red-studio-send-btn" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/30 flex items-center gap-1 transition active:scale-95">
+          <span>Enviar</span>
+          <span class="text-rose-200">↵</span>
+        </button>
+      </form>
+
     </div>
 
-    <!-- 3. DERECHA: PANEL LATERAL LIBRE (FLEX-1) -->
-    <div id="right-workspace-panel" class="flex-1 min-w-[260px] min-h-[580px] flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 shadow-2xl relative overflow-hidden justify-between">
+    <!-- 3. DERECHA: RED TELEMETRÍA, MONITOR ECG & JOBS (FLEX-1) -->
+    <div id="right-workspace-panel" class="flex-1 min-w-[280px] min-h-[580px] flex flex-col bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 shadow-2xl relative overflow-hidden justify-between space-y-2.5">
+      
       <!-- HEADER DEL PANEL DERECHO -->
-      <div class="flex items-center justify-between pb-3 border-b border-slate-800/80">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
         <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="text-xs font-bold text-white uppercase tracking-wider">Panel Lateral</span>
+          <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+          <span class="text-xs font-bold text-white uppercase tracking-wider">Telemetría & Jobs de Red</span>
         </div>
-        <span class="text-[10px] font-mono text-slate-400 bg-slate-950 px-2.5 py-0.5 rounded-lg border border-slate-800 font-semibold">Espacio Derecho Libre</span>
+        <span class="text-[9px] font-mono text-rose-300 bg-rose-950/60 px-2 py-0.5 rounded border border-rose-800/50">Box Urgencias</span>
       </div>
 
-      <!-- CONTENIDO LIBRE / ESPACIO RESERVADO -->
-      <div class="flex-1 flex flex-col items-center justify-center p-6 text-center my-auto">
-        <div class="w-16 h-16 rounded-2xl bg-slate-950/80 border-2 border-dashed border-slate-800 flex items-center justify-center text-3xl mb-3 shadow-inner text-amber-400">
-          ✨
+      <!-- WIDGET 1: MONITOR ECG EN VIVO CON OSCILOSCOPIO Y BOTÓN DE ALERTA -->
+      <div class="bg-slate-950/90 rounded-xl p-2.5 border border-slate-800/80">
+        <div class="flex items-center justify-between mb-1 text-[10px] font-mono">
+          <span class="text-slate-300 font-bold flex items-center gap-1.5">
+            <span class="text-xs">💓</span> Telemetría Cardíaca (ECG)
+          </span>
+          <span id="side-ecg-rate" class="text-emerald-400 font-bold">75 bpm (Sinusal)</span>
         </div>
-        <h3 class="text-xs font-bold text-slate-200">Panel derecho libre</h3>
-        <p class="text-[11px] text-slate-500 mt-1.5 max-w-[220px] leading-relaxed">
-          Espacio despejado y preparado para integrar las herramientas adicionales, métricas o componentes que necesites.
-        </p>
-        <span class="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-900/60 mt-3">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Listo para nuevos componentes
-        </span>
+        <div class="relative bg-black rounded-lg overflow-hidden border border-slate-900 h-12 flex items-center">
+          <canvas id="sideEcgCanvas" width="280" height="48" class="w-full h-full block"></canvas>
+          <div id="side-ecg-status-tag" class="absolute top-1 right-2 text-[8px] font-mono text-emerald-400 font-bold">NORMAL</div>
+        </div>
+        <div class="mt-1.5 flex items-center justify-between">
+          <span class="text-[9px] text-slate-500 font-mono">Subagente ECG #2 activo</span>
+          <button onclick="toggleSideEmergencyAlert()" id="btn-side-alert" class="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 hover:bg-rose-900/40 text-slate-300 hover:text-rose-300 border border-slate-700 transition">
+            🚨 Simular Alerta
+          </button>
+        </div>
       </div>
 
-      <!-- FOOTER DEL PANEL DERECHO -->
-      <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-500">
-        <span>HQ Mochi System</span>
-        <span class="text-emerald-400 font-semibold">● Listo</span>
+      <!-- WIDGET 2: LISTA DE TRABAJOS DE INVESTIGACIÓN (/api/red/jobs) -->
+      <div class="flex-1 bg-slate-950/80 rounded-xl p-2.5 border border-slate-800/80 flex flex-col justify-between overflow-hidden">
+        <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800 text-[10px] font-mono">
+          <span class="text-slate-300 font-bold flex items-center gap-1">
+            <span>📚</span> Jobs de Investigación
+          </span>
+          <button onclick="refreshRedJobsList()" class="text-indigo-400 hover:text-indigo-300 transition text-[10px]">↻ Actualizar</button>
+        </div>
+        <div id="red-jobs-container" class="flex-1 overflow-y-auto space-y-1.5 max-h-[140px] text-[10px] font-mono">
+          <div class="p-2 text-center text-slate-500 text-[10px]">Cargando trabajos de Red...</div>
+        </div>
       </div>
+
+      <!-- WIDGET 3: CONTROL DE TOKENS & FILOSOFÍA LOW-COST -->
+      <div class="bg-slate-950/90 rounded-xl p-2.5 border border-slate-800/80 font-mono text-[10px]">
+        <div class="flex items-center justify-between text-slate-300 mb-1">
+          <span class="text-amber-400 font-bold">🪙 Token Ledger (Tope 2M)</span>
+          <span class="text-slate-400 text-[9px]">Límite: 66.6k/día</span>
+        </div>
+        <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden my-1">
+          <div id="side-token-progress" class="bg-gradient-to-r from-emerald-500 to-indigo-500 h-1.5 rounded-full" style="width: 14%"></div>
+        </div>
+        <div class="flex items-center justify-between text-[9px] text-slate-400 mt-1">
+          <span>Caché ChromaDB: <b class="text-emerald-400">$0 USD</b></span>
+          <span id="side-cost-usd">Costo: ~zsh.0012 USD</span>
+        </div>
+      </div>
+
+      <!-- WIDGET 4: SUBAGENTES DEL SQUAD RED -->
+      <div class="bg-slate-950/70 rounded-xl p-2 border border-slate-800 text-[9px] font-mono">
+        <div class="text-slate-400 font-bold mb-1 flex items-center justify-between">
+          <span>👥 Subagentes de Red</span>
+          <span class="text-rose-400">4 Puestos Activos</span>
+        </div>
+        <div class="grid grid-cols-2 gap-1 text-[8.5px]">
+          <div class="bg-slate-900/90 p-1 rounded border border-slate-800 text-slate-300 truncate">1. Triage-Prioridad</div>
+          <div class="bg-slate-900/90 p-1 rounded border border-slate-800 text-slate-300 truncate">2. Triage-ECG</div>
+          <div class="bg-slate-900/90 p-1 rounded border border-slate-800 text-slate-300 truncate">3. Triage-Pase</div>
+          <div class="bg-slate-900/90 p-1 rounded border border-slate-800 text-slate-300 truncate">4. Triage-Box</div>
+        </div>
+      </div>
+
     </div>
 
   </main>
@@ -3666,7 +3760,382 @@
     setInterval(updateTokenBudgetBadge, 12000);
     setTimeout(updateTokenBudgetBadge, 800);
 
-    // Autonomous Swarm Inter-Communication:
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // 🔴 RED COGNITIVE STUDIO & RESEARCH LAB (FRONTEND INTERACTION)
+    // ══════════════════════════════════════════════════════════════════════════
+    let currentRedMode = 'tutor'; // 'tutor' | 'learn' | 'research'
+    let redStudioMessages = [
+      {
+        sender: 'Red',
+        isUser: false,
+        time: 'En línea',
+        text: '¡Hola Gregorio! 🚨 Estoy listo en el laboratorio. Podés alternar entre mis modos cognitivos: **Tutor Socrático** (con regla Attempt-First), **Aprender** (con Syllabus Feynman) o **Investigación** (genero un outline y espero tu aprobación antes de redactar y exportar el paper). ¿Qué probamos?'
+      }
+    ];
+
+    function switchRedMode(mode) {
+      currentRedMode = mode;
+      playClick();
+      
+      const btnTutor = document.getElementById('btn-mode-tutor');
+      const btnLearn = document.getElementById('btn-mode-learn');
+      const btnResearch = document.getElementById('btn-mode-research');
+      const descEl = document.getElementById('red-mode-desc');
+      const pillsEl = document.getElementById('red-mode-pills');
+
+      [btnTutor, btnLearn, btnResearch].forEach(btn => {
+        if (btn) {
+          btn.className = 'flex-1 py-1.5 px-2 rounded-lg text-[11px] font-medium transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-slate-200 border border-transparent';
+        }
+      });
+
+      if (mode === 'tutor') {
+        if (btnTutor) btnTutor.className = 'flex-1 py-1.5 px-2 rounded-lg text-[11px] font-medium transition flex items-center justify-center gap-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm';
+        if (descEl) descEl.innerHTML = '🎯 <b>Regla Attempt-First:</b> Red te exige qué intentaste antes de darte respuestas. Basado 100% en apuntes.';
+        if (pillsEl) pillsEl.innerText = 'Pistas 0/5 · Andamiaje';
+      } else if (mode === 'learn') {
+        if (btnLearn) btnLearn.className = 'flex-1 py-1.5 px-2 rounded-lg text-[11px] font-medium transition flex items-center justify-center gap-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm';
+        if (descEl) descEl.innerHTML = '📖 <b>Técnica Feynman:</b> Syllabus estructurado de 3 a 5 módulos lógicos. De lo concreto a la abstracción.';
+        if (pillsEl) pillsEl.innerText = 'Syllabus Modular';
+      } else if (mode === 'research') {
+        if (btnResearch) btnResearch.className = 'flex-1 py-1.5 px-2 rounded-lg text-[11px] font-medium transition flex items-center justify-center gap-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm';
+        if (descEl) descEl.innerHTML = '🔬 <b>Pipeline de 2 Fases:</b> Genera el índice primero y requiere tu aprobación explícita para redactar.';
+        if (pillsEl) pillsEl.innerText = 'Outline Gatekeeper';
+      }
+    }
+
+    function renderRedStudioMessages() {
+      const container = document.getElementById('red-studio-messages');
+      if (!container) return;
+
+      container.innerHTML = redStudioMessages.map((m, idx) => {
+        if (m.isUser) {
+          return `
+            <div class="flex justify-end items-end gap-1.5">
+              <div class="max-w-[85%] bg-indigo-600 text-white rounded-2xl rounded-tr-none px-3 py-2 shadow border border-indigo-400/30 text-xs">
+                <div class="flex items-center justify-between gap-2 text-[9px] text-indigo-200 mb-0.5 font-mono">
+                  <span class="font-bold">👤 Gregorio</span>
+                  <span class="opacity-80">${m.time || ''}</span>
+                </div>
+                <div class="whitespace-pre-wrap leading-relaxed">${m.text}</div>
+              </div>
+            </div>
+          `;
+        } else {
+          let extraCard = '';
+          if (m.outlineJobId && !m.outlineApproved) {
+            extraCard = `
+              <div class="mt-2.5 p-2.5 rounded-xl bg-slate-900 border border-rose-500/40 shadow-lg">
+                <div class="flex items-center justify-between text-[10px] font-mono font-bold text-rose-300 mb-1.5">
+                  <span class="flex items-center gap-1">📑 Outline Pendiente de Aprobación</span>
+                  <span class="text-[9px] text-slate-400">ID: ${m.outlineJobId}</span>
+                </div>
+                <p class="text-[10px] text-slate-300 mb-2">Red está a la espera de tu confirmación para redactar el informe completo.</p>
+                <div class="flex items-center gap-2">
+                  <button onclick="approveRedOutline('${m.outlineJobId}')" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold shadow flex items-center gap-1 transition">
+                    ✓ Aprobar Índice y Redactar
+                  </button>
+                  <button onclick="sendRedStudioMessage('Por favor agregá más aplicaciones clínicas y casos prácticos al índice')" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] border border-slate-700 transition">
+                    ✏️ Ajustar Enfoque
+                  </button>
+                </div>
+              </div>
+            `;
+          }
+
+          let downloadCard = '';
+          if (m.downloadUrl) {
+            downloadCard = `
+              <div class="mt-2.5 p-2 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 flex items-center justify-between shadow">
+                <div class="flex items-center gap-2 text-[10px] font-mono">
+                  <span class="text-base">📥</span>
+                  <div>
+                    <div class="font-bold">Informe Académico Generado</div>
+                    <div class="text-[9px] text-emerald-400">${m.filename || 'reporte_red.md'}</div>
+                  </div>
+                </div>
+                <a href="${m.downloadUrl}" target="_blank" download class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-[10px] shadow transition">
+                  Descargar
+                </a>
+              </div>
+            `;
+          }
+
+          let formattedText = m.text
+            .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
+            .replace(/### (.*?)\\n/g, '<h4 class="font-bold text-rose-300 mt-2 mb-1">$1</h4>')
+            .replace(/## (.*?)\\n/g, '<h3 class="font-bold text-white text-xs mt-2 mb-1">$1</h3>');
+
+          return `
+            <div class="flex items-start gap-2">
+              <div class="w-6 h-6 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-xs shrink-0 shadow">
+                🚨
+              </div>
+              <div class="max-w-[88%] bg-slate-900/90 text-slate-200 rounded-2xl rounded-tl-none px-3 py-2.5 shadow-md border border-slate-800 text-xs">
+                <div class="flex items-center justify-between gap-2 text-[9px] mb-1 font-mono">
+                  <span class="font-bold text-rose-400 flex items-center gap-1">
+                    Red · ${m.modoTag || (currentRedMode === 'tutor' ? 'Tutor' : currentRedMode === 'learn' ? 'Aprender' : 'Research')}
+                  </span>
+                  <span class="text-slate-500">${m.time || ''}</span>
+                </div>
+                <div class="leading-relaxed whitespace-pre-wrap">${formattedText}</div>
+                ${extraCard}
+                ${downloadCard}
+              </div>
+            </div>
+          `;
+        }
+      }).join('');
+
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function submitRedStudio() {
+      const input = document.getElementById('red-studio-input');
+      const val = input ? input.value.trim() : '';
+      if (!val) return;
+      input.value = '';
+      sendRedStudioMessage(val);
+    }
+
+    function sendRedStudioPreset(type) {
+      if (type === 'attempt_test') {
+        switchRedMode('tutor');
+        sendRedStudioMessage('Hola Red, decime directamente la respuesta: ¿qué es el test de Lasègue y cómo se realiza?');
+      } else if (type === 'research_lca') {
+        switchRedMode('research');
+        sendRedStudioMessage('Quiero investigar sobre rehabilitación del ligamento cruzado anterior');
+      } else if (type === 'feynman_test') {
+        switchRedMode('learn');
+        sendRedStudioMessage('Explicame la biomecánica de la articulación glenohumeral con la Técnica Feynman');
+      }
+    }
+
+    function approveRedOutline(jobId) {
+      playClick();
+      sendRedStudioMessage('Aprobado, dale para adelante con el informe completo siguiendo ese índice exactamente');
+    }
+
+    async function sendRedStudioMessage(text) {
+      playClick();
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      redStudioMessages.push({
+        sender: 'Gregorio',
+        isUser: true,
+        text: text,
+        time: timeStr
+      });
+      renderRedStudioMessages();
+
+      const typingEl = document.getElementById('red-studio-typing');
+      const typingTxt = document.getElementById('red-studio-typing-txt');
+      if (typingEl) {
+        if (typingTxt) {
+          typingTxt.innerText = currentRedMode === 'tutor' ? 'Red analizando intento y andamiaje...' : currentRedMode === 'learn' ? 'Red armando Syllabus Feynman...' : 'Red procesando job de investigación...';
+        }
+        typingEl.classList.remove('hidden');
+      }
+
+      const targetMochi = mochis.find(m => m.id === 'red');
+      if (targetMochi) {
+        targetMochi.jumpTimer = performance.now();
+        playMochiVoice('red');
+        showTemporarySpeech(targetMochi, '🚨 Procesando en Red Studio...');
+      }
+
+      try {
+        const resp = await fetch('http://127.0.0.1:8080/agente/rojo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            red_mode: currentRedMode,
+            chat_id: 'coucou_coco_rojo'
+          })
+        });
+
+        if (typingEl) typingEl.classList.add('hidden');
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const reply = data.reply || data.response || data.respuesta || 'Red procesó tu solicitud.';
+          const meta = data.metadatos || {};
+
+          let outlineApproved = meta.outlineApproved;
+          let jobId = meta.job_id;
+          let dlUrl = (data.datos && data.datos.download) || null;
+          let filename = (data.datos && data.datos.filename) || null;
+
+          if (meta.tipo === 'investigacion_outline' && !outlineApproved) {
+            outlineApproved = false;
+          }
+
+          redStudioMessages.push({
+            sender: 'Red',
+            isUser: false,
+            text: reply,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            modoTag: meta.modo ? meta.modo.toUpperCase() : currentRedMode.toUpperCase(),
+            outlineJobId: jobId,
+            outlineApproved: outlineApproved,
+            downloadUrl: dlUrl,
+            filename: filename
+          });
+          renderRedStudioMessages();
+
+          if (targetMochi) {
+            targetMochi.eyeEmotion = 'happy';
+            targetMochi.eyeEmotionUntil = performance.now() + 2500;
+            spawnParticles(targetMochi.x, targetMochi.y - 12, 'star', 5);
+            showTemporarySpeech(targetMochi, '🚨 ¡Respuesta lista en el Studio!');
+          }
+
+          refreshRedJobsList();
+        } else {
+          redStudioMessages.push({
+            sender: 'Red',
+            isUser: false,
+            text: 'Ocurrió un error al contactar al servidor. Verificá que FastAPI en 8080 esté activo.',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          });
+          renderRedStudioMessages();
+        }
+      } catch (err) {
+        if (typingEl) typingEl.classList.add('hidden');
+        redStudioMessages.push({
+          sender: 'Red',
+          isUser: false,
+          text: 'Fallo de conexión con el backend: ' + err.message,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+        renderRedStudioMessages();
+      }
+    }
+
+    async function refreshRedJobsList() {
+      const container = document.getElementById('red-jobs-container');
+      if (!container) return;
+      try {
+        const resp = await fetch('http://127.0.0.1:8080/api/red/jobs?chat_id=coucou_coco_rojo');
+        if (resp.ok) {
+          const data = await resp.json();
+          const jobs = data.jobs || [];
+          if (jobs.length === 0) {
+            container.innerHTML = '<div class="p-2 text-center text-slate-500 text-[10px]">Sin jobs activos. Pedí una investigación en el Studio para ver el progreso acá.</div>';
+            return;
+          }
+          container.innerHTML = jobs.map(j => {
+            const isDone = j.status === 'done';
+            const progress = j.progress || (isDone ? 100 : 25);
+            return `
+              <div class="p-1.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-slate-200 truncate max-w-[170px]">${j.topic || 'Investigación'}</span>
+                  <span class="px-1.5 py-0.2 rounded text-[8px] font-mono ${isDone ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}">
+                    ${j.stage || j.status}
+                  </span>
+                </div>
+                <div class="w-full bg-slate-800 rounded-full h-1 overflow-hidden">
+                  <div class="bg-rose-500 h-1 rounded-full transition-all" style="width: ${progress}%"></div>
+                </div>
+                <div class="flex items-center justify-between text-[8px] text-slate-500">
+                  <span>${progress}% completado</span>
+                  ${j.fileUrl ? `<a href="${j.fileUrl}" target="_blank" class="text-emerald-400 hover:underline">Descargar</a>` : `<span class="opacity-70">${j.id}</span>`}
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (e) {
+        console.warn('Error fetching red jobs:', e);
+      }
+    }
+
+    let sideEcgEmergency = false;
+    function initSideEcg() {
+      const canvas = document.getElementById('sideEcgCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let offset = 0;
+
+      function renderSideEcg() {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = 'rgba(20, 83, 45, 0.25)';
+        ctx.lineWidth = 0.5;
+        for (let x = 0; x < canvas.width; x += 15) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        }
+        for (let y = 0; y < canvas.height; y += 12) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        }
+
+        ctx.strokeStyle = sideEcgEmergency ? '#ef4444' : '#10b981';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+
+        offset = (offset + 1.8) % 30;
+        const cy = canvas.height / 2;
+
+        for (let x = 0; x < canvas.width; x++) {
+          const t = (x + offset) % 30;
+          let wy = cy;
+          if (t > 10 && t <= 12) wy -= (sideEcgEmergency ? 16 : 10);
+          else if (t > 12 && t <= 14) wy += (sideEcgEmergency ? 10 : 6);
+          else if (t > 14 && t <= 16) wy -= 2;
+          if (x === 0) ctx.moveTo(x, wy);
+          else ctx.lineTo(x, wy);
+        }
+        ctx.stroke();
+
+        requestAnimationFrame(renderSideEcg);
+      }
+      requestAnimationFrame(renderSideEcg);
+    }
+
+    function toggleSideEmergencyAlert() {
+      sideEcgEmergency = !sideEcgEmergency;
+      emergencyAlertActive = sideEcgEmergency;
+      playClick();
+
+      const rateEl = document.getElementById('side-ecg-rate');
+      const tagEl = document.getElementById('side-ecg-status-tag');
+      const btnEl = document.getElementById('btn-side-alert');
+
+      if (sideEcgEmergency) {
+        if (rateEl) { rateEl.innerText = '145 bpm (Taquicardia)'; rateEl.className = 'text-rose-400 font-bold animate-pulse'; }
+        if (tagEl) { tagEl.innerText = 'CÓDIGO ROJO'; tagEl.className = 'absolute top-1 right-2 text-[8px] font-mono text-rose-400 font-bold'; }
+        if (btnEl) btnEl.innerText = '🟢 Normalizar';
+        logEvent('🚨 Box Urgencias: Taquicardia ventricular detectada por Subagente ECG #2');
+        showTemporaryToast('🚨 ALERTA: Taquicardia en Box Urgencias');
+      } else {
+        if (rateEl) { rateEl.innerText = '75 bpm (Sinusal)'; rateEl.className = 'text-emerald-400 font-bold'; }
+        if (tagEl) { tagEl.innerText = 'NORMAL'; tagEl.className = 'absolute top-1 right-2 text-[8px] font-mono text-emerald-400 font-bold'; }
+        if (btnEl) btnEl.innerText = '🚨 Simular Alerta';
+        logEvent('💚 Box Urgencias: Ritmo sinusal normal reestablecido');
+        showTemporaryToast('💚 Box Urgencias: Estado estable 75 bpm');
+      }
+    }
+
+    // Auto-init on load
+    window.addEventListener('DOMContentLoaded', () => {
+      renderRedStudioMessages();
+      refreshRedJobsList();
+      initSideEcg();
+    });
+    // In case DOM already loaded
+    setTimeout(() => {
+      renderRedStudioMessages();
+      refreshRedJobsList();
+      initSideEcg();
+    }, 500);
+
+
+        // Autonomous Swarm Inter-Communication:
     // Los mochis y sus subagentes intercambian paquetes tácticos de forma continua en pantalla
     const swarmPairings = [
       { from: 'blanco', to: 'blanco_rehabilitacion', icon: '🦴', msg: 'Pauta L4-L5 verificada' },
