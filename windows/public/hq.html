@@ -129,10 +129,10 @@
   </header>
 
   <!-- ── 1. MAIN DESKTOP 3-PANEL WORKSPACE (OFICINAS IZQUIERDA + MEDIO LIBRE + DERECHA LIBRE) ── -->
-  <main id="desktop-viewport-container" class="max-w-[1720px] mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 my-2">
+  <main id="desktop-viewport-container" class="max-w-[1720px] mx-auto w-full flex-1 flex flex-row gap-3 my-2 items-stretch px-2 overflow-x-auto">
 
-    <!-- 1. IZQUIERDA: 2D PIXEL ART VIEWPORT (4 COLS) -->
-    <div id="left-offices-panel" class="lg:col-span-4 flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-2.5 overflow-hidden shadow-2xl relative crt-glow">
+    <!-- 1. IZQUIERDA: 2D PIXEL ART VIEWPORT (ANCHO FIJO 506px) -->
+    <div id="left-offices-panel" class="w-[506px] shrink-0 flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-2.5 overflow-hidden shadow-2xl relative crt-glow">
       
       <!-- VIEWPORT TOOLBAR -->
       <div class="flex items-center justify-between pb-2 mb-1 px-1 text-xs">
@@ -167,8 +167,8 @@
 
     </div>
 
-    <!-- 2. MEDIO: PANEL CENTRAL LIBRE (4 COLS) -->
-    <div id="center-workspace-panel" class="lg:col-span-4 min-h-[580px] flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 shadow-2xl relative overflow-hidden justify-between">
+    <!-- 2. MEDIO: PANEL CENTRAL LIBRE (FLEX-1) -->
+    <div id="center-workspace-panel" class="flex-1 min-w-[260px] min-h-[580px] flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 shadow-2xl relative overflow-hidden justify-between">
       <!-- HEADER DEL PANEL CENTRAL -->
       <div class="flex items-center justify-between pb-3 border-b border-slate-800/80">
         <div class="flex items-center gap-2">
@@ -199,8 +199,8 @@
       </div>
     </div>
 
-    <!-- 3. DERECHA: PANEL LATERAL LIBRE (4 COLS) -->
-    <div id="right-workspace-panel" class="lg:col-span-4 min-h-[580px] flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 shadow-2xl relative overflow-hidden justify-between">
+    <!-- 3. DERECHA: PANEL LATERAL LIBRE (FLEX-1) -->
+    <div id="right-workspace-panel" class="flex-1 min-w-[260px] min-h-[580px] flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 shadow-2xl relative overflow-hidden justify-between">
       <!-- HEADER DEL PANEL DERECHO -->
       <div class="flex items-center justify-between pb-3 border-b border-slate-800/80">
         <div class="flex items-center gap-2">
