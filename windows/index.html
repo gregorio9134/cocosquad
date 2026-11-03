@@ -148,7 +148,7 @@
 
       <!-- CANVAS CONTAINER (FIXED CRISP VIEW - NO CAMERA SHAKE) -->
       <div class="relative flex-1 flex items-center justify-center bg-[#07050d] rounded-xl overflow-hidden border border-slate-800">
-        <canvas id="officeCanvas" width="820" height="580" class="w-full h-auto max-h-[580px] cursor-pointer"></canvas>
+        <canvas id="officeCanvas" width="560" height="580" class="w-auto h-auto max-h-[580px] max-w-[560px] cursor-pointer block"></canvas>
         <div id="scanline-overlay" class="absolute inset-0 scanlines hidden"></div>
 
         <!-- TOP-RIGHT SLIM STATUS PILL INSIDE CANVAS -->
@@ -170,276 +170,33 @@
 
     </div>
 
-    <!-- RIGHT: INTERACTIVE MANAGEMENT DOCK (4 COLS) -->
-    <div class="lg:col-span-4 flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-3 shadow-2xl flex-1 justify-between">
-
-      <!-- TABS SELECTOR -->
-      <div class="flex items-center gap-1 p-1 bg-slate-950/90 border border-slate-800/80 rounded-xl mb-3 text-xs font-medium">
-        <button onclick="switchSidebarTab('squad')" id="tab-btn-squad" class="flex-1 py-1.5 rounded-lg bg-indigo-600 text-white font-semibold transition flex items-center justify-center gap-1.5 shadow">
-          👥 Mochis
-        </button>
-        <button onclick="switchSidebarTab('chat')" id="tab-btn-chat" class="flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
-          💬 Chat
-        </button>
-        <button onclick="switchSidebarTab('sol')" id="tab-btn-sol" class="flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
-          ☀️ Torre Sol
-        </button>
+    <!-- RIGHT: PANEL LIBRE PARA NUEVAS HERRAMIENTAS (4 COLS) -->
+    <div id="right-workspace-panel" class="lg:col-span-4 flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 shadow-2xl flex-1 justify-between relative overflow-hidden">
+      <!-- HEADER DEL PANEL DERECHO -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800/80">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-xs font-bold text-white uppercase tracking-wider">Panel Lateral</span>
+        </div>
+        <span class="text-[10px] font-mono text-slate-400 bg-slate-950 px-2.5 py-0.5 rounded-lg border border-slate-800">Espacio Libre</span>
       </div>
 
-      <!-- TAB 1: SQUAD ROSTER (MOCHIS & SUBAGENTS) -->
-      <div id="tab-content-squad" class="flex-1 flex flex-col justify-between overflow-y-auto space-y-2 pr-1">
-        
-        <div class="space-y-2">
-          <div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold uppercase tracking-wider px-1">
-            <span>Supervisores & Operarios</span>
-            <span class="text-emerald-400 font-mono lowercase">5 activos</span>
-          </div>
-
-          <!-- COCO SOL -->
-          <div onclick="openMochiChatWindow('sol')" id="card-sol" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-amber-500/40 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-lg shadow">
-                ☀️
-              </div>
-              <div>
-                <div class="flex items-center gap-1.5">
-                  <span class="text-xs font-bold text-white group-hover:text-amber-300 transition">Coco Sol</span>
-                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono font-semibold">SaaS Lead</span>
-                </div>
-                <span class="text-[10px] text-slate-400">Despacho Central · 14 consultorios</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-1">
-              <button onclick="event.stopPropagation(); openMochiChatWindow('sol')" class="text-[9px] px-2 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40" title="Abrir Chat Operativo">Chat 💬</button>
-              <button onclick="event.stopPropagation(); openModal('sol_map')" class="text-[9px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700" title="Ver Red SaaS">Mapa 🗺️</button>
-            </div>
-          </div>
-
-          <!-- COCO GREEN -->
-          <div onclick="openMochiChatWindow('green')" id="card-green" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-emerald-500/30 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-lg shadow">
-                🌿
-              </div>
-              <div>
-                <div class="flex items-center gap-1.5">
-                  <span class="text-xs font-bold text-white group-hover:text-emerald-300 transition">Coco Green</span>
-                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">Recepción</span>
-                </div>
-                <span class="text-[10px] text-slate-400">Recepción · 2 subagentes (WhatsApp)</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-1">
-              <button onclick="event.stopPropagation(); openMochiChatWindow('green')" class="text-[9px] px-2 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40" title="Abrir Chat Operativo">Chat 💬</button>
-              <button onclick="event.stopPropagation(); openModal('whatsapp_sim')" class="text-[9px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700" title="Ver Chat WhatsApp">WhatsApp 📱</button>
-            </div>
-          </div>
-
-          <!-- COCO BLANCO -->
-          <div onclick="openMochiChatWindow('blanco')" id="card-blanco" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-slate-700/60 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center text-lg shadow">
-                🤍
-              </div>
-              <div>
-                <div class="flex items-center gap-1.5">
-                  <span class="text-xs font-bold text-white group-hover:text-slate-200 transition">Coco Blanco</span>
-                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700 font-mono">Kinesiología</span>
-                </div>
-                <span class="text-[10px] text-slate-400">Box Kinesiología · Camilla & Pautas</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-1">
-              <button onclick="event.stopPropagation(); openMochiChatWindow('blanco')" class="text-[9px] px-2 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40" title="Abrir Chat Operativo">Chat 💬</button>
-              <button onclick="event.stopPropagation(); openModal('clinical_card')" class="text-[9px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700" title="Ver Ficha Clínica">Ficha 🩺</button>
-            </div>
-          </div>
-
-          <!-- COCO RED -->
-          <div onclick="openMochiChatWindow('red')" id="card-red" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-rose-500/30 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-lg shadow">
-                🚨
-              </div>
-              <div>
-                <div class="flex items-center gap-1.5">
-                  <span class="text-xs font-bold text-white group-hover:text-rose-300 transition">Coco Red</span>
-                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono">Triage</span>
-                </div>
-                <span class="text-[10px] text-slate-400">Box Urgencias · ECG Vitals Monitor</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-1">
-              <button onclick="event.stopPropagation(); openMochiChatWindow('red')" class="text-[9px] px-2 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40" title="Abrir Chat Operativo">Chat 💬</button>
-              <button onclick="event.stopPropagation(); openModal('ecg_triage')" class="text-[9px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 font-mono font-semibold" title="Ver Monitor ECG">ECG 🚨</button>
-            </div>
-          </div>
-
-          <!-- COCO BLU -->
-          <div onclick="openMochiChatWindow('blu')" id="card-blu" class="bg-slate-950/80 hover:bg-slate-800/80 cursor-pointer border border-blue-500/30 rounded-xl p-2.5 transition flex items-center justify-between group shadow-sm">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-lg shadow">
-                🔷
-              </div>
-              <div>
-                <div class="flex items-center gap-1.5">
-                  <span class="text-xs font-bold text-white group-hover:text-blue-300 transition">Coco Blu</span>
-                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 font-mono">Sistemas</span>
-                </div>
-                <span class="text-[10px] text-slate-400">Data Center · Racks Hetzner Activos</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-1">
-              <button onclick="event.stopPropagation(); openMochiChatWindow('blu')" class="text-[9px] px-2 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40" title="Abrir Chat Operativo">Chat 💬</button>
-              <button onclick="event.stopPropagation(); openModal('hetzner_telemetry')" class="text-[9px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700" title="Ver Servidores Hetzner">Hetzner ⚡</button>
-            </div>
-          </div>
+      <!-- CONTENIDO LIBRE / ESPACIO RESERVADO -->
+      <div class="flex-1 flex flex-col items-center justify-center p-6 text-center my-auto">
+        <div class="w-16 h-16 rounded-2xl bg-slate-950/80 border-2 border-dashed border-slate-800 flex items-center justify-center text-3xl mb-3 shadow-inner text-amber-400">
+          ✨
         </div>
-
-        <!-- QUICK ACTION TRIGGERS (AUTONOMOUS SIMULATION) -->
-        <div class="mt-2 pt-2 border-t border-slate-800/80 space-y-1.5">
-          <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block px-1">Simulación Autónoma</span>
-          
-          <!-- AUTONOMOUS SWARM SIMULATION BUTTON -->
-          <button onclick="triggerAutonomousSwarmSimulation()" class="w-full p-2 bg-gradient-to-r from-indigo-600/30 to-purple-600/30 hover:from-indigo-600/45 hover:to-purple-600/45 border border-indigo-500/50 rounded-xl text-left transition flex items-center justify-between shadow-md">
-            <div>
-              <span class="text-xs font-bold text-indigo-200 block">⚡ Simular Flujo Autónomo de Swarm</span>
-              <span class="text-[9px] text-slate-400">Sol → Green (WhatsApp) → Blanco (Kinesio) → Ficha #3</span>
-            </div>
-            <span class="text-xs px-2 py-1 rounded bg-indigo-500 text-white font-bold">PLAY ▶</span>
-          </button>
-
-          <div class="grid grid-cols-2 gap-1.5 text-xs">
-            <button onclick="triggerSimAction('confirm_turnos')" class="p-2 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-300 rounded-xl text-left transition shadow-sm">
-              🌿 <span class="font-semibold block text-[10px]">Confirmar Turnos</span>
-              <span class="text-[8.5px] text-slate-400">Subagentes WhatsApp</span>
-            </button>
-            <button onclick="triggerSimAction('plan_clinico')" class="p-2 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-left transition shadow-sm">
-              🤍 <span class="font-semibold block text-[10px]">Plan Kinesiológico</span>
-              <span class="text-[8.5px] text-slate-400">Blanco & 4 subagentes</span>
-            </button>
-            <button onclick="triggerSimAction('alerta_triage')" class="p-2 bg-rose-600/15 hover:bg-rose-600/25 border border-rose-500/30 text-rose-300 rounded-xl text-left transition shadow-sm">
-              🚨 <span class="font-semibold block text-[10px]">Alerta Triage</span>
-              <span class="text-[8.5px] text-slate-400">4 subagentes urgencias</span>
-            </button>
-            <button onclick="triggerSimAction('audit_hetzner')" class="p-2 bg-sky-600/15 hover:bg-sky-600/25 border border-sky-500/30 text-sky-300 rounded-xl text-left transition shadow-sm">
-              🔷 <span class="font-semibold block text-[10px]">Servidores DevOps</span>
-              <span class="text-[8.5px] text-slate-400">Coco Blu & Hetzner</span>
-            </button>
-          </div>
-        </div>
-
+        <h3 class="text-xs font-bold text-slate-200">Panel derecho libre</h3>
+        <p class="text-[11px] text-slate-500 mt-1.5 max-w-[220px] leading-relaxed">
+          Espacio despejado y preparado para integrar las próximas herramientas y componentes que necesites.
+        </p>
       </div>
 
-      <!-- TAB 2: INTERACTIVE CHAT WITH ACTIVE SUPERVISOR -->
-      <div id="tab-content-chat" class="hidden flex-1 flex flex-col justify-between overflow-hidden">
-        
-        <button onclick="openMochiChatWindow(selectedRoom)" class="w-full mb-2 py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow transition">
-          🚀 Abrir Ventana Flotante de Pedidos
-        </button>
-
-        <!-- CHAT HEADER -->
-        <div class="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
-          <div class="flex items-center gap-2">
-            <div id="chat-avatar-box" class="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-sm">
-              ☀️
-            </div>
-            <div>
-              <span id="chat-mochi-name" class="text-xs font-bold text-white block">Coco Sol</span>
-              <span id="chat-mochi-role" class="text-[10px] text-amber-400 block">SaaS Lead · Supervisión Central</span>
-            </div>
-          </div>
-          <span class="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">Sesión Segura</span>
-        </div>
-
-        <!-- QUICK PROMPT SUGGESTIONS -->
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-2 mb-1 text-[10px] font-mono">
-          <button onclick="sendQuickPrompt('¿Cómo están los turnos de hoy?')" class="whitespace-nowrap px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">📅 Turnos Hoy</button>
-          <button onclick="sendQuickPrompt('¿Estado del SaaS y MRR?')" class="whitespace-nowrap px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">💰 Métricas SaaS</button>
-          <button onclick="sendQuickPrompt('¿Hay alguna urgencia médica?')" class="whitespace-nowrap px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">🚨 Triage</button>
-          <button onclick="sendQuickPrompt('¿Salud de los servidores Hetzner?')" class="whitespace-nowrap px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">🔷 Servidores</button>
-        </div>
-
-        <!-- CHAT MESSAGE LOG -->
-        <div id="chat-messages" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
-          <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-            <span class="text-[10px] font-bold text-amber-400 block mb-1">Coco Sol</span>
-            ¡Hola Gregorio! Te doy la bienvenida a la Torre de Control. Todos los 14 consultorios del SaaS están operando en tiempo real con Zero-Knowledge. ¿Querés revisar las agendas de kinesiología o coordinar a los subagentes?
-          </div>
-        </div>
-
-        <!-- CHAT INPUT -->
-        <div class="pt-2 border-t border-slate-800">
-          <div class="flex gap-2">
-            <input type="text" id="chat-input" placeholder="Escribile al supervisor..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" onkeydown="if(event.key==='Enter') sendChatMessage()">
-            <button onclick="sendChatMessage()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white rounded-xl transition shadow">Enviar</button>
-          </div>
-        </div>
-
+      <!-- FOOTER DEL PANEL -->
+      <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-500">
+        <span>HQ Mochi System</span>
+        <span class="text-emerald-400 font-semibold">● Listo</span>
       </div>
-
-      <!-- TAB 3: SAAS CONTROL TOWER (SOL) -->
-      <div id="tab-content-sol" class="hidden flex-1 flex flex-col overflow-y-auto space-y-2.5 text-xs pr-1">
-        
-        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-[10px] font-mono text-amber-300 uppercase font-bold tracking-wider">Despacho Central · Coco Sol</span>
-            <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">Tenants: 14/14</span>
-          </div>
-          <p class="text-slate-300 text-[11px] leading-relaxed">
-            "Gregorio, supervisando la red completa. Los algoritmos de encriptación protegen todas las fichas clínicas locales sin exponer datos médicos a la nube."
-          </p>
-        </div>
-
-        <!-- KEY METRICS GRID -->
-        <div class="grid grid-cols-2 gap-2 font-mono">
-          <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-            <span class="text-[9px] text-slate-500 block uppercase">MRR SaaS Global</span>
-            <span class="text-sm font-bold text-white">$18,450 USD</span>
-            <span class="text-[9px] text-emerald-400 block mt-0.5">▲ +12% este mes</span>
-          </div>
-          <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-            <span class="text-[9px] text-slate-500 block uppercase">Consultorios Activos</span>
-            <span class="text-sm font-bold text-emerald-400">14 / 14</span>
-            <span class="text-[9px] text-slate-400 block mt-0.5">0 incidencias</span>
-          </div>
-        </div>
-
-        <!-- TELEMETRY BARS -->
-        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-          <span class="text-[10px] font-bold text-slate-300 uppercase tracking-wider block">Infraestructura & Servidores Hetzner</span>
-          
-          <div>
-            <div class="flex justify-between text-[10px] text-slate-400 font-mono mb-1">
-              <span>Consumo Tokens Gemini API:</span>
-              <span class="text-amber-400">142,500 / 1,000,000 (Pay as you go)</span>
-            </div>
-            <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800">
-              <div class="bg-gradient-to-r from-amber-500 to-amber-400 h-full rounded-full" style="width: 14.2%"></div>
-            </div>
-          </div>
-
-          <div>
-            <div class="flex justify-between text-[10px] text-slate-400 font-mono mb-1">
-              <span>Latencia Red Hetzner (Frankfurt/Falkenstein):</span>
-              <span class="text-emerald-400">22 ms</span>
-            </div>
-            <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800">
-              <div class="bg-emerald-500 h-full rounded-full" style="width: 98%"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- CLINICAL SAAS INTELLIGENCE -->
-        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
-          <span class="text-[10px] font-bold text-slate-300 uppercase tracking-wider block">Macro-Insights Kinesiológicos:</span>
-          <p class="text-[11px] text-slate-400 leading-normal">
-            Alta demanda de rehabilitación postural en trabajadores remotos (+28% lumbalgias). Recomendación a Coco Blanco: pre-cargar plantilla de descompresión lumbar.
-          </p>
-        </div>
-
-      </div>
-
     </div>
 
   </main>
@@ -861,10 +618,10 @@
 
       const depts = {
         sol: { title: 'Coco Sol · Torre SaaS', sub: '14 Consultorios Conectados', avatar: '☀️', desc: '"Supervisando la red completa con Zero-Knowledge. $18,450 USD de MRR sostenido."' },
-        green: { title: 'Coco Green · Recepción', sub: '2 Subagentes (WhatsApp)', avatar: '🌿', desc: '"Confirmando 35 turnos agendados hoy. Recordatorios automáticos en curso."' },
-        blanco: { title: 'Coco Blanco · Kinesiología', sub: 'Box 1 · Camilla & Pautas', avatar: '🤍', desc: '"Protocolo de descarga miofascial listo para el próximo paciente lumbar."' },
-        red: { title: 'Coco Red · Guardia Triage', sub: 'Box Urgencias · ECG Activo', avatar: '🚨', desc: '"Sin emergencias agudas. Monitor de signos vitales registrando ritmo sinusal regular."' },
-        blu: { title: 'Coco Blu · Data Center', sub: 'Servidores Hetzner Falkenstein', avatar: '🔷', desc: '"Cluster al 99.9% uptime. 142k tokens Gemini consumidos hoy en pay-as-you-go."' }
+        green: { title: 'Green · Recepción', sub: '2 Subagentes (WhatsApp)', avatar: '🌿', desc: '"Confirmando 35 turnos agendados hoy. Recordatorios automáticos en curso."' },
+        blanco: { title: 'Coco · Kinesiología', sub: 'Box 1 · Camilla & Pautas', avatar: '🤍', desc: '"Protocolo de descarga miofascial listo para el próximo paciente lumbar."' },
+        red: { title: 'Red · Guardia Triage', sub: 'Box Urgencias · ECG Activo', avatar: '🚨', desc: '"Sin emergencias agudas. Monitor de signos vitales registrando ritmo sinusal regular."' },
+        blu: { title: 'Blu · Data Center', sub: 'Servidores Hetzner Falkenstein', avatar: '🔷', desc: '"Cluster al 99.9% uptime. 142k tokens Gemini consumidos hoy en pay-as-you-go."' }
       };
 
       const d = depts[deptId];
@@ -876,20 +633,20 @@
       }
     }
 
-    // ROOM DEFINITIONS (5 ACTIVE OFFICES - CLEAN MINIMALIST SWARM)
+    // ROOM DEFINITIONS (5 ACTIVE OFFICES - REARRANGED LEAVING RIGHT PANEL FREE)
     const rooms = [
       { id: 'reception', name: 'Recepción WhatsApp', supervisor: 'green', x: 20, y: 20, w: 240, h: 260, icon: '🌿', desc: 'Atención omnicanal y gestión de turnos WhatsApp' },
-      { id: 'sol', name: 'Despacho Central Sol', supervisor: 'sol', x: 280, y: 200, w: 250, h: 180, icon: '☀️', desc: 'Torre de control SaaS y supervisión multitenant' },
+      { id: 'servers', name: 'Data Center & Servidores', supervisor: 'blu', x: 20, y: 295, w: 240, h: 265, icon: '🔷', desc: 'Racks de servidores, terminal DevOps y telemetría Hetzner' },
       { id: 'kinesio', name: 'Box Kinesiología', supervisor: 'blanco', x: 280, y: 20, w: 250, h: 160, icon: '🤍', desc: 'Camilla clínica, rehabilitación y 4 subagentes' },
-      { id: 'triage', name: 'Box Urgencias & Triage', supervisor: 'red', x: 280, y: 400, w: 250, h: 160, icon: '🚨', desc: 'Monitor ECG de signos vitales y 4 subagentes de triage' },
-      { id: 'servers', name: 'Data Center & Logs', supervisor: 'blu', x: 550, y: 200, w: 250, h: 360, icon: '🔷', desc: 'Racks de servidores, terminal DevOps y telemetría Hetzner' }
+      { id: 'sol', name: 'Despacho Central Sol', supervisor: 'sol', x: 280, y: 195, w: 250, h: 180, icon: '☀️', desc: 'Torre de control SaaS y supervisión multitenant' },
+      { id: 'triage', name: 'Box Urgencias & Triage', supervisor: 'red', x: 280, y: 390, w: 250, h: 170, icon: '🚨', desc: 'Monitor ECG de signos vitales y 4 subagentes de triage' }
     ];
 
     let selectedRoom = 'sol';
     let hoveredRoom = null;
     let emergencyAlertActive = false;
 
-    // 🌟 MOCHI SUPERVISORS (COCO SQUAD & SOL) - CADA UNO EN SU OFICINA
+    // 🌟 MOCHI SUPERVISORS (RENAME: Coco Blanco->Coco, Blu, Green, Red, Sol)
     const mochis = [
       {
         id: 'sol',
@@ -899,9 +656,9 @@
         desc: 'Supervisión Central · 14 Consultorios',
         room: 'sol',
         x: 405,
-        y: 242,
+        y: 245,
         baseX: 405,
-        baseY: 242,
+        baseY: 245,
         colors: ['#FFFBEB', '#F59E0B', '#B45309'],
         glow: 'rgba(245, 158, 11, 0.45)',
         auraColor: '#F59E0B',
@@ -923,15 +680,15 @@
       },
       {
         id: 'green',
-        name: 'Coco Green',
+        name: 'Green',
         badge: '🌿 RECEPCIÓN',
         role: 'Recepción & Agenda',
         desc: 'WhatsApp · 2 Subagentes · 35 Turnos',
         room: 'reception',
         x: 130,
-        y: 195,
+        y: 75,
         baseX: 130,
-        baseY: 195,
+        baseY: 75,
         colors: ['#ECFDF5', '#10B981', '#047857'],
         glow: 'rgba(16, 185, 129, 0.45)',
         auraColor: '#10B981',
@@ -953,15 +710,15 @@
       },
       {
         id: 'blanco',
-        name: 'Coco Blanco',
+        name: 'Coco',
         badge: '🤍 KINESIOLOGÍA',
         role: 'Kinesiólogo Clínico',
         desc: 'Camilla · Pautas de Rehabilitación',
         room: 'kinesio',
         x: 330,
-        y: 72,
+        y: 100,
         baseX: 330,
-        baseY: 72,
+        baseY: 100,
         colors: ['#FFFFFF', '#E2E8F0', '#94A3B8'],
         glow: 'rgba(255, 255, 255, 0.55)',
         auraColor: '#E2E8F0',
@@ -983,15 +740,15 @@
       },
       {
         id: 'red',
-        name: 'Coco Red',
+        name: 'Red',
         badge: '🚨 GUARDIA',
         role: 'Triage & Urgencias',
         desc: 'Monitor ECG · Signos Vitales',
         room: 'triage',
-        x: 435,
-        y: 440,
-        baseX: 435,
-        baseY: 440,
+        x: 330,
+        y: 430,
+        baseX: 330,
+        baseY: 430,
         colors: ['#FEF2F2', '#EF4444', '#B91C1C'],
         glow: 'rgba(239, 68, 68, 0.50)',
         auraColor: '#EF4444',
@@ -1013,15 +770,15 @@
       },
       {
         id: 'blu',
-        name: 'Coco Blu',
+        name: 'Blu',
         badge: '🔷 DEVOPS',
         role: 'Sistemas & Hetzner',
         desc: 'Racks Hetzner · Latencia 12ms',
         room: 'servers',
-        x: 615,
-        y: 275,
-        baseX: 615,
-        baseY: 275,
+        x: 130,
+        y: 395,
+        baseX: 130,
+        baseY: 395,
         colors: ['#F0F9FF', '#0EA5E9', '#0369A1'],
         glow: 'rgba(14, 165, 233, 0.50)',
         auraColor: '#38BDF8',
@@ -1043,26 +800,26 @@
       }
     ];
 
-    // SUBAGENTES OBREROS & PACIENTES (Swarm Tier Estudiantes & Consultorios)
+    // SUBAGENTES OBREROS (Swarm Tier Estudiantes & Consultorios)
     const characters = [
-      // ── SQUAD COCO VERDE (Recepción WhatsApp) ──
-      { id: 'green_worker1', name: 'Mensajero #1', sprite: 'char1', x: 95, y: 138, baseDeskX: 95, baseDeskY: 138, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Subagente WhatsApp' },
-      { id: 'green_worker2', name: 'Archivador #2', sprite: 'char2', x: 165, y: 138, baseDeskX: 165, baseDeskY: 138, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Subagente Sincronizador' },
+      // ── SQUAD GREEN (Recepción WhatsApp) ──
+      { id: 'green_worker1', name: 'Mensajero #1', sprite: 'char1', x: 75, y: 165, baseDeskX: 75, baseDeskY: 165, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Subagente WhatsApp' },
+      { id: 'green_worker2', name: 'Archivador #2', sprite: 'char2', x: 165, y: 165, baseDeskX: 165, baseDeskY: 165, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Subagente Sincronizador' },
 
-      // ── SQUAD COCO BLANCO: 4 SUBAGENTES DE KINESIOLOGÍA (Low-Cost) ──
-      { id: 'blanco_evaluacion', name: 'Eval #1', sprite: 'char4', x: 375, y: 56, baseDeskX: 375, baseDeskY: 56, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Kinesio-Eval (Anamnesis & Banderas Rojas)', skills: ['intake_assessment', 'red_flag_screen', 'pain_scale_log'] },
-      { id: 'blanco_rehabilitacion', name: 'Rehab #2', sprite: 'char1', x: 465, y: 56, baseDeskX: 465, baseDeskY: 56, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Kinesio-Rehab (Ejercicios & Rutinas)', skills: ['generate_routine', 'adjust_progression', 'exercise_library'] },
-      { id: 'blanco_historia', name: 'Ficha #3', sprite: 'char2', x: 375, y: 124, baseDeskX: 375, baseDeskY: 124, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Kinesio-Ficha (SOAP Médico & Epicrisis)', skills: ['write_session_note', 'update_clinical_record', 'discharge_summary'] },
-      { id: 'blanco_seguimiento', name: 'Seguim #4', sprite: 'char5', x: 465, y: 124, baseDeskX: 465, baseDeskY: 124, state: 'typing', frame: 2, row: 0, speech: '', roleDesc: 'Kinesio-Check (Adherencia & EVA)', skills: ['adherence_check', 'homework_reminder', 'outcome_metrics'] },
+      // ── SQUAD COCO: 4 SUBAGENTES DE KINESIOLOGÍA (Low-Cost) ──
+      { id: 'blanco_evaluacion', name: 'Eval #1', sprite: 'char4', x: 405, y: 60, baseDeskX: 405, baseDeskY: 60, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Kinesio-Eval (Anamnesis)', skills: ['intake_assessment', 'red_flag_screen', 'pain_scale_log'] },
+      { id: 'blanco_rehabilitacion', name: 'Rehab #2', sprite: 'char1', x: 475, y: 60, baseDeskX: 475, baseDeskY: 60, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Kinesio-Rehab (Ejercicios)', skills: ['generate_routine', 'adjust_progression', 'exercise_library'] },
+      { id: 'blanco_historia', name: 'Ficha #3', sprite: 'char2', x: 405, y: 125, baseDeskX: 405, baseDeskY: 125, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Kinesio-Ficha (SOAP Médico)', skills: ['write_session_note', 'update_clinical_record', 'discharge_summary'] },
+      { id: 'blanco_seguimiento', name: 'Seguim #4', sprite: 'char5', x: 475, y: 125, baseDeskX: 475, baseDeskY: 125, state: 'typing', frame: 2, row: 0, speech: '', roleDesc: 'Kinesio-Check (Adherencia)', skills: ['adherence_check', 'homework_reminder', 'outcome_metrics'] },
 
-      // ── SQUAD COCO RED: 4 SUBAGENTES DE TRIAGE Y URGENCIAS (Low-Cost) ──
-      { id: 'red_triage', name: 'Triage #1', sprite: 'char5', x: 320, y: 442, baseDeskX: 320, baseDeskY: 442, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Triage-Prioridad (Manchester ESI)', skills: ['classify_urgency', 'vitals_check', 'escalate_rule'] },
-      { id: 'red_ecg_telemetria', name: 'ECG #2', sprite: 'char1', x: 375, y: 442, baseDeskX: 375, baseDeskY: 442, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Triage-ECG (Telemetría & ST)', skills: ['parse_ecg_summary', 'alert_thresholds', 'trend_vitals'] },
-      { id: 'red_derivaciones', name: 'Pase #3', sprite: 'char2', x: 320, y: 512, baseDeskX: 320, baseDeskY: 512, state: 'typing', frame: 2, row: 0, speech: '', roleDesc: 'Triage-Pase (Derivaciones)', skills: ['referral_letter', 'find_specialist', 'transport_coord'] },
-      { id: 'red_guardia', name: 'Box #4', sprite: 'char4', x: 375, y: 512, baseDeskX: 375, baseDeskY: 512, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Triage-Box (Camas & Alertas)', skills: ['shift_roster', 'box_status', 'emergency_broadcast'] },
+      // ── SQUAD RED: 4 SUBAGENTES DE TRIAGE Y URGENCIAS (Low-Cost) ──
+      { id: 'red_triage', name: 'Triage #1', sprite: 'char5', x: 405, y: 435, baseDeskX: 405, baseDeskY: 435, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Triage-Prioridad (Manchester)', skills: ['classify_urgency', 'vitals_check', 'escalate_rule'] },
+      { id: 'red_ecg_telemetria', name: 'ECG #2', sprite: 'char1', x: 475, y: 435, baseDeskX: 475, baseDeskY: 435, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Triage-ECG (Telemetría)', skills: ['parse_ecg_summary', 'alert_thresholds', 'trend_vitals'] },
+      { id: 'red_derivaciones', name: 'Pase #3', sprite: 'char2', x: 405, y: 505, baseDeskX: 405, baseDeskY: 505, state: 'typing', frame: 2, row: 0, speech: '', roleDesc: 'Triage-Pase (Derivaciones)', skills: ['referral_letter', 'find_specialist', 'transport_coord'] },
+      { id: 'red_guardia', name: 'Box #4', sprite: 'char4', x: 475, y: 505, baseDeskX: 475, baseDeskY: 505, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Triage-Box (Camas)', skills: ['shift_roster', 'box_status', 'emergency_broadcast'] },
 
-      // ── SQUAD COCO BLU (DevOps Hetzner) ──
-      { id: 'blu_worker', name: 'DevOps #1', sprite: 'char1', x: 675, y: 355, baseDeskX: 675, baseDeskY: 355, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Operador de Consola Hetzner' }
+      // ── SQUAD BLU (DevOps Hetzner) ──
+      { id: 'blu_worker', name: 'DevOps #1', sprite: 'char1', x: 130, y: 465, baseDeskX: 130, baseDeskY: 465, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Operador de Consola Hetzner' }
     ];
 
     // FLOATING POPUP EMOTES (💡, 🩺, ⚡, 📈)
@@ -1359,18 +1116,18 @@
       }
 
       // 2. Interactive Props (Clinical Camilla, Sol SaaS Map & Server Racks)
-      // Camilla Kinesiología (335, 105)
-      if (Math.hypot(pos.x - 335, pos.y - 105) < 32) {
+      // Camilla Kinesiología (325, 46)
+      if (Math.hypot(pos.x - 325, pos.y - 46) < 32) {
         openModal('clinical_card');
         return;
       }
-      // Sol Map (374, 218)
-      if (Math.hypot(pos.x - 374, pos.y - 218) < 28) {
+      // Sol Map (404, 217)
+      if (Math.hypot(pos.x - 404, pos.y - 217) < 30) {
         openModal('sol_map');
         return;
       }
-      // Server racks (640, 240)
-      if (Math.hypot(pos.x - 640, pos.y - 240) < 42) {
+      // Server racks (Data Center: 35 to 205, y: 302 to 375)
+      if (pos.x >= 35 && pos.x <= 205 && pos.y >= 302 && pos.y <= 375) {
         playServerBeep();
         openModal('hetzner_telemetry');
         return;
@@ -1442,10 +1199,10 @@
       playChime();
       const meta = {
         sol: { name: 'Coco Sol', role: 'SaaS Lead · Supervisión Central', avatar: '☀️', color: 'text-amber-400', room: 'sol' },
-        green: { name: 'Coco Green', role: 'Recepción · Turnos & WhatsApp', avatar: '🌿', color: 'text-emerald-400', room: 'reception' },
-        blanco: { name: 'Coco Blanco', role: 'Clínica · Kinesiología', avatar: '🤍', color: 'text-slate-300', room: 'kinesio' },
-        red: { name: 'Coco Red', role: 'Triage · Guardia & Urgencias', avatar: '🚨', color: 'text-rose-400', room: 'triage' },
-        blu: { name: 'Coco Blu', role: 'Sistemas · Data Center Hetzner', avatar: '🔷', color: 'text-blue-400', room: 'servers' }
+        green: { name: 'Green', role: 'Recepción · Turnos & WhatsApp', avatar: '🌿', color: 'text-emerald-400', room: 'reception' },
+        blanco: { name: 'Coco', role: 'Clínica · Kinesiología', avatar: '🤍', color: 'text-slate-300', room: 'kinesio' },
+        red: { name: 'Red', role: 'Triage · Guardia & Urgencias', avatar: '🚨', color: 'text-rose-400', room: 'triage' },
+        blu: { name: 'Blu', role: 'Sistemas · Data Center Hetzner', avatar: '🔷', color: 'text-blue-400', room: 'servers' }
       };
 
       const m = meta[id];
@@ -1462,10 +1219,15 @@
       const activeCard = document.getElementById('card-' + id);
       if (activeCard) activeCard.classList.add('ring-2', 'ring-indigo-500', 'bg-slate-800');
 
-      document.getElementById('chat-mochi-name').innerText = m.name;
-      document.getElementById('chat-mochi-role').innerText = m.role;
-      document.getElementById('chat-mochi-role').className = 'text-[10px] block ' + m.color;
-      document.getElementById('chat-avatar-box').innerText = m.avatar;
+      const chatMochiNameEl = document.getElementById('chat-mochi-name');
+      const chatMochiRoleEl = document.getElementById('chat-mochi-role');
+      const chatAvatarBoxEl = document.getElementById('chat-avatar-box');
+      if (chatMochiNameEl) chatMochiNameEl.innerText = m.name;
+      if (chatMochiRoleEl) {
+        chatMochiRoleEl.innerText = m.role;
+        chatMochiRoleEl.className = 'text-[10px] block ' + m.color;
+      }
+      if (chatAvatarBoxEl) chatAvatarBoxEl.innerText = m.avatar;
 
       const char = characters.find(c => c.id.startsWith(id));
       if (char) {
@@ -1544,7 +1306,7 @@
           w1.speech = '💬 Mensaje enviado al paciente';
           spawnEmote(w1.x + 8, w1.y - 10, '💬');
         }
-        logEvent('🌿 Coco Green: Turno confirmado. Derivando caso clínico a Coco Blanco');
+        logEvent('🌿 Green: Turno confirmado. Derivando caso clínico a Coco');
         playChime();
 
         // Step 3: Blanco delegates to Subagent Rehab #2
@@ -1558,7 +1320,7 @@
             subRehab.speech = '⚡ Generando 3 ejercicios L4-L5...';
             spawnEmote(subRehab.x + 8, subRehab.y - 10, '🦴');
           }
-          logEvent('🤍 Coco Blanco → Kinesio-Rehab: skill "generate_routine" ejecutada');
+          logEvent('🤍 Coco → Kinesio-Rehab: skill "generate_routine" ejecutada');
           playChime();
 
           // Step 4: Subagent Ficha #3 records SOAP note
@@ -1594,7 +1356,7 @@
         if (w2) { w2.speech = '📅 Bloqueando turnos...'; spawnEmote(w2.x + 8, w2.y - 12, '📅'); }
         if (mGreen) { mGreen.jumpTimer = performance.now(); playMochiVoice('green'); showTemporarySpeech(mGreen, '🌱 ¡Coordinando recepción!'); }
 
-        logEvent('🌿 Coco Green: Iniciando ráfaga WhatsApp a 35 pacientes');
+        logEvent('🌿 Green: Iniciando ráfaga WhatsApp a 35 pacientes');
 
         try {
           fetch('http://127.0.0.1:8080/api/founder/telemetry', {
@@ -1609,7 +1371,7 @@
           if (w2) w2.speech = '✓ Agenda Lista';
           const badge = document.getElementById('stat-appointments');
           if (badge) badge.innerText = '35 / 35 Confirmados';
-          logEvent('🌿 Coco Green: 35 turnos confirmados exitosamente por WhatsApp.');
+          logEvent('🌿 Green: 35 turnos confirmados exitosamente por WhatsApp.');
           playChime();
           showTemporaryToast('🌿 Recepción: 35 turnos confirmados al 100%');
         }, 2000);
@@ -1623,11 +1385,11 @@
         }
         if (mBlanco) { mBlanco.jumpTimer = performance.now(); playMochiVoice('blanco'); showTemporarySpeech(mBlanco, '🤍 ¡Plan miofascial listo!'); }
 
-        logEvent('🤍 Coco Blanco: Generando rutina de descarga miofascial L4-L5');
+        logEvent('🤍 Coco: Generando rutina de descarga miofascial L4-L5');
 
         setTimeout(() => {
           if (subRehab) subRehab.speech = '✓ Pauta guardada en ficha';
-          logEvent('🤍 Coco Blanco: Protocolo clínico L4-L5 incorporado a ficha.');
+          logEvent('🤍 Coco: Protocolo clínico L4-L5 incorporado a ficha.');
           playChime();
           showTemporaryToast('🤍 Kinesiología: Pauta L4-L5 archivada en Bóveda Local');
         }, 1800);
@@ -1647,7 +1409,7 @@
           devops.speech = '✓ 0 paquetes perdidos en cluster';
           spawnEmote(devops.x + 8, devops.y - 10, '💻');
         }
-        logEvent('🔷 Coco Blu: Racks Hetzner auditados con éxito. 0 anomalías.');
+        logEvent('🔷 Blu: Racks Hetzner auditados con éxito. 0 anomalías.');
         showTemporaryToast('🔷 Data Center: Cluster Hetzner 100% operativo');
       }
     }
@@ -1669,10 +1431,10 @@
       const agentId = map[mochiId] || 'coco_blanco';
       const meta = {
         sol: 'Coco Sol',
-        green: 'Coco Green',
-        blanco: 'Coco Blanco',
-        red: 'Coco Red',
-        blu: 'Coco Blu'
+        green: 'Green',
+        blanco: 'Coco',
+        red: 'Red',
+        blu: 'Blu'
       };
       const agentName = meta[mochiId] || 'Coco';
 
@@ -1753,6 +1515,7 @@
 
     function appendTypingIndicator(id) {
       const container = document.getElementById('chat-messages');
+      if (!container) return;
       const div = document.createElement('div');
       div.id = id;
       div.className = 'bg-slate-950 p-2 rounded-xl border border-slate-800 text-slate-400 text-xs flex items-center gap-1.5 mr-4 shadow-sm animate-pulse';
@@ -1777,12 +1540,12 @@
         if (lower.includes('turno') || lower.includes('whatsapp') || lower.includes('agenda')) {
           return '¡Recepción al día, Gregorio! Confirmamos 35 de 35 turnos para hoy mediante WhatsApp con nuestros dos subagentes Mensajero y Archivador.';
         }
-        return 'Hola! Soy Coco Green. Manejo la recepción, agenda omnicanal y WhatsApp del consultorio. ¿Querés enviar algún recordatorio a los pacientes?';
+        return '¡Hola! Soy Green. Manejo la recepción, agenda omnicanal y WhatsApp del consultorio. ¿Querés enviar algún recordatorio a los pacientes?';
       } else if (mochiId === 'blanco') {
         if (lower.includes('kinesio') || lower.includes('paciente') || lower.includes('lumbar') || lower.includes('pauta')) {
           return 'Camilla preparada en Box 1. Tenemos cargada la evaluación de columna lumbar L4-L5 de Juan Pérez con su rutina de estabilización pélvica.';
         }
-        return 'Soy Coco Blanco, kinesiólogo y coordinador de productividad. La camilla y las pautas terapéuticas están listas.';
+        return 'Soy Coco, kinesiólogo y coordinador clínico. La camilla y las pautas terapéuticas están listas.';
       } else if (mochiId === 'red') {
         if (lower.includes('urgencia') || lower.includes('triage') || lower.includes('ecg')) {
           return 'Guardia en orden, Gregorio. El monitor ECG registra ritmo sinusal regular (75 bpm). Los signos vitales de los boxes de observación están estables.';
@@ -1792,7 +1555,7 @@
         if (lower.includes('servidor') || lower.includes('hetzner') || lower.includes('latencia')) {
           return 'Cluster Hetzner Falkenstein con 99.99% de uptime y latencia promedio de 12ms. Los consumos de tokens Gemini se encuentran dentro del rango óptimo.';
         }
-        return 'Soy Coco Blu, sysadmin de sistemas. Racks de Hetzner y bases de datos sincronizadas.';
+        return 'Soy Blu, sysadmin de sistemas. Racks de Hetzner y bases de datos sincronizadas.';
       }
     }
 
@@ -1804,6 +1567,7 @@
 
     function appendChatMessage(sender, text, isUser) {
       const container = document.getElementById('chat-messages');
+      if (!container) return;
       if (isUser) {
         container.innerHTML += `<div class="bg-indigo-950/70 p-2.5 rounded-xl border border-indigo-800 text-indigo-100 text-right ml-4 shadow-sm">${text}</div>`;
       } else {
@@ -1836,7 +1600,7 @@
         badgeCol: 'bg-amber-500/20 text-amber-300 border-amber-500/40'
       },
       green: {
-        name: 'Coco Verde',
+        name: 'Green',
         role: 'CMO & WhatsApp Omnicanal',
         office: 'Recepción & Agenda Omnicanal',
         avatar: '🌱',
@@ -1846,7 +1610,7 @@
         badgeCol: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
       },
       blanco: {
-        name: 'Coco Blanco',
+        name: 'Coco',
         role: 'Director Médico & Kinesiología',
         office: 'Box 1 de Fisiatría',
         avatar: '🤍',
@@ -1856,7 +1620,7 @@
         badgeCol: 'bg-indigo-500/20 text-indigo-200 border-indigo-400/40'
       },
       red: {
-        name: 'Coco Rojo',
+        name: 'Red',
         role: 'CFO & Guardia de Urgencias',
         office: 'Shockroom & Guardia',
         avatar: '🚨',
@@ -1866,7 +1630,7 @@
         badgeCol: 'bg-rose-500/20 text-rose-300 border-rose-500/40'
       },
       blu: {
-        name: 'Coco Azul',
+        name: 'Blu',
         role: 'CTO & Infraestructura Hetzner',
         office: 'Servidores & Datos',
         avatar: '⚡',
@@ -1921,32 +1685,32 @@
       ],
       green: [
         {
-          sender: 'Coco Verde',
-          text: '¡Hola Gregorio! 🌱 Soy Coco Verde, a cargo de Recepción y Atención Omnicanal WhatsApp. Los 35 turnos de hoy están confirmados. ¿Querés lanzar una campaña o revisar mensajes entrantes?',
+          sender: 'Green',
+          text: '¡Hola Gregorio! 🌱 Soy Green, a cargo de Recepción y Atención Omnicanal WhatsApp. Los 35 turnos de hoy están confirmados. ¿Querés lanzar una campaña o revisar mensajes entrantes?',
           isUser: false,
           time: 'En línea'
         }
       ],
       blanco: [
         {
-          sender: 'Coco Blanco',
-          text: '¡Hola Gregorio! 🤍 Soy Coco Blanco, Director Médico y especialista en Kinesiología. La camilla y protocolos de rehabilitación están listos. ¿Qué caso clínico o rutina revisamos?',
+          sender: 'Coco',
+          text: '¡Hola Gregorio! 🤍 Soy Coco, Director Médico y especialista en Kinesiología. La camilla y protocolos de rehabilitación están listos. ¿Qué caso clínico o rutina revisamos?',
           isUser: false,
           time: 'En línea'
         }
       ],
       red: [
         {
-          sender: 'Coco Rojo',
-          text: '¡Hola Gregorio! 🚨 Soy Coco Rojo, guardia de emergencias y CFO financiero. El ritmo cardíaco y los balances de caja están monitoreados. ¿Qué alerta o flujo de caja auditamos?',
+          sender: 'Red',
+          text: '¡Hola Gregorio! 🚨 Soy Red, guardia de emergencias y CFO financiero. El ritmo cardíaco y los balances de caja están monitoreados. ¿Qué alerta o flujo de caja auditamos?',
           isUser: false,
           time: 'En línea'
         }
       ],
       blu: [
         {
-          sender: 'Coco Azul',
-          text: '¡Hola Gregorio! ⚡ Soy Coco Blu, CTO y sysadmin de infraestructura. Servidores Hetzner con 99.99% uptime y latencia 12ms. ¿Qué despliegue o sincronización ejecutamos?',
+          sender: 'Blu',
+          text: '¡Hola Gregorio! ⚡ Soy Blu, CTO y sysadmin de infraestructura. Servidores Hetzner con 99.99% uptime y latencia 12ms. ¿Qué despliegue o sincronización ejecutamos?',
           isUser: false,
           time: 'En línea'
         }
@@ -2281,7 +2045,7 @@
             <span class="text-2xl">🩺</span>
             <div>
               <h2 class="text-sm font-bold text-white">Ficha Clínica Kinesiológica & Pauta</h2>
-              <span class="text-[10px] text-slate-300 font-mono">Box 1 · Coco Blanco Lead</span>
+              <span class="text-[10px] text-slate-300 font-mono">Box 1 · Coco Lead</span>
             </div>
           </div>
           <div class="space-y-2.5 text-xs">
@@ -2293,7 +2057,7 @@
               <p class="text-slate-400 text-[11px]">Diagnóstico: Lumbalgia mecánica aguda L4-L5 por sobrecarga postural.</p>
             </div>
             <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
-              <span class="font-bold text-slate-200 block text-[11px] uppercase tracking-wide">Pauta Prescripta por Blanco:</span>
+              <span class="font-bold text-slate-200 block text-[11px] uppercase tracking-wide">Pauta Prescripta por Coco:</span>
               <ul class="list-disc list-inside text-slate-300 space-y-0.5 text-[11px]">
                 <li>15 min de descompresión miofascial en camilla.</li>
                 <li>3 series de 10 estabilizaciones pélvicas en pelota suiza.</li>
@@ -2324,7 +2088,7 @@
             <span class="text-2xl">🔷</span>
             <div>
               <h2 class="text-sm font-bold text-white">Consola de Infraestructura · Hetzner Falkenstein</h2>
-              <span class="text-[10px] text-blue-400 font-mono">Coco Blu · Sysadmin Console</span>
+              <span class="text-[10px] text-blue-400 font-mono">Blu · Sysadmin Console</span>
             </div>
           </div>
           <div class="space-y-2 font-mono text-xs">
@@ -2358,21 +2122,21 @@
           <div class="flex items-center gap-2 mb-3">
             <span class="text-2xl">🌿</span>
             <div>
-              <h2 class="text-sm font-bold text-white">Simulador WhatsApp Bot (Coco Green)</h2>
+              <h2 class="text-sm font-bold text-white">Simulador WhatsApp Bot (Green)</h2>
               <span class="text-[10px] text-emerald-400 font-mono">+54 9 11 · WhatsApp Business API</span>
             </div>
           </div>
           <div id="wa-sim-log" class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2 text-xs max-h-56 overflow-y-auto mb-2">
             <div class="bg-slate-900 p-2 rounded-lg text-slate-300 mr-8">
-              <span class="text-[9px] text-emerald-400 block font-bold">Coco Green (11:00 hs):</span>
-              Hola Juan, te recordamos tu turno kinesiológico hoy a las 11:30 hs con Coco Blanco en Box 1. ¿Confirmás tu asistencia?
+              <span class="text-[9px] text-emerald-400 block font-bold">Green (11:00 hs):</span>
+              Hola Juan, te recordamos tu turno kinesiológico hoy a las 11:30 hs con Coco en Box 1. ¿Confirmás tu asistencia?
             </div>
             <div class="bg-emerald-950/70 p-2 rounded-lg text-emerald-100 ml-8 text-right border border-emerald-800/60">
               <span class="text-[9px] text-emerald-300 block font-bold">Juan Pérez (11:02 hs):</span>
               ¡Hola! Sí, confirmo asistencia. Ya estoy saliendo para el consultorio.
             </div>
             <div class="bg-slate-900 p-2 rounded-lg text-slate-300 mr-8">
-              <span class="text-[9px] text-emerald-400 block font-bold">Coco Green (11:02 hs):</span>
+              <span class="text-[9px] text-emerald-400 block font-bold">Green (11:02 hs):</span>
               ¡Excelente Juan! Ya bloqueamos tu camilla. Te esperamos.
             </div>
           </div>
@@ -2390,7 +2154,7 @@
           <div class="flex items-center gap-2 mb-3">
             <span class="text-2xl">🚨</span>
             <div>
-              <h2 class="text-sm font-bold text-white">Monitor de Guardia & Triage Clínico (Coco Red)</h2>
+              <h2 class="text-sm font-bold text-white">Monitor de Guardia & Triage Clínico (Red)</h2>
               <span class="text-[10px] text-rose-400 font-mono">Box Urgencias · Electrocardiograma 12 Derivaciones</span>
             </div>
           </div>
@@ -2489,13 +2253,13 @@
         if (pill) { pill.innerText = 'Rojo'; pill.className = 'text-sm font-bold text-rose-500'; }
         if (btn) btn.innerText = '✓ Normalizar Guardia';
         playAlertSound();
-        logEvent('🚨 Coco Red: ALARMA DE TAQUICARDIA DETECTADA (128 bpm)');
+        logEvent('🚨 Red: ALARMA DE TAQUICARDIA DETECTADA (128 bpm)');
       } else {
         if (lbl) { lbl.innerText = 'HR: 75 bpm (Sinusal)'; lbl.className = 'absolute top-2 right-3 font-mono text-emerald-400 text-[10px] font-bold'; }
         if (pill) { pill.innerText = 'Verde'; pill.className = 'text-sm font-bold text-emerald-400'; }
         if (btn) btn.innerText = '🚨 Probar Alarma Taquicardia';
         playChime();
-        logEvent('🚨 Coco Red: Guardia normalizada a ritmo sinusal');
+        logEvent('🚨 Red: Guardia normalizada a ritmo sinusal');
       }
     }
 
@@ -2508,13 +2272,13 @@
         spawnEmote(sub.x + 8, sub.y - 10, '🩺');
       }
       if (mBlanco) { mBlanco.jumpTimer = performance.now(); playMochiVoice('blanco'); showTemporarySpeech(mBlanco, '🤍 Descomprimiendo L4-L5'); }
-      logEvent('🤍 Coco Blanco & Rehab #2: Protocolo lumbar en camilla iniciado');
+      logEvent('🤍 Coco & Rehab #2: Protocolo lumbar en camilla iniciado');
       showTemporaryToast('🤍 Kinesiología: Maniobra de camilla iniciada');
     }
 
     function despacharWhatsAppPaciente() {
       playChime();
-      logEvent('🌿 Coco Green: Pauta de ejercicios despachada al WhatsApp de Juan');
+      logEvent('🌿 Green: Pauta de ejercicios despachada al WhatsApp de Juan');
       showTemporaryToast('📲 WhatsApp: Pauta kinesiológica enviada a Juan Pérez');
     }
 
@@ -2535,7 +2299,7 @@
         setTimeout(() => {
           log.innerHTML += `
             <div class="bg-slate-900 p-2 rounded-lg text-slate-300 mr-8">
-              <span class="text-[9px] text-emerald-400 block font-bold">Coco Green (IA Recepción):</span>
+              <span class="text-[9px] text-emerald-400 block font-bold">Green (IA Recepción):</span>
               ¡Recibido Juan! Tu mensaje fue registrado en tu ficha kinesiológica por Green y Blanco.
             </div>
           `;
@@ -2673,21 +2437,21 @@
     }
 
     function drawRoomFloors() {
-      // 1. RECEPCIÓN & ATENCIÓN WHATSAPP (Solo mitad superior limpia: 240x260)
+      // 1. RECEPCIÓN & ATENCIÓN WHATSAPP (240x260)
       drawParquetFloor(20, 20, 240, 260, '#382212', '#442a17');
 
-      // 2. DESPACHO CENTRAL SOL
-      drawParquetFloor(280, 200, 250, 180, '#2e2513', '#3d321a');
-      drawCozyRug(305, 225, 200, 135, '#3d2812', '#d97706', '#fbbf24');
+      // 2. DATA CENTER & SERVIDORES (240x265 - debajo de Recepción)
+      drawGridFloor(20, 295, 240, 265, '#101726', '#17233a');
 
-      // 3. BOX KINESIOLOGÍA
+      // 3. BOX KINESIOLOGÍA (250x160)
       drawTileFloor(280, 20, 250, 160, '#162330', '#223547', 20);
 
-      // 4. BOX URGENCIAS & TRIAGE
-      drawTileFloor(280, 400, 250, 160, '#261518', '#381f23', 20);
+      // 4. DESPACHO CENTRAL SOL (250x180)
+      drawParquetFloor(280, 195, 250, 180, '#2e2513', '#3d321a');
+      drawCozyRug(305, 220, 200, 135, '#3d2812', '#d97706', '#fbbf24');
 
-      // 5. DATA CENTER & SERVIDORES (Cafetería eliminada completamente)
-      drawGridFloor(550, 200, 250, 360, '#101726', '#17233a');
+      // 5. BOX URGENCIAS & TRIAGE (250x170)
+      drawTileFloor(280, 390, 250, 170, '#261518', '#381f23', 20);
 
       rooms.forEach(r => {
         drawThickWall(r.x, r.y, r.w, r.h, r.name);
@@ -2815,9 +2579,9 @@
 
     function drawHallways() {
       drawDoorway(260, 225, 20, 36); // Recepción <-> Despacho Sol
-      drawDoorway(530, 275, 20, 36); // Despacho Sol <-> Data Center
-      drawDoorway(385, 180, 36, 20); // Kinesio <-> Despacho Sol
-      drawDoorway(385, 380, 36, 20); // Despacho Sol <-> Triage
+      drawDoorway(260, 320, 20, 36); // Data Center <-> Despacho Sol
+      drawDoorway(385, 180, 36, 15); // Kinesio <-> Despacho Sol
+      drawDoorway(385, 375, 36, 15); // Despacho Sol <-> Triage
     }
 
     function drawDoorway(x, y, w, h) {
@@ -2855,24 +2619,22 @@
       drawSprite('whiteboard', 295, 22, 32, 32);
 
       // 3. Despacho Sol (Limpio: radar SaaS holográfico)
-      drawSaaSGlobalMap(340, 203); // Animated holographic radar sweep
+      drawSaaSGlobalMap(370, 202); // Animated holographic radar sweep
 
-      // 4. Cafetería: ELIMINADA COMPLETAMENTE
+      // 4. Data Center: 3 Full Server Racks (Fondo superior de la sala)
+      drawServerRack(35, 302);
+      drawServerRack(95, 302);
+      drawServerRack(155, 302);
 
       // 5. Triage (Limpio: placa de cruz roja médica)
       ctx.fillStyle = '#dc2626';
-      ctx.fillRect(475, 410, 28, 28);
+      ctx.fillRect(485, 398, 28, 28);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(486, 415, 6, 18);
-      ctx.fillRect(480, 421, 18, 6);
+      ctx.fillRect(496, 403, 6, 18);
+      ctx.fillRect(490, 409, 18, 6);
       ctx.strokeStyle = '#991b1b';
       ctx.lineWidth = 1;
-      ctx.strokeRect(475, 410, 28, 28);
-
-      // 6. Data Center: 3 Full Server Racks (Diseño sobrio y profesional)
-      drawServerRack(570, 206);
-      drawServerRack(640, 206);
-      drawServerRack(710, 206);
+      ctx.strokeRect(485, 398, 28, 28);
     }
 
     function drawClockSecondHand(cx, cy, r) {
@@ -3001,19 +2763,30 @@
 
     // ── 5. FURNITURE BACKGROUND LAYER ──
     function drawFurnitureBackLayer() {
-      // Recepción: Sillas ergonómicas de los operadores de atención
-      drawSprite('cushionedChairBack', 95, 140, 16, 16);
-      drawSprite('cushionedChairBack', 165, 140, 16, 16);
+      // Recepción: Sillas ergonómicas de los operadores de atención y planta
+      drawSprite('cushionedChairBack', 75, 150, 16, 16);
+      drawSprite('cushionedChairBack', 165, 150, 16, 16);
       drawSprite('plant', 26, 42, 16, 32);
 
-      // Kinesiología: Camilla médica de evaluación lumbar
-      drawPixelCamilla(300, 95);
+      // Kinesiología: Camilla médica clínica y sillas ergonómicas de los 4 subagentes
+      drawPixelCamilla(290, 35);
+      drawSprite('cushionedChairBack', 405, 45, 16, 16);
+      drawSprite('cushionedChairBack', 475, 45, 16, 16);
+      drawSprite('cushionedChairBack', 405, 110, 16, 16);
+      drawSprite('cushionedChairBack', 475, 110, 16, 16);
 
-      // Despacho Central Sol: Sillón ejecutivo
-      drawSprite('cushionedChairBack', 405, 260, 16, 16);
+      // Despacho Central Sol: Sillón ejecutivo y planta de esquina
+      drawSprite('cushionedChairBack', 405, 275, 16, 16);
+      drawSprite('plant', 504, 205, 16, 32);
 
       // Data Center: Silla de consola DevOps
-      drawSprite('cushionedChairBack', 675, 358, 16, 16);
+      drawSprite('cushionedChairBack', 130, 450, 16, 16);
+
+      // Box Urgencias & Triage: Sillas de los 4 subagentes
+      drawSprite('cushionedChairBack', 405, 420, 16, 16);
+      drawSprite('cushionedChairBack', 475, 420, 16, 16);
+      drawSprite('cushionedChairBack', 405, 490, 16, 16);
+      drawSprite('cushionedChairBack', 475, 490, 16, 16);
     }
 
     function drawWaterCooler(x, y) {
@@ -3527,70 +3300,106 @@
         ctx.ellipse(c.x + 8, c.y + 22, 9, 3.8, 0, 0, Math.PI * 2);
         ctx.fill();
 
+        // Subagent character sprite (Face, hair, eyes, body & typing hands completely visible)
         ctx.drawImage(img, sx, sy, frameW, frameH, c.x - 8, c.y - 18, 32, 48);
 
-        ctx.font = 'bold 8px monospace';
-        const nw = ctx.measureText(c.name).width;
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-        ctx.fillRect(c.x - nw/2 + 6, c.y - 27, nw + 6, 11);
-        ctx.fillStyle = '#f1f5f9';
-        ctx.fillText(c.name, c.x - nw/2 + 9, c.y - 19);
+        // NOTE: Subagent floating name tags removed per user request for clean client view!
       });
     }
 
-    // ── 8. FOREGROUND FURNITURE (DESKS IN FRONT!) ──
+    // ── 8. FOREGROUND 2.5D PERSPECTIVE WORKSTATIONS (PERSONITAS & PCS FULLY VISIBLE) ──
+    function drawPerspectiveDesk(cx, cy, pc1, pc2, hasOscilloscope = false, isExecutive = false) {
+      if (isExecutive) {
+        // Executive Desk for Coco Sol (Grand mahogany desk with dual monitors)
+        const deskX = cx - 26;
+        const deskY = cy + 12;
+        const deskW = 54;
+        
+        ctx.fillStyle = '#451a03';
+        ctx.fillRect(deskX, deskY, deskW, 8);
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(deskX, deskY, deskW, 1.5);
+        
+        ctx.fillStyle = '#271103';
+        ctx.fillRect(deskX, deskY + 8, deskW, 10);
+        
+        ctx.fillStyle = '#0f0702';
+        ctx.fillRect(deskX + 2, deskY + 18, 3, 6);
+        ctx.fillRect(deskX + deskW - 5, deskY + 18, 3, 6);
+        
+        drawAnimatedPC(cx - 16, cy + 4, pc1, pc2);
+        drawAnimatedPC(cx + 8, cy + 4, pc2, pc1);
+        return;
+      }
+
+      // Standard Subagent Workstation in 2.5D Perspective
+      // Character is at (cx, cy). Sprite drawn at (cx - 8, cy - 18, 32, 48)
+      // Hands typing at (cx - 2 ... cx + 6, cy + 12 ... cy + 16)
+      const deskX = cx - 12;
+      const deskY = cy + 13;
+      const deskW = 38;
+
+      // 1. Desktop Top Surface (rich dark slate)
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(deskX, deskY, deskW, 7);
+      
+      // Top Edge Highlight (gives clean 2.5D depth bevel)
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(deskX, deskY, deskW, 1.2);
+
+      // 2. Desk Front Apron (dark shadow facing user)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(deskX, deskY + 7, deskW, 8);
+
+      // Desk Legs
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(deskX + 2, deskY + 15, 2.5, 6);
+      ctx.fillRect(deskX + deskW - 4.5, deskY + 15, 2.5, 6);
+
+      // 3. Compact Keyboard under typing hands
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(cx - 3, deskY + 1.5, 11, 4.5);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(cx - 2, deskY + 2.5, 9, 2.5);
+
+      // 4. Mousepad & Mouse
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(cx + 9.5, deskY + 2, 5, 4);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(cx + 11.5, deskY + 3, 2, 2);
+
+      // 5. Perspective Computer Monitor on the right side of the desk
+      // Placed at cx + 12 so it doesn't block character face/torso at all!
+      drawAnimatedPC(cx + 12, cy + 5, pc1, pc2);
+
+      // 6. Optional Bedside Oscilloscope (e.g. for ECG agent)
+      if (hasOscilloscope) {
+        drawBedsideOscilloscope(cx + 28, deskY - 2);
+      }
+    }
+
     function drawFurnitureFrontLayer() {
-      // Recepción Desks & PCs (Limpio y ordenado)
-      drawSprite('desk', 75, 142, 48, 32);
-      drawAnimatedPC(92, 134, 'pcOn1', 'pcOn2');
+      // Recepción 2 Subagents
+      drawPerspectiveDesk(75, 165, 'pcOn1', 'pcOn2');
+      drawPerspectiveDesk(165, 165, 'pcOn2', 'pcOn3');
 
-      drawSprite('desk', 145, 142, 48, 32);
-      drawAnimatedPC(162, 134, 'pcOn2', 'pcOn3');
+      // Kinesiología 4 Subagents (Box 1-4)
+      drawPerspectiveDesk(405, 60, 'pcOn1', 'pcOn2');
+      drawPerspectiveDesk(475, 60, 'pcOn2', 'pcOn3');
+      drawPerspectiveDesk(405, 125, 'pcOn3', 'pcOn1');
+      drawPerspectiveDesk(475, 125, 'pcOn1', 'pcOn2');
 
-      // Kinesiología 4 Subagent Desks (Box 1-4: Swarm Tier Estudiantes)
-      // Box 1: Eval #1 (375, 56)
-      drawSprite('desk', 356, 62, 40, 26);
-      drawAnimatedPC(372, 54, 'pcOn1', 'pcOn2');
+      // Despacho Sol Executive Desk & Dual Monitors
+      drawPerspectiveDesk(405, 290, 'pcOn1', 'pcOn2', false, true);
 
-      // Box 2: Rehab #2 (465, 56)
-      drawSprite('desk', 446, 62, 40, 26);
-      drawAnimatedPC(462, 54, 'pcOn2', 'pcOn3');
+      // Triage 4 Subagents (Puestos 1-4)
+      drawPerspectiveDesk(405, 435, 'pcOn3', 'pcOn2');
+      drawPerspectiveDesk(475, 435, 'pcOn2', 'pcOn1', true);
+      drawPerspectiveDesk(405, 505, 'pcOn1', 'pcOn3');
+      drawPerspectiveDesk(475, 505, 'pcOn2', 'pcOn3');
 
-      // Box 3: Ficha #3 (375, 124)
-      drawSprite('desk', 356, 130, 40, 26);
-      drawAnimatedPC(372, 122, 'pcOn3', 'pcOn1');
-
-      // Box 4: Seguim #4 (465, 124)
-      drawSprite('desk', 446, 130, 40, 26);
-      drawAnimatedPC(462, 122, 'pcOn1', 'pcOn2');
-
-      // Despacho Sol Executive Desk & DUAL Monitors
-      drawSprite('desk', 385, 268, 52, 32);
-      drawAnimatedPC(390, 258, 'pcOn1', 'pcOn2');
-      drawAnimatedPC(412, 258, 'pcOn3', 'pcOn1');
-
-      // Triage 4 Subagent Desks (Puestos 1-4: Swarm Tier Estudiantes)
-      // Puesto 1: Triage #1 (320, 442)
-      drawSprite('desk', 302, 448, 38, 26);
-      drawAnimatedPC(316, 440, 'pcOn3', 'pcOn2');
-
-      // Puesto 2: ECG #2 (375, 442) + Osciloscopio
-      drawSprite('desk', 356, 448, 38, 26);
-      drawAnimatedPC(370, 440, 'pcOn2', 'pcOn1');
-      drawBedsideOscilloscope(400, 446);
-
-      // Puesto 3: Pase #3 (320, 512)
-      drawSprite('desk', 302, 518, 38, 26);
-      drawAnimatedPC(316, 510, 'pcOn1', 'pcOn3');
-
-      // Puesto 4: Box #4 (375, 512)
-      drawSprite('desk', 356, 518, 38, 26);
-      drawAnimatedPC(370, 510, 'pcOn2', 'pcOn3');
-
-      // Data Center DevOps Front Desk & Dual Terminal
-      drawSprite('desk', 655, 362, 48, 32);
-      drawAnimatedPC(662, 354, 'pcOn1', 'pcOn3');
-      drawAnimatedPC(684, 354, 'pcOn2', 'pcOn1');
+      // Data Center DevOps Console
+      drawPerspectiveDesk(130, 465, 'pcOn1', 'pcOn3');
     }
 
     function drawAnimatedPC(x, y, k1, k2) {
@@ -3631,24 +3440,24 @@
 
     // ── 9. MICRO-ANIMATIONS ──
     function drawMicroAnimations() {
-      // Data Center Glowing Conduit Lines & Fiber-Optic Packets
+      // Data Center Glowing Conduit Lines & Fiber-Optic Packets (20..260, 295..560)
       const pulse = Math.abs(Math.sin(animTick * 0.05));
       ctx.fillStyle = `rgba(56, 189, 248, ${0.15 + pulse * 0.2})`;
-      ctx.fillRect(550, 480, 250, 2);
-      ctx.fillRect(660, 280, 2, 200);
+      ctx.fillRect(20, 525, 240, 2);
+      ctx.fillRect(95, 372, 2, 153);
 
       // Live Data Packets Traveling on Floor
-      const packet1X = 550 + ((animTick * 2.5) % 200);
+      const packet1X = 20 + ((animTick * 2.5) % 230);
       ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(packet1X, 479, 6, 3);
+      ctx.fillRect(packet1X, 524, 6, 3);
       ctx.fillStyle = '#7dd3fc';
-      ctx.fillRect(packet1X + 2, 479.5, 3, 2);
+      ctx.fillRect(packet1X + 2, 524.5, 3, 2);
 
-      const packet2Y = 480 - ((animTick * 2) % 200);
+      const packet2Y = 525 - ((animTick * 2) % 150);
       ctx.fillStyle = '#34d399';
-      ctx.fillRect(659, packet2Y, 3, 6);
+      ctx.fillRect(94, packet2Y, 3, 6);
       ctx.fillStyle = '#a7f3d0';
-      ctx.fillRect(659.5, packet2Y + 2, 2, 3);
+      ctx.fillRect(94.5, packet2Y + 2, 2, 3);
     }
 
     // ── 10. ATMOSPHERIC LIGHTING & FLOATING DUST MOTES ──
@@ -3676,25 +3485,25 @@
 
         // Chandelier Breathing Glow in Sol's Office
         const chandelierPulse = 0.14 + Math.sin(animTick * 0.04) * 0.025;
-        const solGrad = ctx.createRadialGradient(405, 290, 10, 405, 290, 120);
+        const solGrad = ctx.createRadialGradient(405, 285, 10, 405, 285, 120);
         solGrad.addColorStop(0, `rgba(251, 191, 36, ${chandelierPulse})`);
         solGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
         ctx.fillStyle = solGrad;
-        ctx.fillRect(280, 200, 250, 180);
+        ctx.fillRect(280, 195, 250, 180);
 
         // CRT Phosphor Cyan Glow in Reception
         const recGrad = ctx.createRadialGradient(130, 160, 10, 130, 160, 80);
         recGrad.addColorStop(0, 'rgba(56, 189, 248, 0.10)');
         recGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
         ctx.fillStyle = recGrad;
-        ctx.fillRect(20, 80, 240, 180);
+        ctx.fillRect(20, 20, 240, 260);
 
         // ECG Green Vitals Glow in Triage
-        const triGrad = ctx.createRadialGradient(380, 460, 5, 380, 460, 60);
+        const triGrad = ctx.createRadialGradient(440, 470, 5, 440, 470, 70);
         triGrad.addColorStop(0, emergencyAlertActive ? 'rgba(239, 68, 68, 0.18)' : 'rgba(52, 211, 153, 0.12)');
         triGrad.addColorStop(1, 'rgba(52, 211, 153, 0)');
         ctx.fillStyle = triGrad;
-        ctx.fillRect(280, 400, 250, 160);
+        ctx.fillRect(280, 390, 250, 170);
       }
 
       if (lightingMode === 'night') {
@@ -3705,13 +3514,13 @@
         solGrad.addColorStop(0, 'rgba(251, 191, 36, 0.28)');
         solGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
         ctx.fillStyle = solGrad;
-        ctx.fillRect(280, 200, 250, 180);
+        ctx.fillRect(280, 195, 250, 180);
 
-        const dcGrad = ctx.createRadialGradient(675, 370, 5, 675, 370, 100);
+        const dcGrad = ctx.createRadialGradient(95, 420, 5, 95, 420, 100);
         dcGrad.addColorStop(0, 'rgba(56, 189, 248, 0.32)');
         dcGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
         ctx.fillStyle = dcGrad;
-        ctx.fillRect(550, 200, 250, 360);
+        ctx.fillRect(20, 295, 240, 265);
       }
     }
 
