@@ -128,57 +128,86 @@
     </div>
   </header>
 
-  <!-- ── 1. MAIN DESKTOP DUAL-PANEL VIEW ── -->
-  <main id="desktop-viewport-container" class="max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 my-2">
+  <!-- ── 1. MAIN DESKTOP 3-PANEL WORKSPACE (OFICINAS IZQUIERDA + MEDIO LIBRE + DERECHA LIBRE) ── -->
+  <main id="desktop-viewport-container" class="max-w-[1720px] mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 my-2">
 
-    <!-- LEFT: 2D PIXEL ART VIEWPORT (8 COLS) -->
-    <div class="lg:col-span-8 flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-2.5 overflow-hidden shadow-2xl relative crt-glow">
+    <!-- 1. IZQUIERDA: 2D PIXEL ART VIEWPORT (4 COLS) -->
+    <div id="left-offices-panel" class="lg:col-span-4 flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-2.5 overflow-hidden shadow-2xl relative crt-glow">
       
       <!-- VIEWPORT TOOLBAR -->
       <div class="flex items-center justify-between pb-2 mb-1 px-1 text-xs">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5">
           <span class="text-emerald-400">●</span>
-          <span class="font-bold text-white text-xs tracking-wide">Planta General · Consultorio Kinesiológico & Servidores</span>
+          <span class="font-bold text-white text-[11px] tracking-wide">Planta General HQ</span>
         </div>
-        <div class="flex items-center gap-1.5 text-[10px] font-mono text-slate-400">
-          <span class="hidden sm:inline text-slate-500">Click en habitación o personaje para interactuar</span>
+        <div class="flex items-center gap-1 text-[10px] font-mono text-slate-400">
           <span id="active-room-pill" class="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold">📍 Despacho Sol</span>
         </div>
       </div>
 
-      <!-- CANVAS CONTAINER (FIXED CRISP VIEW - NO CAMERA SHAKE) -->
+      <!-- CANVAS CONTAINER (COMPACT CRISP VIEW - ALINEADO A LA IZQUIERDA) -->
       <div class="relative flex-1 flex items-center justify-center bg-[#07050d] rounded-xl overflow-hidden border border-slate-800">
-        <canvas id="officeCanvas" width="560" height="580" class="w-auto h-auto max-h-[580px] max-w-[560px] cursor-pointer block"></canvas>
+        <canvas id="officeCanvas" width="480" height="580" class="w-full h-auto max-h-[580px] max-w-[480px] cursor-pointer block"></canvas>
         <div id="scanline-overlay" class="absolute inset-0 scanlines hidden"></div>
 
         <!-- TOP-RIGHT SLIM STATUS PILL INSIDE CANVAS -->
-        <div id="room-info-overlay" class="absolute top-2.5 right-2.5 bg-slate-950/80 backdrop-blur-md border border-slate-800/80 px-2.5 py-1 rounded-lg text-xs flex items-center gap-2 pointer-events-none transition-all duration-200 shadow">
-          <span id="room-info-icon" class="text-sm">☀️</span>
-          <span id="room-info-title" class="font-bold text-slate-200 text-[10px]">Despacho Central de Sol</span>
-          <span class="text-slate-600">|</span>
-          <span id="room-info-desc" class="text-[9px] text-slate-400 hidden sm:inline">Torre SaaS</span>
+        <div id="room-info-overlay" class="absolute top-2 right-2 bg-slate-950/80 backdrop-blur-md border border-slate-800/80 px-2 py-0.5 rounded-lg text-xs flex items-center gap-1.5 pointer-events-none transition-all duration-200 shadow">
+          <span id="room-info-icon" class="text-xs">☀️</span>
+          <span id="room-info-title" class="font-bold text-slate-200 text-[9px]">Despacho Central de Sol</span>
         </div>
 
         <!-- RETRO EVENT TICKER BAR -->
-        <div class="absolute bottom-0 inset-x-0 bg-slate-950/90 border-t border-slate-800/80 px-3 py-1 text-[10px] font-mono flex items-center gap-2 text-slate-300 backdrop-blur-sm">
-          <span class="text-emerald-400 font-bold shrink-0">● LIVE LOG:</span>
-          <div id="event-ticker-text" class="truncate text-slate-300">
-            [12:33:14] ☀️ Sol: Health check completado en 14 consultorios · Sin fugas de privacidad (Zero-Knowledge)
+        <div class="absolute bottom-0 inset-x-0 bg-slate-950/90 border-t border-slate-800/80 px-2.5 py-1 text-[9px] font-mono flex items-center gap-1.5 text-slate-300 backdrop-blur-sm">
+          <span class="text-emerald-400 font-bold shrink-0">● LIVE:</span>
+          <div id="event-ticker-text" class="truncate text-slate-300 text-[9px]">
+            [12:33:14] ☀️ Sol: Health check completado · Zero-Knowledge
           </div>
         </div>
       </div>
 
     </div>
 
-    <!-- RIGHT: PANEL LIBRE PARA NUEVAS HERRAMIENTAS (4 COLS) -->
-    <div id="right-workspace-panel" class="lg:col-span-4 flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 shadow-2xl flex-1 justify-between relative overflow-hidden">
+    <!-- 2. MEDIO: PANEL CENTRAL LIBRE (4 COLS) -->
+    <div id="center-workspace-panel" class="lg:col-span-4 min-h-[580px] flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 shadow-2xl relative overflow-hidden justify-between">
+      <!-- HEADER DEL PANEL CENTRAL -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800/80">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
+          <span class="text-xs font-bold text-white uppercase tracking-wider">Panel Central</span>
+        </div>
+        <span class="text-[10px] font-mono text-indigo-300 bg-indigo-950/60 px-2.5 py-0.5 rounded-lg border border-indigo-800/60 font-semibold">Espacio Central Libre</span>
+      </div>
+
+      <!-- CONTENIDO RESERVADO DEL MEDIO -->
+      <div class="flex-1 flex flex-col items-center justify-center p-6 text-center my-auto">
+        <div class="w-16 h-16 rounded-2xl bg-slate-950/80 border-2 border-dashed border-indigo-500/40 flex items-center justify-center text-3xl mb-3 shadow-inner text-indigo-400">
+          ⚡
+        </div>
+        <h3 class="text-xs font-bold text-slate-200">Panel central libre</h3>
+        <p class="text-[11px] text-slate-400 mt-1.5 max-w-[240px] leading-relaxed">
+          Espacio del medio de la pantalla despejado y listo para integrar el flujo de trabajo, agentes o widgets que necesites.
+        </p>
+        <span class="inline-flex items-center gap-1 text-[10px] font-mono text-indigo-400 bg-indigo-950/40 px-3 py-1 rounded-full border border-indigo-900/60 mt-3">
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span> Listo para nuevos componentes
+        </span>
+      </div>
+
+      <!-- FOOTER DEL PANEL CENTRAL -->
+      <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-500">
+        <span>Área de Operaciones Central</span>
+        <span class="text-indigo-400 font-semibold">● Disponible</span>
+      </div>
+    </div>
+
+    <!-- 3. DERECHA: PANEL LATERAL LIBRE (4 COLS) -->
+    <div id="right-workspace-panel" class="lg:col-span-4 min-h-[580px] flex flex-col bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 shadow-2xl relative overflow-hidden justify-between">
       <!-- HEADER DEL PANEL DERECHO -->
       <div class="flex items-center justify-between pb-3 border-b border-slate-800/80">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
           <span class="text-xs font-bold text-white uppercase tracking-wider">Panel Lateral</span>
         </div>
-        <span class="text-[10px] font-mono text-slate-400 bg-slate-950 px-2.5 py-0.5 rounded-lg border border-slate-800">Espacio Libre</span>
+        <span class="text-[10px] font-mono text-slate-400 bg-slate-950 px-2.5 py-0.5 rounded-lg border border-slate-800 font-semibold">Espacio Derecho Libre</span>
       </div>
 
       <!-- CONTENIDO LIBRE / ESPACIO RESERVADO -->
@@ -188,11 +217,14 @@
         </div>
         <h3 class="text-xs font-bold text-slate-200">Panel derecho libre</h3>
         <p class="text-[11px] text-slate-500 mt-1.5 max-w-[220px] leading-relaxed">
-          Espacio despejado y preparado para integrar las próximas herramientas y componentes que necesites.
+          Espacio despejado y preparado para integrar las herramientas adicionales, métricas o componentes que necesites.
         </p>
+        <span class="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-900/60 mt-3">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Listo para nuevos componentes
+        </span>
       </div>
 
-      <!-- FOOTER DEL PANEL -->
+      <!-- FOOTER DEL PANEL DERECHO -->
       <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-500">
         <span>HQ Mochi System</span>
         <span class="text-emerald-400 font-semibold">● Listo</span>
@@ -633,13 +665,13 @@
       }
     }
 
-    // ROOM DEFINITIONS (5 ACTIVE OFFICES - REARRANGED LEAVING RIGHT PANEL FREE)
+    // ROOM DEFINITIONS (5 ACTIVE OFFICES - COMPACT TWO-COLUMN LEFT HQ: 480x580)
     const rooms = [
-      { id: 'reception', name: 'Recepción WhatsApp', supervisor: 'green', x: 20, y: 20, w: 240, h: 260, icon: '🌿', desc: 'Atención omnicanal y gestión de turnos WhatsApp' },
-      { id: 'servers', name: 'Data Center & Servidores', supervisor: 'blu', x: 20, y: 295, w: 240, h: 265, icon: '🔷', desc: 'Racks de servidores, terminal DevOps y telemetría Hetzner' },
-      { id: 'kinesio', name: 'Box Kinesiología', supervisor: 'blanco', x: 280, y: 20, w: 250, h: 160, icon: '🤍', desc: 'Camilla clínica, rehabilitación y 4 subagentes' },
-      { id: 'sol', name: 'Despacho Central Sol', supervisor: 'sol', x: 280, y: 195, w: 250, h: 180, icon: '☀️', desc: 'Torre de control SaaS y supervisión multitenant' },
-      { id: 'triage', name: 'Box Urgencias & Triage', supervisor: 'red', x: 280, y: 390, w: 250, h: 170, icon: '🚨', desc: 'Monitor ECG de signos vitales y 4 subagentes de triage' }
+      { id: 'reception', name: 'Recepción WhatsApp', supervisor: 'green', x: 16, y: 16, w: 208, h: 264, icon: '🌿', desc: 'Atención omnicanal y gestión de turnos WhatsApp' },
+      { id: 'servers', name: 'Data Center & Servidores', supervisor: 'blu', x: 16, y: 296, w: 208, h: 268, icon: '🔷', desc: 'Racks de servidores, terminal DevOps y telemetría Hetzner' },
+      { id: 'kinesio', name: 'Box Kinesiología', supervisor: 'blanco', x: 240, y: 16, w: 224, h: 160, icon: '🤍', desc: 'Camilla clínica, rehabilitación y 4 subagentes' },
+      { id: 'sol', name: 'Despacho Central Sol', supervisor: 'sol', x: 240, y: 192, w: 224, h: 180, icon: '☀️', desc: 'Torre de control SaaS y supervisión multitenant' },
+      { id: 'triage', name: 'Box Urgencias & Triage', supervisor: 'red', x: 240, y: 388, w: 224, h: 176, icon: '🚨', desc: 'Monitor ECG de signos vitales y 4 subagentes de triage' }
     ];
 
     let selectedRoom = 'sol';
@@ -655,9 +687,9 @@
         role: 'SaaS Supreme Lead',
         desc: 'Supervisión Central · 14 Consultorios',
         room: 'sol',
-        x: 405,
+        x: 350,
         y: 245,
-        baseX: 405,
+        baseX: 350,
         baseY: 245,
         colors: ['#FFFBEB', '#F59E0B', '#B45309'],
         glow: 'rgba(245, 158, 11, 0.45)',
@@ -685,9 +717,9 @@
         role: 'Recepción & Agenda',
         desc: 'WhatsApp · 2 Subagentes · 35 Turnos',
         room: 'reception',
-        x: 130,
+        x: 120,
         y: 75,
-        baseX: 130,
+        baseX: 120,
         baseY: 75,
         colors: ['#ECFDF5', '#10B981', '#047857'],
         glow: 'rgba(16, 185, 129, 0.45)',
@@ -715,9 +747,9 @@
         role: 'Kinesiólogo Clínico',
         desc: 'Camilla · Pautas de Rehabilitación',
         room: 'kinesio',
-        x: 330,
+        x: 280,
         y: 100,
-        baseX: 330,
+        baseX: 280,
         baseY: 100,
         colors: ['#FFFFFF', '#E2E8F0', '#94A3B8'],
         glow: 'rgba(255, 255, 255, 0.55)',
@@ -745,9 +777,9 @@
         role: 'Triage & Urgencias',
         desc: 'Monitor ECG · Signos Vitales',
         room: 'triage',
-        x: 330,
+        x: 280,
         y: 430,
-        baseX: 330,
+        baseX: 280,
         baseY: 430,
         colors: ['#FEF2F2', '#EF4444', '#B91C1C'],
         glow: 'rgba(239, 68, 68, 0.50)',
@@ -775,9 +807,9 @@
         role: 'Sistemas & Hetzner',
         desc: 'Racks Hetzner · Latencia 12ms',
         room: 'servers',
-        x: 130,
+        x: 120,
         y: 395,
-        baseX: 130,
+        baseX: 120,
         baseY: 395,
         colors: ['#F0F9FF', '#0EA5E9', '#0369A1'],
         glow: 'rgba(14, 165, 233, 0.50)',
@@ -803,23 +835,23 @@
     // SUBAGENTES OBREROS (Swarm Tier Estudiantes & Consultorios)
     const characters = [
       // ── SQUAD GREEN (Recepción WhatsApp) ──
-      { id: 'green_worker1', name: 'Mensajero #1', sprite: 'char1', x: 75, y: 165, baseDeskX: 75, baseDeskY: 165, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Subagente WhatsApp' },
-      { id: 'green_worker2', name: 'Archivador #2', sprite: 'char2', x: 165, y: 165, baseDeskX: 165, baseDeskY: 165, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Subagente Sincronizador' },
+      { id: 'green_worker1', name: 'Mensajero #1', sprite: 'char1', x: 68, y: 160, baseDeskX: 68, baseDeskY: 160, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Subagente WhatsApp' },
+      { id: 'green_worker2', name: 'Archivador #2', sprite: 'char2', x: 152, y: 160, baseDeskX: 152, baseDeskY: 160, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Subagente Sincronizador' },
 
       // ── SQUAD COCO: 4 SUBAGENTES DE KINESIOLOGÍA (Low-Cost) ──
-      { id: 'blanco_evaluacion', name: 'Eval #1', sprite: 'char4', x: 405, y: 60, baseDeskX: 405, baseDeskY: 60, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Kinesio-Eval (Anamnesis)', skills: ['intake_assessment', 'red_flag_screen', 'pain_scale_log'] },
-      { id: 'blanco_rehabilitacion', name: 'Rehab #2', sprite: 'char1', x: 475, y: 60, baseDeskX: 475, baseDeskY: 60, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Kinesio-Rehab (Ejercicios)', skills: ['generate_routine', 'adjust_progression', 'exercise_library'] },
-      { id: 'blanco_historia', name: 'Ficha #3', sprite: 'char2', x: 405, y: 125, baseDeskX: 405, baseDeskY: 125, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Kinesio-Ficha (SOAP Médico)', skills: ['write_session_note', 'update_clinical_record', 'discharge_summary'] },
-      { id: 'blanco_seguimiento', name: 'Seguim #4', sprite: 'char5', x: 475, y: 125, baseDeskX: 475, baseDeskY: 125, state: 'typing', frame: 2, row: 0, speech: '', roleDesc: 'Kinesio-Check (Adherencia)', skills: ['adherence_check', 'homework_reminder', 'outcome_metrics'] },
+      { id: 'blanco_evaluacion', name: 'Eval #1', sprite: 'char4', x: 350, y: 60, baseDeskX: 350, baseDeskY: 60, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Kinesio-Eval (Anamnesis)', skills: ['intake_assessment', 'red_flag_screen', 'pain_scale_log'] },
+      { id: 'blanco_rehabilitacion', name: 'Rehab #2', sprite: 'char1', x: 420, y: 60, baseDeskX: 420, baseDeskY: 60, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Kinesio-Rehab (Ejercicios)', skills: ['generate_routine', 'adjust_progression', 'exercise_library'] },
+      { id: 'blanco_historia', name: 'Ficha #3', sprite: 'char2', x: 350, y: 125, baseDeskX: 350, baseDeskY: 125, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Kinesio-Ficha (SOAP Médico)', skills: ['write_session_note', 'update_clinical_record', 'discharge_summary'] },
+      { id: 'blanco_seguimiento', name: 'Seguim #4', sprite: 'char5', x: 420, y: 125, baseDeskX: 420, baseDeskY: 125, state: 'typing', frame: 2, row: 0, speech: '', roleDesc: 'Kinesio-Check (Adherencia)', skills: ['adherence_check', 'homework_reminder', 'outcome_metrics'] },
 
       // ── SQUAD RED: 4 SUBAGENTES DE TRIAGE Y URGENCIAS (Low-Cost) ──
-      { id: 'red_triage', name: 'Triage #1', sprite: 'char5', x: 405, y: 435, baseDeskX: 405, baseDeskY: 435, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Triage-Prioridad (Manchester)', skills: ['classify_urgency', 'vitals_check', 'escalate_rule'] },
-      { id: 'red_ecg_telemetria', name: 'ECG #2', sprite: 'char1', x: 475, y: 435, baseDeskX: 475, baseDeskY: 435, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Triage-ECG (Telemetría)', skills: ['parse_ecg_summary', 'alert_thresholds', 'trend_vitals'] },
-      { id: 'red_derivaciones', name: 'Pase #3', sprite: 'char2', x: 405, y: 505, baseDeskX: 405, baseDeskY: 505, state: 'typing', frame: 2, row: 0, speech: '', roleDesc: 'Triage-Pase (Derivaciones)', skills: ['referral_letter', 'find_specialist', 'transport_coord'] },
-      { id: 'red_guardia', name: 'Box #4', sprite: 'char4', x: 475, y: 505, baseDeskX: 475, baseDeskY: 505, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Triage-Box (Camas)', skills: ['shift_roster', 'box_status', 'emergency_broadcast'] },
+      { id: 'red_triage', name: 'Triage #1', sprite: 'char5', x: 350, y: 435, baseDeskX: 350, baseDeskY: 435, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Triage-Prioridad (Manchester)', skills: ['classify_urgency', 'vitals_check', 'escalate_rule'] },
+      { id: 'red_ecg_telemetria', name: 'ECG #2', sprite: 'char1', x: 420, y: 435, baseDeskX: 420, baseDeskY: 435, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Triage-ECG (Telemetría)', skills: ['parse_ecg_summary', 'alert_thresholds', 'trend_vitals'] },
+      { id: 'red_derivaciones', name: 'Pase #3', sprite: 'char2', x: 350, y: 505, baseDeskX: 350, baseDeskY: 505, state: 'typing', frame: 2, row: 0, speech: '', roleDesc: 'Triage-Pase (Derivaciones)', skills: ['referral_letter', 'find_specialist', 'transport_coord'] },
+      { id: 'red_guardia', name: 'Box #4', sprite: 'char4', x: 420, y: 505, baseDeskX: 420, baseDeskY: 505, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Triage-Box (Camas)', skills: ['shift_roster', 'box_status', 'emergency_broadcast'] },
 
       // ── SQUAD BLU (DevOps Hetzner) ──
-      { id: 'blu_worker', name: 'DevOps #1', sprite: 'char1', x: 130, y: 465, baseDeskX: 130, baseDeskY: 465, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Operador de Consola Hetzner' }
+      { id: 'blu_worker', name: 'DevOps #1', sprite: 'char1', x: 120, y: 465, baseDeskX: 120, baseDeskY: 465, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Operador de Consola Hetzner' }
     ];
 
     // FLOATING POPUP EMOTES (💡, 🩺, ⚡, 📈)
@@ -1116,18 +1148,18 @@
       }
 
       // 2. Interactive Props (Clinical Camilla, Sol SaaS Map & Server Racks)
-      // Camilla Kinesiología (325, 46)
-      if (Math.hypot(pos.x - 325, pos.y - 46) < 32) {
+      // Camilla Kinesiología (279, 46)
+      if (Math.hypot(pos.x - 279, pos.y - 46) < 32) {
         openModal('clinical_card');
         return;
       }
-      // Sol Map (404, 217)
-      if (Math.hypot(pos.x - 404, pos.y - 217) < 30) {
+      // Sol Map (354, 213)
+      if (Math.hypot(pos.x - 354, pos.y - 213) < 30) {
         openModal('sol_map');
         return;
       }
-      // Server racks (Data Center: 35 to 205, y: 302 to 375)
-      if (pos.x >= 35 && pos.x <= 205 && pos.y >= 302 && pos.y <= 375) {
+      // Server racks (Data Center: 26 to 190, y: 302 to 375)
+      if (pos.x >= 26 && pos.x <= 190 && pos.y >= 302 && pos.y <= 375) {
         playServerBeep();
         openModal('hetzner_telemetry');
         return;
@@ -2437,21 +2469,21 @@
     }
 
     function drawRoomFloors() {
-      // 1. RECEPCIÓN & ATENCIÓN WHATSAPP (240x260)
-      drawParquetFloor(20, 20, 240, 260, '#382212', '#442a17');
+      // 1. RECEPCIÓN & ATENCIÓN WHATSAPP (208x264)
+      drawParquetFloor(16, 16, 208, 264, '#382212', '#442a17');
 
-      // 2. DATA CENTER & SERVIDORES (240x265 - debajo de Recepción)
-      drawGridFloor(20, 295, 240, 265, '#101726', '#17233a');
+      // 2. DATA CENTER & SERVIDORES (208x268 - debajo de Recepción)
+      drawGridFloor(16, 296, 208, 268, '#101726', '#17233a');
 
-      // 3. BOX KINESIOLOGÍA (250x160)
-      drawTileFloor(280, 20, 250, 160, '#162330', '#223547', 20);
+      // 3. BOX KINESIOLOGÍA (224x160)
+      drawTileFloor(240, 16, 224, 160, '#162330', '#223547', 20);
 
-      // 4. DESPACHO CENTRAL SOL (250x180)
-      drawParquetFloor(280, 195, 250, 180, '#2e2513', '#3d321a');
-      drawCozyRug(305, 220, 200, 135, '#3d2812', '#d97706', '#fbbf24');
+      // 4. DESPACHO CENTRAL SOL (224x180)
+      drawParquetFloor(240, 192, 224, 180, '#2e2513', '#3d321a');
+      drawCozyRug(260, 216, 184, 135, '#3d2812', '#d97706', '#fbbf24');
 
-      // 5. BOX URGENCIAS & TRIAGE (250x170)
-      drawTileFloor(280, 390, 250, 170, '#261518', '#381f23', 20);
+      // 5. BOX URGENCIAS & TRIAGE (224x176)
+      drawTileFloor(240, 388, 224, 176, '#261518', '#381f23', 20);
 
       rooms.forEach(r => {
         drawThickWall(r.x, r.y, r.w, r.h, r.name);
@@ -2578,10 +2610,10 @@
     }
 
     function drawHallways() {
-      drawDoorway(260, 225, 20, 36); // Recepción <-> Despacho Sol
-      drawDoorway(260, 320, 20, 36); // Data Center <-> Despacho Sol
-      drawDoorway(385, 180, 36, 15); // Kinesio <-> Despacho Sol
-      drawDoorway(385, 375, 36, 15); // Despacho Sol <-> Triage
+      drawDoorway(224, 220, 16, 36); // Recepción <-> Despacho Sol
+      drawDoorway(224, 320, 16, 36); // Data Center <-> Despacho Sol
+      drawDoorway(345, 176, 36, 16); // Kinesio <-> Despacho Sol
+      drawDoorway(345, 372, 36, 16); // Despacho Sol <-> Triage
     }
 
     function drawDoorway(x, y, w, h) {
@@ -2611,30 +2643,30 @@
     // ── 4. BACK WALL DECORATIONS & TICKING CLOCKS ──
     function drawBackWallDecor() {
       // 1. Recepción (Limpia: ventana luminosa y reloj de pared funcional)
-      drawWindow(32, 22);
-      drawSprite('clock', 85, 24, 16, 32);
-      drawClockSecondHand(93, 38, 5); // Real-time ticking second hand
+      drawWindow(26, 18);
+      drawSprite('clock', 75, 20, 16, 32);
+      drawClockSecondHand(83, 34, 5); // Real-time ticking second hand
 
       // 2. Kinesiología (Limpia: pizarra clínica minimalista)
-      drawSprite('whiteboard', 295, 22, 32, 32);
+      drawSprite('whiteboard', 248, 18, 32, 32);
 
       // 3. Despacho Sol (Limpio: radar SaaS holográfico)
-      drawSaaSGlobalMap(370, 202); // Animated holographic radar sweep
+      drawSaaSGlobalMap(320, 198); // Animated holographic radar sweep
 
       // 4. Data Center: 3 Full Server Racks (Fondo superior de la sala)
-      drawServerRack(35, 302);
-      drawServerRack(95, 302);
-      drawServerRack(155, 302);
+      drawServerRack(26, 302);
+      drawServerRack(84, 302);
+      drawServerRack(142, 302);
 
       // 5. Triage (Limpio: placa de cruz roja médica)
       ctx.fillStyle = '#dc2626';
-      ctx.fillRect(485, 398, 28, 28);
+      ctx.fillRect(430, 394, 24, 24);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(496, 403, 6, 18);
-      ctx.fillRect(490, 409, 18, 6);
+      ctx.fillRect(440, 398, 4, 16);
+      ctx.fillRect(434, 404, 16, 4);
       ctx.strokeStyle = '#991b1b';
       ctx.lineWidth = 1;
-      ctx.strokeRect(485, 398, 28, 28);
+      ctx.strokeRect(430, 394, 24, 24);
     }
 
     function drawClockSecondHand(cx, cy, r) {
@@ -2764,29 +2796,29 @@
     // ── 5. FURNITURE BACKGROUND LAYER ──
     function drawFurnitureBackLayer() {
       // Recepción: Sillas ergonómicas de los operadores de atención y planta
-      drawSprite('cushionedChairBack', 75, 150, 16, 16);
-      drawSprite('cushionedChairBack', 165, 150, 16, 16);
-      drawSprite('plant', 26, 42, 16, 32);
+      drawSprite('cushionedChairBack', 68, 145, 16, 16);
+      drawSprite('cushionedChairBack', 152, 145, 16, 16);
+      drawSprite('plant', 20, 42, 16, 32);
 
       // Kinesiología: Camilla médica clínica y sillas ergonómicas de los 4 subagentes
-      drawPixelCamilla(290, 35);
-      drawSprite('cushionedChairBack', 405, 45, 16, 16);
-      drawSprite('cushionedChairBack', 475, 45, 16, 16);
-      drawSprite('cushionedChairBack', 405, 110, 16, 16);
-      drawSprite('cushionedChairBack', 475, 110, 16, 16);
+      drawPixelCamilla(246, 35);
+      drawSprite('cushionedChairBack', 350, 45, 16, 16);
+      drawSprite('cushionedChairBack', 420, 45, 16, 16);
+      drawSprite('cushionedChairBack', 350, 110, 16, 16);
+      drawSprite('cushionedChairBack', 420, 110, 16, 16);
 
       // Despacho Central Sol: Sillón ejecutivo y planta de esquina
-      drawSprite('cushionedChairBack', 405, 275, 16, 16);
-      drawSprite('plant', 504, 205, 16, 32);
+      drawSprite('cushionedChairBack', 350, 275, 16, 16);
+      drawSprite('plant', 438, 200, 16, 32);
 
       // Data Center: Silla de consola DevOps
-      drawSprite('cushionedChairBack', 130, 450, 16, 16);
+      drawSprite('cushionedChairBack', 120, 450, 16, 16);
 
       // Box Urgencias & Triage: Sillas de los 4 subagentes
-      drawSprite('cushionedChairBack', 405, 420, 16, 16);
-      drawSprite('cushionedChairBack', 475, 420, 16, 16);
-      drawSprite('cushionedChairBack', 405, 490, 16, 16);
-      drawSprite('cushionedChairBack', 475, 490, 16, 16);
+      drawSprite('cushionedChairBack', 350, 420, 16, 16);
+      drawSprite('cushionedChairBack', 420, 420, 16, 16);
+      drawSprite('cushionedChairBack', 350, 490, 16, 16);
+      drawSprite('cushionedChairBack', 420, 490, 16, 16);
     }
 
     function drawWaterCooler(x, y) {
@@ -3380,26 +3412,26 @@
 
     function drawFurnitureFrontLayer() {
       // Recepción 2 Subagents
-      drawPerspectiveDesk(75, 165, 'pcOn1', 'pcOn2');
-      drawPerspectiveDesk(165, 165, 'pcOn2', 'pcOn3');
+      drawPerspectiveDesk(68, 160, 'pcOn1', 'pcOn2');
+      drawPerspectiveDesk(152, 160, 'pcOn2', 'pcOn3');
 
       // Kinesiología 4 Subagents (Box 1-4)
-      drawPerspectiveDesk(405, 60, 'pcOn1', 'pcOn2');
-      drawPerspectiveDesk(475, 60, 'pcOn2', 'pcOn3');
-      drawPerspectiveDesk(405, 125, 'pcOn3', 'pcOn1');
-      drawPerspectiveDesk(475, 125, 'pcOn1', 'pcOn2');
+      drawPerspectiveDesk(350, 60, 'pcOn1', 'pcOn2');
+      drawPerspectiveDesk(420, 60, 'pcOn2', 'pcOn3');
+      drawPerspectiveDesk(350, 125, 'pcOn3', 'pcOn1');
+      drawPerspectiveDesk(420, 125, 'pcOn1', 'pcOn2');
 
       // Despacho Sol Executive Desk & Dual Monitors
-      drawPerspectiveDesk(405, 290, 'pcOn1', 'pcOn2', false, true);
+      drawPerspectiveDesk(350, 290, 'pcOn1', 'pcOn2', false, true);
 
       // Triage 4 Subagents (Puestos 1-4)
-      drawPerspectiveDesk(405, 435, 'pcOn3', 'pcOn2');
-      drawPerspectiveDesk(475, 435, 'pcOn2', 'pcOn1', true);
-      drawPerspectiveDesk(405, 505, 'pcOn1', 'pcOn3');
-      drawPerspectiveDesk(475, 505, 'pcOn2', 'pcOn3');
+      drawPerspectiveDesk(350, 435, 'pcOn3', 'pcOn2');
+      drawPerspectiveDesk(420, 435, 'pcOn2', 'pcOn1', true);
+      drawPerspectiveDesk(350, 505, 'pcOn1', 'pcOn3');
+      drawPerspectiveDesk(420, 505, 'pcOn2', 'pcOn3');
 
       // Data Center DevOps Console
-      drawPerspectiveDesk(130, 465, 'pcOn1', 'pcOn3');
+      drawPerspectiveDesk(120, 465, 'pcOn1', 'pcOn3');
     }
 
     function drawAnimatedPC(x, y, k1, k2) {
@@ -3440,14 +3472,14 @@
 
     // ── 9. MICRO-ANIMATIONS ──
     function drawMicroAnimations() {
-      // Data Center Glowing Conduit Lines & Fiber-Optic Packets (20..260, 295..560)
+      // Data Center Glowing Conduit Lines & Fiber-Optic Packets (16..224, 296..564)
       const pulse = Math.abs(Math.sin(animTick * 0.05));
       ctx.fillStyle = `rgba(56, 189, 248, ${0.15 + pulse * 0.2})`;
-      ctx.fillRect(20, 525, 240, 2);
-      ctx.fillRect(95, 372, 2, 153);
+      ctx.fillRect(16, 525, 208, 2);
+      ctx.fillRect(84, 372, 2, 153);
 
       // Live Data Packets Traveling on Floor
-      const packet1X = 20 + ((animTick * 2.5) % 230);
+      const packet1X = 16 + ((animTick * 2.5) % 200);
       ctx.fillStyle = '#38bdf8';
       ctx.fillRect(packet1X, 524, 6, 3);
       ctx.fillStyle = '#7dd3fc';
@@ -3455,9 +3487,9 @@
 
       const packet2Y = 525 - ((animTick * 2) % 150);
       ctx.fillStyle = '#34d399';
-      ctx.fillRect(94, packet2Y, 3, 6);
+      ctx.fillRect(83, packet2Y, 3, 6);
       ctx.fillStyle = '#a7f3d0';
-      ctx.fillRect(94.5, packet2Y + 2, 2, 3);
+      ctx.fillRect(83.5, packet2Y + 2, 2, 3);
     }
 
     // ── 10. ATMOSPHERIC LIGHTING & FLOATING DUST MOTES ──
@@ -3465,10 +3497,10 @@
       if (lightingMode === 'day') {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
         ctx.beginPath();
-        ctx.moveTo(32, 54);
-        ctx.lineTo(80, 220);
-        ctx.lineTo(130, 220);
-        ctx.lineTo(54, 54);
+        ctx.moveTo(26, 50);
+        ctx.lineTo(65, 200);
+        ctx.lineTo(110, 200);
+        ctx.lineTo(48, 50);
         ctx.fill();
         return;
       }
@@ -3477,50 +3509,50 @@
         // Sunlight Shaft in Reception
         ctx.fillStyle = 'rgba(251, 191, 36, 0.08)';
         ctx.beginPath();
-        ctx.moveTo(32, 54);
-        ctx.lineTo(75, 200);
-        ctx.lineTo(120, 200);
-        ctx.lineTo(54, 54);
+        ctx.moveTo(26, 50);
+        ctx.lineTo(65, 200);
+        ctx.lineTo(110, 200);
+        ctx.lineTo(48, 50);
         ctx.fill();
 
         // Chandelier Breathing Glow in Sol's Office
         const chandelierPulse = 0.14 + Math.sin(animTick * 0.04) * 0.025;
-        const solGrad = ctx.createRadialGradient(405, 285, 10, 405, 285, 120);
+        const solGrad = ctx.createRadialGradient(350, 280, 10, 350, 280, 110);
         solGrad.addColorStop(0, `rgba(251, 191, 36, ${chandelierPulse})`);
         solGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
         ctx.fillStyle = solGrad;
-        ctx.fillRect(280, 195, 250, 180);
+        ctx.fillRect(240, 192, 224, 180);
 
         // CRT Phosphor Cyan Glow in Reception
-        const recGrad = ctx.createRadialGradient(130, 160, 10, 130, 160, 80);
+        const recGrad = ctx.createRadialGradient(120, 160, 10, 120, 160, 75);
         recGrad.addColorStop(0, 'rgba(56, 189, 248, 0.10)');
         recGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
         ctx.fillStyle = recGrad;
-        ctx.fillRect(20, 20, 240, 260);
+        ctx.fillRect(16, 16, 208, 264);
 
         // ECG Green Vitals Glow in Triage
-        const triGrad = ctx.createRadialGradient(440, 470, 5, 440, 470, 70);
+        const triGrad = ctx.createRadialGradient(385, 470, 5, 385, 470, 65);
         triGrad.addColorStop(0, emergencyAlertActive ? 'rgba(239, 68, 68, 0.18)' : 'rgba(52, 211, 153, 0.12)');
         triGrad.addColorStop(1, 'rgba(52, 211, 153, 0)');
         ctx.fillStyle = triGrad;
-        ctx.fillRect(280, 390, 250, 170);
+        ctx.fillRect(240, 388, 224, 176);
       }
 
       if (lightingMode === 'night') {
         ctx.fillStyle = 'rgba(7, 5, 18, 0.45)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        const solGrad = ctx.createRadialGradient(405, 275, 5, 405, 275, 90);
+        const solGrad = ctx.createRadialGradient(350, 275, 5, 350, 275, 90);
         solGrad.addColorStop(0, 'rgba(251, 191, 36, 0.28)');
         solGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
         ctx.fillStyle = solGrad;
-        ctx.fillRect(280, 195, 250, 180);
+        ctx.fillRect(240, 192, 224, 180);
 
-        const dcGrad = ctx.createRadialGradient(95, 420, 5, 95, 420, 100);
+        const dcGrad = ctx.createRadialGradient(84, 420, 5, 84, 420, 100);
         dcGrad.addColorStop(0, 'rgba(56, 189, 248, 0.32)');
         dcGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
         ctx.fillStyle = dcGrad;
-        ctx.fillRect(20, 295, 240, 265);
+        ctx.fillRect(16, 296, 208, 268);
       }
     }
 
