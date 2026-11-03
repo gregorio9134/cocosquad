@@ -140,9 +140,6 @@
           <span class="text-emerald-400">●</span>
           <span class="font-bold text-white text-[11px] tracking-wide">Planta General HQ</span>
         </div>
-        <div class="flex items-center gap-1 text-[10px] font-mono text-slate-400">
-          <span id="active-room-pill" class="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold">📍 Despacho Sol</span>
-        </div>
       </div>
 
       <!-- CANVAS CONTAINER (COMPACT CRISP VIEW - ALINEADO A LA IZQUIERDA) -->
@@ -150,13 +147,7 @@
         <canvas id="officeCanvas" width="480" height="580" class="w-full h-auto max-h-[580px] max-w-[480px] cursor-pointer block"></canvas>
         <div id="scanline-overlay" class="absolute inset-0 scanlines hidden"></div>
 
-        <!-- TOP-RIGHT SLIM STATUS PILL INSIDE CANVAS -->
-        <div id="room-info-overlay" class="absolute top-2 right-2 bg-slate-950/80 backdrop-blur-md border border-slate-800/80 px-2 py-0.5 rounded-lg text-xs flex items-center gap-1.5 pointer-events-none transition-all duration-200 shadow">
-          <span id="room-info-icon" class="text-xs">☀️</span>
-          <span id="room-info-title" class="font-bold text-slate-200 text-[9px]">Despacho Central de Sol</span>
-        </div>
-
-        <!-- RETRO EVENT TICKER BAR -->
+<!-- RETRO EVENT TICKER BAR -->
         <div class="absolute bottom-0 inset-x-0 bg-slate-950/90 border-t border-slate-800/80 px-2.5 py-1 text-[9px] font-mono flex items-center gap-1.5 text-slate-300 backdrop-blur-sm">
           <span class="text-emerald-400 font-bold shrink-0">● LIVE:</span>
           <div id="event-ticker-text" class="truncate text-slate-300 text-[9px]">
@@ -261,7 +252,7 @@
         <div class="flex items-center gap-3 mb-2">
           <div id="mob-avatar" class="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-2xl shadow">☀️</div>
           <div>
-            <h3 id="mob-title" class="text-sm font-bold text-white">Coco Sol · Torre SaaS</h3>
+            <h3 id="mob-title" class="text-sm font-bold text-white">Sol · Torre SaaS</h3>
             <span id="mob-subtitle" class="text-xs text-amber-400">14 Consultorios Conectados</span>
           </div>
         </div>
@@ -303,9 +294,7 @@
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h3 id="mochi-chat-name" class="font-extrabold text-base text-white tracking-wide flex items-center gap-1.5">
-                Coco Sol
-              </h3>
+              <h3 id="mochi-chat-name" class="font-extrabold text-base text-white tracking-wide flex items-center gap-1.5">Sol</h3>
               <span id="mochi-chat-badge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                 CEO & Estrategia SaaS
               </span>
@@ -649,7 +638,7 @@
       });
 
       const depts = {
-        sol: { title: 'Coco Sol · Torre SaaS', sub: '14 Consultorios Conectados', avatar: '☀️', desc: '"Supervisando la red completa con Zero-Knowledge. $18,450 USD de MRR sostenido."' },
+        sol: { title: 'Sol · Torre SaaS', sub: '14 Consultorios Conectados', avatar: '☀️', desc: '"Supervisando la red completa con Zero-Knowledge. $18,450 USD de MRR sostenido."' },
         green: { title: 'Green · Recepción', sub: '2 Subagentes (WhatsApp)', avatar: '🌿', desc: '"Confirmando 35 turnos agendados hoy. Recordatorios automáticos en curso."' },
         blanco: { title: 'Coco · Kinesiología', sub: 'Box 1 · Camilla & Pautas', avatar: '🤍', desc: '"Protocolo de descarga miofascial listo para el próximo paciente lumbar."' },
         red: { title: 'Red · Guardia Triage', sub: 'Box Urgencias · ECG Activo', avatar: '🚨', desc: '"Sin emergencias agudas. Monitor de signos vitales registrando ritmo sinusal regular."' },
@@ -670,7 +659,7 @@
       { id: 'reception', name: 'Recepción WhatsApp', supervisor: 'green', x: 16, y: 16, w: 208, h: 264, icon: '🌿', desc: 'Atención omnicanal y gestión de turnos WhatsApp' },
       { id: 'servers', name: 'Data Center & Servidores', supervisor: 'blu', x: 16, y: 296, w: 208, h: 268, icon: '🔷', desc: 'Racks de servidores, terminal DevOps y telemetría Hetzner' },
       { id: 'kinesio', name: 'Box Kinesiología', supervisor: 'blanco', x: 240, y: 16, w: 224, h: 160, icon: '🤍', desc: 'Camilla clínica, rehabilitación y 4 subagentes' },
-      { id: 'sol', name: 'Despacho Central Sol', supervisor: 'sol', x: 240, y: 192, w: 224, h: 180, icon: '☀️', desc: 'Torre de control SaaS y supervisión multitenant' },
+      { id: 'sol', name: 'Despacho Sol', supervisor: 'sol', x: 240, y: 192, w: 224, h: 180, icon: '☀️', desc: 'Torre de control SaaS y supervisión multitenant' },
       { id: 'triage', name: 'Box Urgencias & Triage', supervisor: 'red', x: 240, y: 388, w: 224, h: 176, icon: '🚨', desc: 'Monitor ECG de signos vitales y 4 subagentes de triage' }
     ];
 
@@ -682,7 +671,7 @@
     const mochis = [
       {
         id: 'sol',
-        name: 'Coco Sol',
+        name: 'Sol',
         badge: '👑 LÍDER SAAS',
         role: 'SaaS Supreme Lead',
         desc: 'Supervisión Central · 14 Consultorios',
@@ -1230,7 +1219,7 @@
       const id = resolveMochiId(mochiId);
       playChime();
       const meta = {
-        sol: { name: 'Coco Sol', role: 'SaaS Lead · Supervisión Central', avatar: '☀️', color: 'text-amber-400', room: 'sol' },
+        sol: { name: 'Sol', role: 'SaaS Lead · Supervisión Central', avatar: '☀️', color: 'text-amber-400', room: 'sol' },
         green: { name: 'Green', role: 'Recepción · Turnos & WhatsApp', avatar: '🌿', color: 'text-emerald-400', room: 'reception' },
         blanco: { name: 'Coco', role: 'Clínica · Kinesiología', avatar: '🤍', color: 'text-slate-300', room: 'kinesio' },
         red: { name: 'Red', role: 'Triage · Guardia & Urgencias', avatar: '🚨', color: 'text-rose-400', room: 'triage' },
@@ -1290,10 +1279,14 @@
     }
 
     function updateRoomOverlay(r) {
-      document.getElementById('room-info-icon').innerText = r.icon;
-      document.getElementById('room-info-title').innerText = r.name;
-      document.getElementById('room-info-desc').innerText = r.desc;
-      document.getElementById('active-room-pill').innerText = '📍 ' + r.name;
+      const iconEl = document.getElementById('room-info-icon');
+      if (iconEl) iconEl.innerText = r.icon;
+      const titleEl = document.getElementById('room-info-title');
+      if (titleEl) titleEl.innerText = r.name;
+      const descEl = document.getElementById('room-info-desc');
+      if (descEl) descEl.innerText = r.desc;
+      const activePill = document.getElementById('active-room-pill');
+      if (activePill) activePill.innerText = '📍 ' + r.name;
     }
 
     function switchSidebarTab(tab) {
@@ -1462,7 +1455,7 @@
       const map = {sol: 'coco_sol', green: 'coco_verde', blanco: 'coco_blanco', red: 'coco_rojo', blu: 'coco_azul'};
       const agentId = map[mochiId] || 'coco_blanco';
       const meta = {
-        sol: 'Coco Sol',
+        sol: 'Sol',
         green: 'Green',
         blanco: 'Coco',
         red: 'Red',
@@ -1622,7 +1615,7 @@
 
     const mochiMeta = {
       sol: {
-        name: 'Coco Sol',
+        name: 'Sol',
         role: 'CEO & Estrategia SaaS',
         office: 'Oficina Central SaaS',
         avatar: '👑',
@@ -1709,8 +1702,8 @@
     const mochiChatHistories = {
       sol: [
         {
-          sender: 'Coco Sol',
-          text: '¡Hola Gregorio! 👑 Soy Coco Sol, líder de estrategia y CEO de Coco Squad. Tengo la red SaaS bajo control con $18,450 MRR. ¿Qué decisión comercial o expansión analizamos hoy?',
+          sender: 'Sol',
+          text: '¡Hola Gregorio! 👑 Soy Sol, líder de estrategia y CEO de Coco Squad. Tengo la red SaaS bajo control con $18,450 MRR. ¿Qué decisión comercial o expansión analizamos hoy?',
           isUser: false,
           time: 'En línea'
         }
@@ -2625,19 +2618,7 @@
     }
 
     function drawRoomHighlight() {
-      const active = rooms.find(r => r.id === selectedRoom);
-      if (active) {
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 4]);
-        ctx.strokeRect(active.x + 2, active.y + 2, active.w - 4, active.h - 4);
-        ctx.setLineDash([]);
-      }
-      if (hoveredRoom && hoveredRoom.id !== selectedRoom) {
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(hoveredRoom.x + 2, hoveredRoom.y + 2, hoveredRoom.w - 4, hoveredRoom.h - 4);
-      }
+      // Sin recuadros molestos al seleccionar oficinas
     }
 
     // ── 4. BACK WALL DECORATIONS & TICKING CLOCKS ──
@@ -2807,7 +2788,7 @@
       drawSprite('cushionedChairBack', 350, 110, 16, 16);
       drawSprite('cushionedChairBack', 420, 110, 16, 16);
 
-      // Despacho Central Sol: Sillón ejecutivo y planta de esquina
+      // Despacho Sol: Sillón ejecutivo y planta de esquina
       drawSprite('cushionedChairBack', 350, 275, 16, 16);
       drawSprite('plant', 438, 200, 16, 32);
 
@@ -3342,7 +3323,7 @@
     // ── 8. FOREGROUND 2.5D PERSPECTIVE WORKSTATIONS (PERSONITAS & PCS FULLY VISIBLE) ──
     function drawPerspectiveDesk(cx, cy, pc1, pc2, hasOscilloscope = false, isExecutive = false) {
       if (isExecutive) {
-        // Executive Desk for Coco Sol (Grand mahogany desk with dual monitors)
+        // Executive Desk for Sol (Grand mahogany desk with dual monitors)
         const deskX = cx - 26;
         const deskY = cy + 12;
         const deskW = 54;
