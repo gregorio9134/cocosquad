@@ -108,6 +108,11 @@
         <button onclick="setViewMode('mobile')" id="view-btn-mobile" class="px-2 py-1 rounded-lg text-slate-400 hover:text-white transition">📱 Carrusel</button>
       </div>
 
+      <!-- RETURN TO DOCK APP BUTTON -->
+      <button onclick="switchToDockMode()" class="bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/40 hover:border-indigo-400 text-indigo-200 px-2.5 py-1.5 rounded-xl font-medium transition text-[11px] flex items-center gap-1.5 shadow-sm" title="Ir a la interfaz original con Mochis arriba y Chat">
+        <span>🥥 Modo App / Dock</span>
+      </button>
+
       <!-- LIGHTING AMBIENCE SELECTOR -->
       <div class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-0.5 text-[11px] font-sans">
         <button onclick="setLighting('day')" id="light-btn-day" class="px-2 py-1 rounded-lg text-slate-400 hover:text-white transition" title="Luz de Día">☀️</button>
@@ -757,6 +762,20 @@
         btn.className = (m === mode) ? 'px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-semibold transition' : 'px-2 py-1 rounded-lg text-slate-400 hover:text-white transition';
       });
       playClick();
+    }
+
+    function switchToDockMode() {
+      try { playClick(); } catch(e) {}
+      try { localStorage.setItem("coco_active_view", "dock"); } catch(e) {}
+      if (window.parent && window.parent.__cocoBridge && window.parent.__cocoBridge.switchToDockView) {
+        window.parent.__cocoBridge.switchToDockView();
+      } else if (window.__cocoBridge && window.__cocoBridge.switchToDockView) {
+        window.__cocoBridge.switchToDockView();
+      } else if (window.top && window.top !== window.self) {
+        window.top.location.href = "/?view=dock";
+      } else {
+        window.location.href = "/?view=dock";
+      }
     }
 
     function setViewMode(mode) {

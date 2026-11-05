@@ -2545,3 +2545,14 @@ grep -rn "android.ts" "/Users/Gregorio/Desktop/coco squad/windows/index.html" "/
 ```
 grep: /Users/Gregorio/Desktop/coco squad/windows/vite.config*: No such file or directory
 ```
+
+## 2026-11-04T15:29:23.957Z — fallo (código 1)
+
+```bash
+cd "/Users/Gregorio/Desktop/coco squad" && sed -i "s/time: 'En línea'/time: ''/g" windows/src/hq/prototype.html && echo "done"
+```
+
+```
+sed: indows/src/hq/prototype.html: No such file or directory
+Exited with code 1
+```

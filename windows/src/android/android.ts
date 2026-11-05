@@ -1061,7 +1061,19 @@ class AndroidApp {
     this.activeInspectedContact = null;
   }
 
-  private hqMode = true;
+  private hqMode = (() => {
+    try {
+      if (typeof window !== "undefined") {
+        const p = new URLSearchParams(window.location.search);
+        if (p.get("view") === "dock" || window.location.pathname.includes("app")) return false;
+        if (p.get("view") === "hq" || window.location.pathname.includes("hq")) return true;
+        const saved = localStorage.getItem("coco_active_view");
+        if (saved === "hq") return true;
+        if (saved === "dock") return false;
+      }
+    } catch {}
+    return false; // Vista Dock con Mochis arriba por defecto
+  })();
 
   public redMode: 'tutor' | 'learn' | 'research' = (typeof localStorage !== "undefined" && localStorage.getItem("coco_red_mode") as any) || 'tutor';
   public learningMemory: any = {};
@@ -1113,7 +1125,16 @@ class AndroidApp {
                 }
               };
 
-              win.__cocoBridge = {
+              const bridge = {
+                switchToDockView: () => {
+                  this.hqMode = false;
+                  try { localStorage.setItem("coco_active_view", "dock"); } catch {}
+                  document.documentElement.style.cssText = '';
+                  document.body.style.cssText = 'background-color: #0d0d12; margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;';
+                  const root = document.getElementById("root");
+                  if (root) root.style.cssText = '';
+                  this.render();
+                },
                 getApiBase: () => getApiBase(),
                 sendMochiMessage: async (mochiId: string, message: string) => {
                   const map: any = {sol:'coco_sol', green:'coco_verde', blanco:'coco_blanco', red:'coco_rojo', blu:'coco_azul'};
@@ -1153,6 +1174,8 @@ class AndroidApp {
                   return null;
                 }
               };
+              win.__cocoBridge = bridge;
+              (window as any).__cocoBridge = bridge;
             }
           } catch(e) {}
         };
@@ -3336,6 +3359,7 @@ class AndroidApp {
     // ── SIDEBAR DRAWER & CLIENT MODAL EVENTS ──
     document.getElementById("btn-return-hq")?.addEventListener("click", () => {
       this.hqMode = true;
+      try { localStorage.setItem("coco_active_view", "hq"); } catch {}
       this.render();
     });
     document.getElementById("btn-toggle-sidebar")?.addEventListener("click", () => this.toggleSidebar());
@@ -4297,16 +4321,19 @@ Como **Cliente Regular (Tenant #${this.tenantId})**, solo tienes acceso a consul
   }
 
   public switchToChatView() {
-    this.hqMode = true; // El cuartel HQ es la interfaz definitiva y permanente
-    const iframe = document.getElementById('hq-iframe') as HTMLIFrameElement;
-    if (iframe && iframe.contentWindow) {
-      const win = iframe.contentWindow as any;
-      if (typeof win.openMochiChatWindow === 'function') {
-        const idMap: any = {coco_sol:'sol', coco_verde:'green', coco_blanco:'blanco', coco_rojo:'red', coco_azul:'blu'};
-        const cur = this.activeMember?.id || 'coco_blanco';
-        const shortId = idMap[cur] || 'blanco';
-        win.openMochiChatWindow(shortId);
+    if (this.hqMode) {
+      const iframe = document.getElementById('hq-iframe') as HTMLIFrameElement;
+      if (iframe && iframe.contentWindow) {
+        const win = iframe.contentWindow as any;
+        if (typeof win.openMochiChatWindow === 'function') {
+          const idMap: any = {coco_sol:'sol', coco_verde:'green', coco_blanco:'blanco', coco_rojo:'red', coco_azul:'blu'};
+          const cur = this.activeMember?.id || 'coco_blanco';
+          const shortId = idMap[cur] || 'blanco';
+          win.openMochiChatWindow(shortId);
+        }
       }
+    } else {
+      this.switchTab('chat');
     }
   }
 

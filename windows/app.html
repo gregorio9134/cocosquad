@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Coco Squad" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#0d0d12" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" id="app-favicon" href="/icons/32x32.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/android/android.css" />
+    <title>Coco Squad — Dock App</title>
+    <style>
+      html, body {
+        background-color: #0d0d12;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body style="background-color: #0d0d12;">
+    <div id="splash-screen" class="coco-splash-screen">
+      <div class="coco-splash-content">
+        <div class="coco-splash-logo-wrap">
+          <img src="/logo-transparent.png" alt="Coco Squad" class="coco-splash-logo" />
+          <div class="coco-splash-glow"></div>
+        </div>
+        <div class="coco-splash-text-wrap">
+          <span class="coco-splash-title">Coco Squad</span>
+          <span class="coco-splash-status">Cargando Coco Squad...</span>
+        </div>
+      </div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/android/android.ts"></script>
+    <script>
+      setTimeout(function() {
+        var s = document.getElementById("splash-screen");
+        if (s) {
+          s.classList.add("fade-out");
+          setTimeout(function() { if (s && s.parentNode) s.remove(); }, 350);
+        }
+      }, 1200);
+    </script>
+  </body>
+</html>
