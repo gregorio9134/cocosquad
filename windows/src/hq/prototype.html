@@ -160,23 +160,14 @@
 
         <!-- 2. MEDIO: RED COGNITIVE STUDIO & LAB (FLEX-1) -->
     <div id="center-workspace-panel" class="flex-1 min-w-[340px] min-h-[580px] flex flex-col bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 shadow-2xl relative overflow-hidden justify-between">
-      
-      <!-- HEADER DEL PANEL CENTRAL: RED STUDIO -->
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
-        <div class="flex items-center gap-2">
-          <span class="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-sm shadow">🚨</span>
-          <div>
-            <div class="flex items-center gap-1.5">
-              <span class="text-xs font-bold text-white tracking-wide">Red Studio</span>
-              <span class="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-mono font-bold border border-rose-500/30">Pedagogía & Research</span>
-            </div>
-            <p class="text-[10px] text-slate-400">Modos cognitivos autónomos · Tier Estudiantes & Consultorios</p>
-          </div>
+      <!-- DROPZONE OVERLAY DE ARCHIVOS -->
+      <div id="red-dropzone-overlay" class="absolute inset-0 bg-rose-950/90 backdrop-blur-sm border-2 border-dashed border-rose-400 rounded-2xl z-30 flex flex-col items-center justify-center gap-2 p-6 text-center transition-all opacity-0 pointer-events-none">
+        <div class="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-400/60 flex items-center justify-center text-3xl shadow-xl animate-bounce">
+          📁
         </div>
-        <div class="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-800/50">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>FastAPI 8080</span>
-        </div>
+        <div class="text-sm font-bold text-white tracking-wide">Soltá tu archivo para que Red lo lea</div>
+        <p class="text-xs text-rose-200/80 max-w-xs">Extracción directa en memoria RAM Zero-Leak (PDFs clínicos, apuntes, TXT, imágenes).</p>
+        <span class="text-[10px] font-mono text-rose-300 bg-rose-900/50 px-2 py-0.5 rounded border border-rose-700/50">Límite 25 MB · Sin almacenamiento en disco</span>
       </div>
 
       <!-- SELECTOR DE MODOS DE RED (TUTOR / APRENDER / INVESTIGAR) -->
@@ -202,7 +193,7 @@
       </div>
 
       <!-- CHAT STREAM CON RED -->
-      <div id="red-studio-messages" class="flex-1 overflow-y-auto space-y-2.5 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/60 max-h-[290px] min-h-[200px] text-xs font-sans">
+      <div id="red-studio-messages" class="flex-1 overflow-y-auto space-y-2.5 p-2.5 rounded-xl bg-gradient-to-b from-slate-950/80 to-slate-900/60 border border-slate-800/60 max-h-[290px] min-h-[200px] text-xs font-sans relative">
         <!-- populated dynamically -->
       </div>
 
@@ -227,13 +218,16 @@
         <button onclick="sendRedStudioPreset('feynman_test')" class="whitespace-nowrap px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono">
           📖 Syllabus Feynman
         </button>
+        <button onclick="sendRedStudioPreset('file_sample')" class="whitespace-nowrap px-2 py-1 rounded bg-rose-950/70 hover:bg-rose-900/70 text-rose-300 border border-rose-700/60 font-mono flex items-center gap-1">
+          <span>📎</span> Probar con Archivo Clínico
+        </button>
       </div>
 
       <!-- INPUT FORM -->
       <form onsubmit="event.preventDefault(); submitRedStudio();" class="mt-1.5 flex items-center gap-2">
-        <input id="red-studio-input" type="text" autocomplete="off" placeholder="Escribí a Red o pedile una consigna de estudio..." class="flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-sans" />
+        <input id="red-studio-input" type="text" autocomplete="off" placeholder="Escribí a Red o pedile una consigna de estudio..." class="flex-1 bg-slate-950/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none font-sans" />
         <button type="submit" id="red-studio-send-btn" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/30 flex items-center gap-1 transition active:scale-95">
-          <span>Enviar</span>
+          <span id="chat-send-label">Enviar</span>
           <span class="text-rose-200">↵</span>
         </button>
       </form>
@@ -252,25 +246,7 @@
         <span class="text-[9px] font-mono text-rose-300 bg-rose-950/60 px-2 py-0.5 rounded border border-rose-800/50">Box Urgencias</span>
       </div>
 
-      <!-- WIDGET 1: MONITOR ECG EN VIVO CON OSCILOSCOPIO Y BOTÓN DE ALERTA -->
-      <div class="bg-slate-950/90 rounded-xl p-2.5 border border-slate-800/80">
-        <div class="flex items-center justify-between mb-1 text-[10px] font-mono">
-          <span class="text-slate-300 font-bold flex items-center gap-1.5">
-            <span class="text-xs">💓</span> Telemetría Cardíaca (ECG)
-          </span>
-          <span id="side-ecg-rate" class="text-emerald-400 font-bold">75 bpm (Sinusal)</span>
-        </div>
-        <div class="relative bg-black rounded-lg overflow-hidden border border-slate-900 h-12 flex items-center">
-          <canvas id="sideEcgCanvas" width="280" height="48" class="w-full h-full block"></canvas>
-          <div id="side-ecg-status-tag" class="absolute top-1 right-2 text-[8px] font-mono text-emerald-400 font-bold">NORMAL</div>
-        </div>
-        <div class="mt-1.5 flex items-center justify-between">
-          <span class="text-[9px] text-slate-500 font-mono">Subagente ECG #2 activo</span>
-          <button onclick="toggleSideEmergencyAlert()" id="btn-side-alert" class="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 hover:bg-rose-900/40 text-slate-300 hover:text-rose-300 border border-slate-700 transition">
-            🚨 Simular Alerta
-          </button>
-        </div>
-      </div>
+      <!-- WIDGET 1: ELIMINADO -->
 
       <!-- WIDGET 2: LISTA DE TRABAJOS DE INVESTIGACIÓN (/api/red/jobs) -->
       <div class="flex-1 bg-slate-950/80 rounded-xl p-2.5 border border-slate-800/80 flex flex-col justify-between overflow-hidden">
@@ -300,17 +276,20 @@
         </div>
       </div>
 
-      <!-- WIDGET 4: SUBAGENTES DEL SQUAD RED -->
-      <div class="bg-slate-950/70 rounded-xl p-2 border border-slate-800 text-[9px] font-mono">
+      <!-- WIDGET 4: CHAT HISTORIAL POR MOCHI -->
+      <div class="bg-slate-950/70 rounded-xl p-2 border border-slate-800 text-[9px] font-mono flex-1 flex flex-col overflow-hidden">
         <div class="text-slate-400 font-bold mb-1 flex items-center justify-between">
-          <span>👥 Subagentes de Red</span>
-          <span class="text-rose-400">4 Puestos Activos</span>
+          <span>💬 Chat / Historial</span>
+          <span id="mochi-panel-name" class="text-slate-300">-</span>
         </div>
-        <div class="grid grid-cols-2 gap-1 text-[8.5px]">
-          <div class="bg-slate-900/90 p-1 rounded border border-slate-800 text-slate-300 truncate">1. Triage-Prioridad</div>
-          <div class="bg-slate-900/90 p-1 rounded border border-slate-800 text-slate-300 truncate">2. Triage-ECG</div>
-          <div class="bg-slate-900/90 p-1 rounded border border-slate-800 text-slate-300 truncate">3. Triage-Pase</div>
-          <div class="bg-slate-900/90 p-1 rounded border border-slate-800 text-slate-300 truncate">4. Triage-Box</div>
+        <div id="mochi-chat-history" class="flex-1 overflow-y-auto space-y-1 text-[9px]">
+          <div class="text-slate-500">Seleccioná un mochi</div>
+        </div>
+        <div class="mt-2 pt-2 border-t border-slate-800 space-y-1">
+          <div class="text-slate-400 font-bold">📁 Archivos / Reportes</div>
+          <div id="mochi-files" class="space-y-1 text-[9px] text-slate-400">
+            <div>Sin archivos</div>
+          </div>
         </div>
       </div>
 
@@ -433,8 +412,22 @@
         <span id="mochi-floating-typing-text">Coco está analizando tu pedido...</span>
       </div>
 
+      <!-- ATTACHMENT STAGING PREVIEW (MODAL) -->
+      <div id="floating-attachment-preview" class="hidden px-3 py-1.5 bg-slate-900 border-t border-slate-800 flex items-center justify-between gap-2 text-xs font-mono">
+        <div class="flex items-center gap-2 overflow-hidden">
+          <span id="floating-file-icon">📄</span>
+          <span id="floating-file-name" class="text-white truncate font-bold text-[11px]">archivo.pdf</span>
+          <span id="floating-file-size" class="text-slate-400 text-[10px]">(1.2 MB)</span>
+        </div>
+        <button type="button" onclick="clearFloatingAttachment()" class="text-slate-400 hover:text-rose-400 p-0.5">✕</button>
+      </div>
+
       <!-- CHAT INPUT BAR -->
       <form onsubmit="event.preventDefault(); sendFloatingChatMessage();" class="p-3 bg-slate-950 border-t border-slate-800 flex items-center gap-2">
+        <button type="button" onclick="document.getElementById('floating-file-input').click()" title="Adjuntar archivo o imagen" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-indigo-400 border border-slate-700/80 transition flex items-center justify-center shrink-0">
+          <span class="text-sm">📎</span>
+        </button>
+        <input type="file" id="floating-file-input" class="hidden" accept=".pdf,.txt,.md,.markdown,.csv,.json,.png,.jpg,.jpeg,.webp" onchange="handleFloatingFileSelect(event)" />
         <input id="mochi-floating-input" type="text" autocomplete="off" placeholder="Escribí tu pedido a este Mochi..." class="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 font-mono transition" />
         <button type="submit" id="mochi-floating-send-btn" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-1.5 transition active:scale-95">
           <span>Enviar</span>
@@ -929,7 +922,7 @@
 
       // ── SQUAD RED: 4 SUBAGENTES DE TRIAGE Y URGENCIAS (Low-Cost) ──
       { id: 'red_triage', name: 'Triage #1', sprite: 'char5', x: 350, y: 435, baseDeskX: 350, baseDeskY: 435, state: 'typing', frame: 3, row: 0, speech: '', roleDesc: 'Triage-Prioridad (Manchester)', skills: ['classify_urgency', 'vitals_check', 'escalate_rule'] },
-      { id: 'red_ecg_telemetria', name: 'ECG #2', sprite: 'char1', x: 420, y: 435, baseDeskX: 420, baseDeskY: 435, state: 'typing', frame: 4, row: 0, speech: '', roleDesc: 'Triage-ECG (Telemetría)', skills: ['parse_ecg_summary', 'alert_thresholds', 'trend_vitals'] },
+
       { id: 'red_derivaciones', name: 'Pase #3', sprite: 'char2', x: 350, y: 505, baseDeskX: 350, baseDeskY: 505, state: 'typing', frame: 2, row: 0, speech: '', roleDesc: 'Triage-Pase (Derivaciones)', skills: ['referral_letter', 'find_specialist', 'transport_coord'] },
       { id: 'red_guardia', name: 'Box #4', sprite: 'char4', x: 420, y: 505, baseDeskX: 420, baseDeskY: 505, state: 'typing', frame: 5, row: 0, speech: '', roleDesc: 'Triage-Box (Camas)', skills: ['shift_roster', 'box_status', 'emergency_broadcast'] },
 
@@ -1226,7 +1219,7 @@
         else if (targetMochi.id === 'red') showTemporarySpeech(targetMochi, '🚨 ¡Guardia sin novedades! 75 bpm');
         else if (targetMochi.id === 'blu') showTemporarySpeech(targetMochi, '⚡ ¡Hetzner 99.99%! Latencia 12ms');
 
-        openMochiChatWindow(targetMochi.id);
+        // openMochiChatWindow(targetMochi.id); // desactivado - usar paneles laterales
         return;
       }
 
@@ -1251,10 +1244,10 @@
       // 3. Squad Subagent Click
       for (const c of characters) {
         if (Math.hypot(pos.x - c.x, pos.y - c.y) < 24) {
-          if (c.id.startsWith('green')) { selectSupervisor('green'); spawnEmote(c.x + 8, c.y - 10, '💬'); openMochiChatWindow('green'); }
-          else if (c.id.startsWith('blanco')) { selectSupervisor('blanco'); spawnEmote(c.x + 8, c.y - 10, '🩺'); openMochiChatWindow('blanco'); }
-          else if (c.id.startsWith('red')) { selectSupervisor('red'); spawnEmote(c.x + 8, c.y - 10, '🚨'); openMochiChatWindow('red'); }
-          else if (c.id.startsWith('blu')) { selectSupervisor('blu'); spawnEmote(c.x + 8, c.y - 10, '💻'); openMochiChatWindow('blu'); }
+          if (c.id.startsWith('green')) { selectSupervisor('green'); spawnEmote(c.x + 8, c.y - 10, '💬'); /* openMochiChatWindow('green'); */ }
+          else if (c.id.startsWith('blanco')) { selectSupervisor('blanco'); spawnEmote(c.x + 8, c.y - 10, '🩺'); /* openMochiChatWindow('blanco'); */ }
+          else if (c.id.startsWith('red')) { selectSupervisor('red'); spawnEmote(c.x + 8, c.y - 10, '🚨'); /* openMochiChatWindow('red'); */ }
+          else if (c.id.startsWith('blu')) { selectSupervisor('blu'); spawnEmote(c.x + 8, c.y - 10, '💻'); /* openMochiChatWindow('blu'); */ }
           return;
         }
       }
@@ -1287,9 +1280,9 @@
     // Double-click opens full operational chat with Mochi
     canvas.addEventListener('dblclick', () => {
       if (hoveredMochi) {
-        openMochiChatWindow(hoveredMochi.id);
+        // openMochiChatWindow(hoveredMochi.id);
       } else if (hoveredRoom && hoveredRoom.supervisor) {
-        openMochiChatWindow(hoveredRoom.supervisor);
+        // openMochiChatWindow(hoveredRoom.supervisor);
       }
     });
 
@@ -1309,8 +1302,113 @@
       setTimeout(() => { if (entity.speech === text) entity.speech = ''; }, 3200);
     }
 
+    function updateRightPanelDynamic(mochiId) {
+      const id = resolveMochiId(mochiId);
+      const meta = {
+        sol: { name: 'Sol', title: 'Panel de Sol', sub: 'Torre SaaS', dot: 'bg-amber-500', badge: 'text-amber-300 bg-amber-950/60 border-amber-800/50', avatar: '☀️' },
+        green: { name: 'Green', title: 'Panel de Green', sub: 'Recepción', dot: 'bg-emerald-500', badge: 'text-emerald-300 bg-emerald-950/60 border-emerald-800/50', avatar: '🌿' },
+        blanco: { name: 'Coco', title: 'Panel de Coco', sub: 'Kinesiología', dot: 'bg-slate-400', badge: 'text-slate-300 bg-slate-900/60 border-slate-700/50', avatar: '🤍' },
+        red: { name: 'Red', title: 'Panel de Red', sub: 'Box Urgencias', dot: 'bg-rose-500', badge: 'text-rose-300 bg-rose-950/60 border-rose-800/50', avatar: '🚨' },
+        blu: { name: 'Blu', title: 'Panel de Blu', sub: 'Data Center', dot: 'bg-blue-500', badge: 'text-blue-300 bg-blue-950/60 border-blue-800/50', avatar: '🔷' }
+      };
+      const m = meta[id] || meta.blanco;
+      const dot = document.querySelector('#right-workspace-panel .w-2\\.5.h-2\\.5');
+      const headerSpans = document.querySelectorAll('#right-workspace-panel > div:first-child span.text-xs.font-bold');
+      if (headerSpans[0]) { headerSpans[0].innerText = `Panel de ${m.name}`; }
+      const headerBadge = document.querySelector('#right-workspace-panel > div:first-child span.text-[9px].font-mono');
+      if (headerBadge) { headerBadge.innerText = m.sub; headerBadge.className = `text-[9px] font-mono ${m.badge} px-2 py-0.5 rounded border`; }
+      if (dot) dot.className = `w-2.5 h-2.5 rounded-full ${m.dot} animate-pulse`;
+      const mochiPanelName = document.getElementById('mochi-panel-name');
+      if (mochiPanelName) mochiPanelName.innerText = `${m.avatar} ${m.name}`;
+      const chatHist = document.getElementById('mochi-chat-history');
+      if (chatHist) {
+        const hist = (window.mochiChatHistories && mochiChatHistories[id]) ? mochiChatHistories[id] : [];
+        if (hist.length === 0) {
+          chatHist.innerHTML = `<div class="text-slate-500">Sin historial</div>`;
+        } else {
+          chatHist.innerHTML = hist.slice(-8).reverse().map(h => `<div class="p-1 rounded bg-slate-900/60 border border-slate-800 text-slate-300"><span class="text-slate-500">${h.isUser?'Tú':'Mochi'}:</span> ${(h.text||'').slice(0,40)}${(h.text||'').length>40?'...':''}</div>`).join('');
+        }
+      }
+      const mochiFiles = document.getElementById('mochi-files');
+      if (mochiFiles) {
+        mochiFiles.innerHTML = `<div class="text-slate-500">Sin archivos</div>`;
+      }
+    }
+
+    function updateCenterPanelDynamic(mochiId) {
+      const id = resolveMochiId(mochiId);
+      const meta = {
+        sol: { name: 'Sol Studio', avatar: '☀️', badge: 'SaaS Lead', badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/30', desc: 'Torre SaaS · Supervisión Central', avatarClass: 'bg-amber-500/20 border-amber-500/40', isRed: false, btn: 'bg-amber-600 hover:bg-amber-500', shadow: 'shadow-amber-600/30' },
+        green: { name: 'Green Studio', avatar: '🌿', badge: 'Recepción', badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', desc: 'WhatsApp · Turnos & Atención', avatarClass: 'bg-emerald-500/20 border-emerald-500/40', isRed: false, btn: 'bg-emerald-600 hover:bg-emerald-500', shadow: 'shadow-emerald-600/30' },
+        blanco: { name: 'Coco Studio', avatar: '🤍', badge: 'Kinesiología', badgeClass: 'bg-slate-500/20 text-slate-300 border-slate-500/30', desc: 'Clínica · Rehabilitación', avatarClass: 'bg-slate-500/20 border-slate-500/40', isRed: false, btn: 'bg-slate-600 hover:bg-slate-500', shadow: 'shadow-slate-600/30' },
+        red: { name: 'Red Studio', avatar: '🚨', badge: 'Pedagogía & Research', badgeClass: 'bg-rose-500/20 text-rose-300 border-rose-500/30', desc: 'Modos cognitivos autónomos · Tier Estudiantes & Consultorios', avatarClass: 'bg-rose-500/20 border-rose-500/40', isRed: true, btn: 'bg-rose-600 hover:bg-rose-500', shadow: 'shadow-rose-600/30' },
+        blu: { name: 'Blu Studio', avatar: '🔷', badge: 'DevOps', badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/30', desc: 'Infraestructura · Hetzner · Seguridad', avatarClass: 'bg-blue-500/20 border-blue-500/40', isRed: false, btn: 'bg-blue-600 hover:bg-blue-500', shadow: 'shadow-blue-600/30' }
+      };
+      const m = meta[id] || meta.blanco;
+      const avatar = document.getElementById('center-panel-avatar');
+      const nameEl = document.getElementById('center-panel-name');
+      const badgeEl = document.getElementById('center-panel-badge');
+      const descEl = document.getElementById('center-panel-desc');
+      if (avatar) { avatar.textContent = m.avatar; avatar.className = `w-7 h-7 rounded-lg ${m.avatarClass} flex items-center justify-center text-sm shadow`; }
+      if (nameEl) nameEl.textContent = m.name;
+      if (badgeEl) { badgeEl.textContent = m.badge; badgeEl.className = `text-[9px] px-1.5 py-0.2 rounded font-mono font-bold border ${m.badgeClass}`; }
+      if (descEl) descEl.textContent = m.desc;
+      const panel = document.getElementById('center-workspace-panel');
+      const modes = panel ? panel.querySelector('.my-2.bg-slate-950\\/80') : null;
+      if (modes) modes.style.display = m.isRed ? 'flex' : 'none';
+      const banner = document.getElementById('red-mode-banner');
+      if (banner) banner.style.display = m.isRed ? 'flex' : 'none';
+      const actions = panel ? panel.querySelector('.mt-2.flex.items-center.gap-1') : null;
+      if (actions) actions.style.display = m.isRed ? 'flex' : 'none';
+      const input = document.getElementById('red-studio-input');
+      if (input) input.placeholder = m.isRed ? 'Escribí a Red o pedile una consigna de estudio...' : `Escribí a ${m.name.replace(' Studio','')}...`;
+      const sendBtn = document.getElementById('red-studio-send-btn');
+      const sendLabel = document.getElementById('chat-send-label');
+      if (sendBtn) {
+        sendBtn.className = `px-3.5 py-2 ${m.btn} text-white font-bold text-xs rounded-xl shadow-lg ${m.shadow} flex items-center gap-1 transition active:scale-95`;
+      }
+      if (sendLabel) sendLabel.textContent = `Enviar a ${m.name.replace(' Studio','')}`;
+      try {
+        const borderColors = { red:'rgba(244,63,94,0.35)', sol:'rgba(251,191,36,0.35)', green:'rgba(16,185,129,0.35)', blanco:'rgba(148,163,184,0.35)', blu:'rgba(59,130,246,0.35)' };
+        const bc = borderColors[id] || borderColors.blanco;
+        const bubbles = document.querySelectorAll('#red-studio-messages .max-w-\\[70\\%\\]');
+        bubbles.forEach(b => { b.style.border = `1px solid ${bc}`; });
+      } catch(e){}
+      // Load chat per mochi
+      try {
+        if (!centerChatMessagesByMochi[id]) {
+          const greetings = {
+            red: '¿Qué hacemos hoy?',
+            sol: '¿Qué hacemos hoy?',
+            green: '¿Qué hacemos hoy?',
+            blanco: '¿Qué hacemos hoy?',
+            blu: '¿Qué hacemos hoy?'
+          };
+          centerChatMessagesByMochi[id] = [{
+            sender: m.name.replace(' Studio',''),
+            isUser: false,
+            time: '',
+            text: greetings[id] || '¿Qué hacemos hoy?'
+          }];
+        }
+        redStudioMessages = centerChatMessagesByMochi[id];
+        if (typeof renderRedStudioMessages === 'function') renderRedStudioMessages();
+        try {
+          const borderColors = { red:'rgba(244,63,94,0.35)', sol:'rgba(251,191,36,0.35)', green:'rgba(16,185,129,0.35)', blanco:'rgba(148,163,184,0.35)', blu:'rgba(59,130,246,0.35)' };
+          const bc = borderColors[id] || borderColors.blanco;
+          setTimeout(() => {
+            const bubbles = document.querySelectorAll('#red-studio-messages .max-w-\\[70\\%\\]');
+            bubbles.forEach(b => { b.style.border = `1px solid ${bc}`; });
+          }, 50);
+        } catch(e){}
+      } catch(e){}
+    }
+
     function selectSupervisor(mochiId) {
       const id = resolveMochiId(mochiId);
+      try { selectedRoom = id; } catch(e){}
+      try { updateRightPanelDynamic(id); } catch(e){}
+      try { updateCenterPanelDynamic(id); } catch(e){}
       playChime();
       const meta = {
         sol: { name: 'Sol', role: 'SaaS Lead · Supervisión Central', avatar: '☀️', color: 'text-amber-400', room: 'sol' },
@@ -1587,7 +1685,15 @@
                 message: val,
                 current_agent: agentId,
                 tenant_id: 1,
-                is_founder: true
+                is_founder: true,
+                ...(attached ? {
+                  file: {
+                    name: attached.name,
+                    data: attached.data,
+                    mime: attached.type,
+                    size: attached.size
+                  }
+                } : {})
               })
             });
             clearTimeout(fetchTimeout);
@@ -1797,41 +1903,41 @@
       sol: [
         {
           sender: 'Sol',
-          text: '¡Hola Gregorio! 👑 Soy Sol, líder de estrategia y CEO de Coco Squad. Tengo la red SaaS bajo control con $18,450 MRR. ¿Qué decisión comercial o expansión analizamos hoy?',
+          text: '¿Qué hacemos hoy?',
           isUser: false,
-          time: 'En línea'
+          time: ''
         }
       ],
       green: [
         {
           sender: 'Green',
-          text: '¡Hola Gregorio! 🌱 Soy Green, a cargo de Recepción y Atención Omnicanal WhatsApp. Los 35 turnos de hoy están confirmados. ¿Querés lanzar una campaña o revisar mensajes entrantes?',
+          text: '¿Qué hacemos hoy?',
           isUser: false,
-          time: 'En línea'
+          time: ''
         }
       ],
       blanco: [
         {
           sender: 'Coco',
-          text: '¡Hola Gregorio! 🤍 Soy Coco, Director Médico y especialista en Kinesiología. La camilla y protocolos de rehabilitación están listos. ¿Qué caso clínico o rutina revisamos?',
+          text: '¿Qué hacemos hoy?',
           isUser: false,
-          time: 'En línea'
+          time: ''
         }
       ],
       red: [
         {
           sender: 'Red',
-          text: '¡Hola Gregorio! 🚨 Soy Red, guardia de emergencias y CFO financiero. El ritmo cardíaco y los balances de caja están monitoreados. ¿Qué alerta o flujo de caja auditamos?',
+          text: '¿Qué hacemos hoy?',
           isUser: false,
-          time: 'En línea'
+          time: ''
         }
       ],
       blu: [
         {
           sender: 'Blu',
-          text: '¡Hola Gregorio! ⚡ Soy Blu, CTO y sysadmin de infraestructura. Servidores Hetzner con 99.99% uptime y latencia 12ms. ¿Qué despliegue o sincronización ejecutamos?',
+          text: '¿Qué hacemos hoy?',
           isUser: false,
-          time: 'En línea'
+          time: ''
         }
       ]
     };
@@ -1910,6 +2016,27 @@
 
       container.innerHTML = history.map(item => {
         if (item.isUser) {
+          let fileBadge = '';
+          if (item.file) {
+            fileBadge = `
+              <div class="mt-2 p-1.5 rounded-lg bg-indigo-950/80 border border-indigo-400/40 text-[10px] font-mono flex items-center justify-between gap-2 text-indigo-200">
+                <div class="flex items-center gap-1.5 overflow-hidden">
+                  <span class="text-sm">${item.file.icon || '📄'}</span>
+                  <span class="truncate font-bold">${item.file.name}</span>
+                  <span class="text-indigo-300/70 text-[9px]">(${item.file.sizeStr || ''})</span>
+                </div>
+                <span class="text-[8px] bg-indigo-500/30 px-1.5 py-0.5 rounded text-indigo-200 font-bold uppercase border border-indigo-400/20">RAM Zero-Leak</span>
+              </div>
+            `;
+            if (item.file.isImage && item.file.dataUrl) {
+              fileBadge += `
+                <div class="mt-1.5 rounded-lg overflow-hidden border border-indigo-400/30 max-w-[200px]">
+                  <img src="${item.file.dataUrl}" alt="${item.file.name}" class="w-full h-auto object-cover max-h-32 rounded" />
+                </div>
+              `;
+            }
+          }
+
           return `
             <div class="flex justify-end items-end gap-2">
               <div class="max-w-[85%] bg-indigo-600/90 text-white rounded-2xl rounded-tr-none px-3.5 py-2 shadow-md border border-indigo-400/30">
@@ -1918,6 +2045,7 @@
                   <span class="text-[9px] opacity-80">${item.time || ''}</span>
                 </div>
                 <p class="leading-relaxed whitespace-pre-wrap">${item.text}</p>
+                ${fileBadge}
               </div>
             </div>
           `;
@@ -1944,9 +2072,14 @@
 
     async function sendFloatingChatMessage(customText) {
       const input = document.getElementById('mochi-floating-input');
-      const val = (customText || (input ? input.value : '') || '').trim();
-      if (!val) return;
+      let val = (customText || (input ? input.value : '') || '').trim();
+      const attached = stagedFloatingFile;
+      if (!val && attached) {
+        val = 'Analizá detalladamente este documento adjunto.';
+      }
+      if (!val && !attached) return;
       if (input) input.value = '';
+      clearFloatingAttachment();
 
       const mochiId = activeFloatingMochi || selectedRoom || 'blanco';
       const meta = mochiMeta[mochiId] || mochiMeta.blanco;
@@ -1958,7 +2091,14 @@
         sender: 'Gregorio',
         text: val,
         isUser: true,
-        time: timeStr
+        time: timeStr,
+        file: attached ? {
+          name: attached.name,
+          sizeStr: attached.sizeStr,
+          icon: attached.icon,
+          isImage: attached.type ? attached.type.startsWith('image/') : false,
+          dataUrl: attached.dataUrl
+        } : null
       });
       renderMochiChatMessages(mochiId);
       playClick();
@@ -2004,7 +2144,15 @@
                 message: val,
                 current_agent: agentId,
                 tenant_id: 1,
-                is_founder: true
+                is_founder: true,
+                ...(attached ? {
+                  file: {
+                    name: attached.name,
+                    data: attached.data,
+                    mime: attached.type,
+                    size: attached.size
+                  }
+                } : {})
               })
             });
             clearTimeout(fetchTimeout);
@@ -2089,6 +2237,10 @@
 
     // Exported globally so parent and iframes can access seamlessly
     window.openMochiChatWindow = openMochiChatWindow;
+    window.updateRightPanelDynamic = updateRightPanelDynamic;
+    window.updateCenterPanelDynamic = updateCenterPanelDynamic;
+    try { updateRightPanelDynamic(selectedRoom || 'blanco'); } catch(e){}
+    try { updateCenterPanelDynamic(selectedRoom || 'blanco'); } catch(e){}
     window.closeMochiChatWindow = closeMochiChatWindow;
     window.sendFloatingChatMessage = sendFloatingChatMessage;
 
@@ -2733,15 +2885,7 @@
       drawServerRack(84, 302);
       drawServerRack(142, 302);
 
-      // 5. Triage (Limpio: placa de cruz roja médica)
-      ctx.fillStyle = '#dc2626';
-      ctx.fillRect(430, 394, 24, 24);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(440, 398, 4, 16);
-      ctx.fillRect(434, 404, 16, 4);
-      ctx.strokeStyle = '#991b1b';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(430, 394, 24, 24);
+      // 5. Triage (Sin cruz roja)
     }
 
     function drawClockSecondHand(cx, cy, r) {
@@ -3479,10 +3623,7 @@
       // Placed at cx + 12 so it doesn't block character face/torso at all!
       drawAnimatedPC(cx + 12, cy + 5, pc1, pc2);
 
-      // 6. Optional Bedside Oscilloscope (e.g. for ECG agent)
-      if (hasOscilloscope) {
-        drawBedsideOscilloscope(cx + 28, deskY - 2);
-      }
+
     }
 
     function drawFurnitureFrontLayer() {
@@ -3501,7 +3642,7 @@
 
       // Triage 4 Subagents (Puestos 1-4)
       drawPerspectiveDesk(350, 435, 'pcOn3', 'pcOn2');
-      drawPerspectiveDesk(420, 435, 'pcOn2', 'pcOn1', true);
+      drawPerspectiveDesk(420, 435, 'pcOn2', 'pcOn1');
       drawPerspectiveDesk(350, 505, 'pcOn1', 'pcOn3');
       drawPerspectiveDesk(420, 505, 'pcOn2', 'pcOn3');
 
@@ -3605,12 +3746,7 @@
         ctx.fillStyle = recGrad;
         ctx.fillRect(16, 16, 208, 264);
 
-        // ECG Green Vitals Glow in Triage
-        const triGrad = ctx.createRadialGradient(385, 470, 5, 385, 470, 65);
-        triGrad.addColorStop(0, emergencyAlertActive ? 'rgba(239, 68, 68, 0.18)' : 'rgba(52, 211, 153, 0.12)');
-        triGrad.addColorStop(1, 'rgba(52, 211, 153, 0)');
-        ctx.fillStyle = triGrad;
-        ctx.fillRect(240, 388, 224, 176);
+
       }
 
       if (lightingMode === 'night') {
@@ -3765,12 +3901,13 @@
     // 🔴 RED COGNITIVE STUDIO & RESEARCH LAB (FRONTEND INTERACTION)
     // ══════════════════════════════════════════════════════════════════════════
     let currentRedMode = 'tutor'; // 'tutor' | 'learn' | 'research'
+    let centerChatMessagesByMochi = {};
     let redStudioMessages = [
       {
         sender: 'Red',
         isUser: false,
-        time: 'En línea',
-        text: '¡Hola Gregorio! 🚨 Estoy listo en el laboratorio. Podés alternar entre mis modos cognitivos: **Tutor Socrático** (con regla Attempt-First), **Aprender** (con Syllabus Feynman) o **Investigación** (genero un outline y espero tu aprobación antes de redactar y exportar el paper). ¿Qué probamos?'
+        time: '',
+        text: '¿Qué hacemos hoy?'
       }
     ];
 
@@ -3809,8 +3946,67 @@
       const container = document.getElementById('red-studio-messages');
       if (!container) return;
 
+      // Gemini-style background greeting
+      if (redStudioMessages.length === 1 && !redStudioMessages[0].isUser) {
+        const greetingText = redStudioMessages[0].text || '¿Qué hacemos hoy?';
+        container.innerHTML = `
+          <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+            <div class="text-center">
+              <div class="text-slate-600 text-sm mb-1">Hola Gregorio</div>
+              <div class="text-slate-400 text-base font-medium">${greetingText}</div>
+            </div>
+          </div>
+        ` + redStudioMessages.map((m, idx) => {
+          if (m.isUser) {
+            return `
+              <div class="flex justify-end items-end gap-1.5 relative z-10">
+                <div class="max-w-[85%] bg-indigo-600 text-white rounded-2xl rounded-tr-none px-3 py-2 shadow border border-indigo-400/30 text-xs">
+                  <div class="flex items-center justify-between gap-2 text-[9px] text-indigo-200 mb-0.5 font-mono">
+                    <span class="font-bold">👤 Gregorio</span>
+                    <span class="opacity-80">${m.time || ''}</span>
+                  </div>
+                  <div class="whitespace-pre-wrap leading-relaxed">${m.text}</div>
+                </div>
+              </div>
+            `;
+          } else {
+            return '';
+          }
+        }).join('');
+        container.scrollTop = container.scrollHeight;
+        try {
+          const cur = (typeof resolveMochiId === 'function' && typeof selectedRoom !== 'undefined') ? resolveMochiId(selectedRoom) : 'red';
+          const borderColors = { red:'rgba(244,63,94,0.35)', sol:'rgba(251,191,36,0.35)', green:'rgba(16,185,129,0.35)', blanco:'rgba(148,163,184,0.35)', blu:'rgba(59,130,246,0.35)' };
+          const bc = borderColors[cur] || borderColors.blanco;
+          const bubbles = document.querySelectorAll('#red-studio-messages .max-w-\\[85\\%\\], #red-studio-messages .max-w-\\[70\\%\\]');
+          bubbles.forEach(b => { b.style.border = `1px solid ${bc}`; });
+        } catch(e){}
+        return;
+      }
+
       container.innerHTML = redStudioMessages.map((m, idx) => {
         if (m.isUser) {
+          let fileBadge = '';
+          if (m.file) {
+            fileBadge = `
+              <div class="mt-2 p-1.5 rounded-lg bg-indigo-950/80 border border-indigo-400/40 text-[10px] font-mono flex items-center justify-between gap-2 text-indigo-200">
+                <div class="flex items-center gap-1.5 overflow-hidden">
+                  <span class="text-sm">${m.file.icon || '📄'}</span>
+                  <span class="truncate font-bold">${m.file.name}</span>
+                  <span class="text-indigo-300/70 text-[9px]">(${m.file.sizeStr || ''})</span>
+                </div>
+                <span class="text-[8px] bg-indigo-500/30 px-1.5 py-0.5 rounded text-indigo-200 font-bold tracking-wider shrink-0 uppercase border border-indigo-400/20">RAM Zero-Leak</span>
+              </div>
+            `;
+            if (m.file.isImage && m.file.dataUrl) {
+              fileBadge += `
+                <div class="mt-1.5 rounded-lg overflow-hidden border border-indigo-400/30 max-w-[220px]">
+                  <img src="${m.file.dataUrl}" alt="${m.file.name}" class="w-full h-auto object-cover max-h-36 rounded" />
+                </div>
+              `;
+            }
+          }
+
           return `
             <div class="flex justify-end items-end gap-1.5">
               <div class="max-w-[85%] bg-indigo-600 text-white rounded-2xl rounded-tr-none px-3 py-2 shadow border border-indigo-400/30 text-xs">
@@ -3819,6 +4015,7 @@
                   <span class="opacity-80">${m.time || ''}</span>
                 </div>
                 <div class="whitespace-pre-wrap leading-relaxed">${m.text}</div>
+                ${fileBadge}
               </div>
             </div>
           `;
@@ -3869,14 +4066,8 @@
 
           return `
             <div class="flex items-start gap-2">
-              <div class="w-6 h-6 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-xs shrink-0 shadow">
-                🚨
-              </div>
-              <div class="max-w-[88%] bg-slate-900/90 text-slate-200 rounded-2xl rounded-tl-none px-3 py-2.5 shadow-md border border-slate-800 text-xs">
-                <div class="flex items-center justify-between gap-2 text-[9px] mb-1 font-mono">
-                  <span class="font-bold text-rose-400 flex items-center gap-1">
-                    Red · ${m.modoTag || (currentRedMode === 'tutor' ? 'Tutor' : currentRedMode === 'learn' ? 'Aprender' : 'Research')}
-                  </span>
+              <div class="max-w-[70%] bg-slate-900/90 text-slate-200 rounded-2xl rounded-tl-none px-3 py-2 shadow-md text-xs" style="border:1px solid ${(function(){try{const cur=(typeof resolveMochiId==='function'&&typeof selectedRoom!=='undefined')?resolveMochiId(selectedRoom):'red'; const c={red:'rgba(244,63,94,0.35)',sol:'rgba(251,191,36,0.35)',green:'rgba(16,185,129,0.35)',blanco:'rgba(148,163,184,0.35)',blu:'rgba(59,130,246,0.35)'}; return c[cur]||'rgba(148,163,184,0.35)';}catch(e){return 'rgba(148,163,184,0.35)';}})()};">
+                <div class="flex items-center justify-end gap-2 text-[9px] mb-1 font-mono">
                   <span class="text-slate-500">${m.time || ''}</span>
                 </div>
                 <div class="leading-relaxed whitespace-pre-wrap">${formattedText}</div>
@@ -3893,10 +4084,15 @@
 
     function submitRedStudio() {
       const input = document.getElementById('red-studio-input');
-      const val = input ? input.value.trim() : '';
-      if (!val) return;
-      input.value = '';
-      sendRedStudioMessage(val);
+      let val = input ? input.value.trim() : '';
+      const attached = stagedRedFile;
+      if (!val && attached) {
+        val = 'Analizá detalladamente este documento adjunto, identificá los puntos clínicos y metodológicos clave, y presentá un informe estructurado.';
+      }
+      if (!val && !attached) return;
+      if (input) input.value = '';
+      clearRedAttachment();
+      sendRedStudioMessage(val, attached);
     }
 
     function sendRedStudioPreset(type) {
@@ -3909,7 +4105,206 @@
       } else if (type === 'feynman_test') {
         switchRedMode('learn');
         sendRedStudioMessage('Explicame la biomecánica de la articulación glenohumeral con la Técnica Feynman');
+      } else if (type === 'file_sample') {
+        switchRedMode('tutor');
+        // Simular archivo clínico cargado directamente desde el dispositivo
+        const sampleText = `HISTORIA CLÍNICA - PACIENTE: Juan Pérez\nEDAD: 42 años\nDIAGNÓSTICO: Tendinopatía rotuliana izquierda en fase subaguda.\nSÍNTOMAS: Dolor en polo inferior de la rótula al descender escaleras y tras 20 minutos de trote.\nTESTS REALIZADOS: Test de declive positivo a 30 grados de flexión. Dolor a la palpación de 6/10.\nINDICACIONES: Protocolo de carga isométrica excéntrica y neuromodulación percutánea.`;
+        const b64 = btoa(unescape(encodeURIComponent(sampleText)));
+        const mockFile = {
+          name: 'historia_clinica_juan_perez.txt',
+          size: sampleText.length,
+          sizeStr: sampleText.length + ' B',
+          type: 'text/plain',
+          data: b64,
+          dataUrl: 'data:text/plain;base64,' + b64,
+          icon: '📝'
+        };
+        sendRedStudioMessage('Leé esta historia clínica y decime qué protocolo de rehabilitación recomiendas según el documento.', mockFile);
       }
+    }
+
+    
+    // ── 8B. GESTOR UNIVERSAL DE ADJUNTOS DIRECTOS DESDE EL DISPOSITIVO ──
+    let stagedRedFile = null;
+    let stagedFloatingFile = null;
+
+    function triggerRedFileInput() {
+      playClick();
+      const input = document.getElementById('red-file-input');
+      if (input) input.click();
+    }
+
+    function formatFileSize(bytes) {
+      if (!bytes || isNaN(bytes)) return '0 B';
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function getFileIcon(name) {
+      const lower = (name || '').toLowerCase();
+      if (lower.endsWith('.pdf')) return '📄';
+      if (lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.markdown')) return '📝';
+      if (lower.endsWith('.csv') || lower.endsWith('.json') || lower.endsWith('.log')) return '📊';
+      if (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.webp')) return '🖼️';
+      return '📁';
+    }
+
+    function processSelectedFile(file, isRedStudio = true) {
+      if (!file) return;
+      if (file.size > 25 * 1024 * 1024) {
+        alert('El archivo supera el límite de 25 MB para lectura en memoria RAM.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        const pureB64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+        const icon = getFileIcon(file.name);
+        const sizeStr = formatFileSize(file.size);
+
+        if (isRedStudio) {
+          stagedRedFile = {
+            name: file.name,
+            size: file.size,
+            sizeStr: sizeStr,
+            type: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain'),
+            data: pureB64,
+            dataUrl: dataUrl,
+            icon: icon
+          };
+
+          const previewEl = document.getElementById('red-attachment-preview');
+          const nameEl = document.getElementById('red-file-name');
+          const sizeEl = document.getElementById('red-file-size');
+          const iconEl = document.getElementById('red-file-icon-box');
+
+          if (nameEl) nameEl.textContent = file.name;
+          if (sizeEl) sizeEl.textContent = sizeStr;
+          if (iconEl) iconEl.textContent = icon;
+          if (previewEl) previewEl.classList.remove('hidden');
+
+          const inputEl = document.getElementById('red-studio-input');
+          if (inputEl && !inputEl.value.trim()) {
+            inputEl.placeholder = `¿Qué querés que Red analice de ${file.name}? (Enter para análisis completo)`;
+            inputEl.focus();
+          }
+          playChime();
+        } else {
+          stagedFloatingFile = {
+            name: file.name,
+            size: file.size,
+            sizeStr: sizeStr,
+            type: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain'),
+            data: pureB64,
+            dataUrl: dataUrl,
+            icon: icon
+          };
+          const previewEl = document.getElementById('floating-attachment-preview');
+          const nameEl = document.getElementById('floating-file-name');
+          const sizeEl = document.getElementById('floating-file-size');
+          const iconEl = document.getElementById('floating-file-icon');
+          if (nameEl) nameEl.textContent = file.name;
+          if (sizeEl) sizeEl.textContent = `(${sizeStr})`;
+          if (iconEl) iconEl.textContent = icon;
+          if (previewEl) previewEl.classList.remove('hidden');
+          playChime();
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleRedFileSelect(event) {
+      const file = event.target.files && event.target.files[0];
+      if (file) processSelectedFile(file, true);
+    }
+
+    function handleFloatingFileSelect(event) {
+      const file = event.target.files && event.target.files[0];
+      if (file) processSelectedFile(file, false);
+    }
+
+    function clearRedAttachment() {
+      stagedRedFile = null;
+      const previewEl = document.getElementById('red-attachment-preview');
+      if (previewEl) previewEl.classList.add('hidden');
+      const input = document.getElementById('red-file-input');
+      if (input) input.value = '';
+      const textInput = document.getElementById('red-studio-input');
+      if (textInput && textInput.placeholder.includes('¿Qué querés que Red analice')) {
+        textInput.placeholder = 'Escribí a Red o adjuntá un archivo para analizar...';
+      }
+      playClick();
+    }
+
+    function clearFloatingAttachment() {
+      stagedFloatingFile = null;
+      const previewEl = document.getElementById('floating-attachment-preview');
+      if (previewEl) previewEl.classList.add('hidden');
+      const input = document.getElementById('floating-file-input');
+      if (input) input.value = '';
+    }
+
+    function setRedPresetFilePrompt() {
+      const textInput = document.getElementById('red-studio-input');
+      if (textInput) {
+        textInput.value = 'Analizá detalladamente este documento adjunto, identificá los puntos clínicos y metodológicos clave, y presentá un informe estructurado.';
+        textInput.focus();
+      }
+      playClick();
+    }
+
+    function initRedStudioDragAndDrop() {
+      const panel = document.getElementById('center-workspace-panel');
+      const overlay = document.getElementById('red-dropzone-overlay');
+      if (!panel || !overlay) return;
+
+      let dragCounter = 0;
+
+      panel.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter++;
+        overlay.classList.remove('opacity-0', 'pointer-events-none');
+        overlay.classList.add('opacity-100');
+      });
+
+      panel.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
+      panel.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter--;
+        if (dragCounter <= 0) {
+          dragCounter = 0;
+          overlay.classList.remove('opacity-100');
+          overlay.classList.add('opacity-0', 'pointer-events-none');
+        }
+      });
+
+      panel.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter = 0;
+        overlay.classList.remove('opacity-100');
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+
+        const dt = e.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+          processSelectedFile(dt.files[0], true);
+        }
+      });
+
+      // Soporte para Pegar desde portapapeles (Cmd+V / Ctrl+V)
+      window.addEventListener('paste', (e) => {
+        if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+          processSelectedFile(e.clipboardData.files[0], true);
+        }
+      });
     }
 
     function approveRedOutline(jobId) {
@@ -3928,6 +4323,11 @@
         text: text,
         time: timeStr
       });
+      try {
+        const cur = (typeof resolveMochiId === 'function' && typeof selectedRoom !== 'undefined') ? resolveMochiId(selectedRoom) : 'red';
+        if (!centerChatMessagesByMochi[cur]) centerChatMessagesByMochi[cur] = redStudioMessages;
+        else centerChatMessagesByMochi[cur] = redStudioMessages;
+      } catch(e){}
       renderRedStudioMessages();
 
       const typingEl = document.getElementById('red-studio-typing');
@@ -3973,8 +4373,9 @@
             outlineApproved = false;
           }
 
+          let _curM = (function(){try{const cur=(typeof resolveMochiId==='function'&&typeof selectedRoom!=='undefined')?resolveMochiId(selectedRoom):'red'; const m={red:'Red',sol:'Sol',green:'Green',blanco:'Coco',blu:'Blu'}; return m[cur]||'Red';}catch(e){return 'Red';}})();
           redStudioMessages.push({
-            sender: 'Red',
+            sender: _curM,
             isUser: false,
             text: reply,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -3984,6 +4385,11 @@
             downloadUrl: dlUrl,
             filename: filename
           });
+          try {
+            const cur = (typeof resolveMochiId === 'function' && typeof selectedRoom !== 'undefined') ? resolveMochiId(selectedRoom) : 'red';
+            if (!centerChatMessagesByMochi[cur]) centerChatMessagesByMochi[cur] = redStudioMessages;
+            else centerChatMessagesByMochi[cur] = redStudioMessages;
+          } catch(e){}
           renderRedStudioMessages();
 
           if (targetMochi) {

@@ -160,6 +160,15 @@
 
         <!-- 2. MEDIO: RED COGNITIVE STUDIO & LAB (FLEX-1) -->
     <div id="center-workspace-panel" class="flex-1 min-w-[340px] min-h-[580px] flex flex-col bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 shadow-2xl relative overflow-hidden justify-between">
+      <!-- DROPZONE OVERLAY DE ARCHIVOS -->
+      <div id="red-dropzone-overlay" class="absolute inset-0 bg-rose-950/90 backdrop-blur-sm border-2 border-dashed border-rose-400 rounded-2xl z-30 flex flex-col items-center justify-center gap-2 p-6 text-center transition-all opacity-0 pointer-events-none">
+        <div class="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-400/60 flex items-center justify-center text-3xl shadow-xl animate-bounce">
+          📁
+        </div>
+        <div class="text-sm font-bold text-white tracking-wide">Soltá tu archivo para que Red lo lea</div>
+        <p class="text-xs text-rose-200/80 max-w-xs">Extracción directa en memoria RAM Zero-Leak (PDFs clínicos, apuntes, TXT, imágenes).</p>
+        <span class="text-[10px] font-mono text-rose-300 bg-rose-900/50 px-2 py-0.5 rounded border border-rose-700/50">Límite 25 MB · Sin almacenamiento en disco</span>
+      </div>
       
       <!-- HEADER DEL PANEL CENTRAL: RED STUDIO -->
       <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
@@ -227,11 +236,43 @@
         <button onclick="sendRedStudioPreset('feynman_test')" class="whitespace-nowrap px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono">
           📖 Syllabus Feynman
         </button>
+        <button onclick="sendRedStudioPreset('file_sample')" class="whitespace-nowrap px-2 py-1 rounded bg-rose-950/70 hover:bg-rose-900/70 text-rose-300 border border-rose-700/60 font-mono flex items-center gap-1">
+          <span>📎</span> Probar con Archivo Clínico
+        </button>
+      </div>
+
+      <!-- ATTACHMENT STAGING PREVIEW -->
+      <div id="red-attachment-preview" class="hidden mt-1.5 p-2 rounded-xl bg-slate-950/95 border border-rose-500/50 flex items-center justify-between gap-2 shadow-lg">
+        <div class="flex items-center gap-2.5 overflow-hidden">
+          <div id="red-file-icon-box" class="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-sm shrink-0">
+            📄
+          </div>
+          <div class="truncate">
+            <div id="red-file-name" class="font-bold text-white text-[11px] truncate max-w-[200px]">archivo.pdf</div>
+            <div class="flex items-center gap-2 text-[9px] text-rose-300 font-mono">
+              <span id="red-file-size">1.2 MB</span>
+              <span class="text-slate-500">•</span>
+              <span class="text-emerald-400 font-semibold">Listo para lectura RAM</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button type="button" onclick="setRedPresetFilePrompt()" class="px-2 py-1 rounded-lg bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 border border-rose-500/30 text-[10px] font-mono transition flex items-center gap-1">
+            <span>⚡ Analizar</span>
+          </button>
+          <button type="button" onclick="clearRedAttachment()" class="w-6 h-6 rounded-lg hover:bg-rose-900/40 text-slate-400 hover:text-white flex items-center justify-center text-xs transition" title="Quitar archivo">
+            ✕
+          </button>
+        </div>
       </div>
 
       <!-- INPUT FORM -->
       <form onsubmit="event.preventDefault(); submitRedStudio();" class="mt-1.5 flex items-center gap-2">
-        <input id="red-studio-input" type="text" autocomplete="off" placeholder="Escribí a Red o pedile una consigna de estudio..." class="flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-sans" />
+        <button type="button" onclick="triggerRedFileInput()" title="Adjuntar archivo o imagen desde tu dispositivo (.pdf, .txt, .md, etc.)" class="p-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-700/80 transition flex items-center justify-center shrink-0 active:scale-95 shadow">
+          <span class="text-sm">📎</span>
+        </button>
+        <input type="file" id="red-file-input" class="hidden" accept=".pdf,.txt,.md,.markdown,.csv,.json,.png,.jpg,.jpeg,.webp" onchange="handleRedFileSelect(event)" />
+        <input id="red-studio-input" type="text" autocomplete="off" placeholder="Escribí a Red o adjuntá un archivo para analizar..." class="flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-sans" />
         <button type="submit" id="red-studio-send-btn" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/30 flex items-center gap-1 transition active:scale-95">
           <span>Enviar</span>
           <span class="text-rose-200">↵</span>
@@ -433,8 +474,22 @@
         <span id="mochi-floating-typing-text">Coco está analizando tu pedido...</span>
       </div>
 
+      <!-- ATTACHMENT STAGING PREVIEW (MODAL) -->
+      <div id="floating-attachment-preview" class="hidden px-3 py-1.5 bg-slate-900 border-t border-slate-800 flex items-center justify-between gap-2 text-xs font-mono">
+        <div class="flex items-center gap-2 overflow-hidden">
+          <span id="floating-file-icon">📄</span>
+          <span id="floating-file-name" class="text-white truncate font-bold text-[11px]">archivo.pdf</span>
+          <span id="floating-file-size" class="text-slate-400 text-[10px]">(1.2 MB)</span>
+        </div>
+        <button type="button" onclick="clearFloatingAttachment()" class="text-slate-400 hover:text-rose-400 p-0.5">✕</button>
+      </div>
+
       <!-- CHAT INPUT BAR -->
       <form onsubmit="event.preventDefault(); sendFloatingChatMessage();" class="p-3 bg-slate-950 border-t border-slate-800 flex items-center gap-2">
+        <button type="button" onclick="document.getElementById('floating-file-input').click()" title="Adjuntar archivo o imagen" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-indigo-400 border border-slate-700/80 transition flex items-center justify-center shrink-0">
+          <span class="text-sm">📎</span>
+        </button>
+        <input type="file" id="floating-file-input" class="hidden" accept=".pdf,.txt,.md,.markdown,.csv,.json,.png,.jpg,.jpeg,.webp" onchange="handleFloatingFileSelect(event)" />
         <input id="mochi-floating-input" type="text" autocomplete="off" placeholder="Escribí tu pedido a este Mochi..." class="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 font-mono transition" />
         <button type="submit" id="mochi-floating-send-btn" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-1.5 transition active:scale-95">
           <span>Enviar</span>
@@ -1587,7 +1642,15 @@
                 message: val,
                 current_agent: agentId,
                 tenant_id: 1,
-                is_founder: true
+                is_founder: true,
+                ...(attached ? {
+                  file: {
+                    name: attached.name,
+                    data: attached.data,
+                    mime: attached.type,
+                    size: attached.size
+                  }
+                } : {})
               })
             });
             clearTimeout(fetchTimeout);
@@ -1910,6 +1973,27 @@
 
       container.innerHTML = history.map(item => {
         if (item.isUser) {
+          let fileBadge = '';
+          if (item.file) {
+            fileBadge = `
+              <div class="mt-2 p-1.5 rounded-lg bg-indigo-950/80 border border-indigo-400/40 text-[10px] font-mono flex items-center justify-between gap-2 text-indigo-200">
+                <div class="flex items-center gap-1.5 overflow-hidden">
+                  <span class="text-sm">${item.file.icon || '📄'}</span>
+                  <span class="truncate font-bold">${item.file.name}</span>
+                  <span class="text-indigo-300/70 text-[9px]">(${item.file.sizeStr || ''})</span>
+                </div>
+                <span class="text-[8px] bg-indigo-500/30 px-1.5 py-0.5 rounded text-indigo-200 font-bold uppercase border border-indigo-400/20">RAM Zero-Leak</span>
+              </div>
+            `;
+            if (item.file.isImage && item.file.dataUrl) {
+              fileBadge += `
+                <div class="mt-1.5 rounded-lg overflow-hidden border border-indigo-400/30 max-w-[200px]">
+                  <img src="${item.file.dataUrl}" alt="${item.file.name}" class="w-full h-auto object-cover max-h-32 rounded" />
+                </div>
+              `;
+            }
+          }
+
           return `
             <div class="flex justify-end items-end gap-2">
               <div class="max-w-[85%] bg-indigo-600/90 text-white rounded-2xl rounded-tr-none px-3.5 py-2 shadow-md border border-indigo-400/30">
@@ -1918,6 +2002,7 @@
                   <span class="text-[9px] opacity-80">${item.time || ''}</span>
                 </div>
                 <p class="leading-relaxed whitespace-pre-wrap">${item.text}</p>
+                ${fileBadge}
               </div>
             </div>
           `;
@@ -1944,9 +2029,14 @@
 
     async function sendFloatingChatMessage(customText) {
       const input = document.getElementById('mochi-floating-input');
-      const val = (customText || (input ? input.value : '') || '').trim();
-      if (!val) return;
+      let val = (customText || (input ? input.value : '') || '').trim();
+      const attached = stagedFloatingFile;
+      if (!val && attached) {
+        val = 'Analizá detalladamente este documento adjunto.';
+      }
+      if (!val && !attached) return;
       if (input) input.value = '';
+      clearFloatingAttachment();
 
       const mochiId = activeFloatingMochi || selectedRoom || 'blanco';
       const meta = mochiMeta[mochiId] || mochiMeta.blanco;
@@ -1958,7 +2048,14 @@
         sender: 'Gregorio',
         text: val,
         isUser: true,
-        time: timeStr
+        time: timeStr,
+        file: attached ? {
+          name: attached.name,
+          sizeStr: attached.sizeStr,
+          icon: attached.icon,
+          isImage: attached.type ? attached.type.startsWith('image/') : false,
+          dataUrl: attached.dataUrl
+        } : null
       });
       renderMochiChatMessages(mochiId);
       playClick();
@@ -2004,7 +2101,15 @@
                 message: val,
                 current_agent: agentId,
                 tenant_id: 1,
-                is_founder: true
+                is_founder: true,
+                ...(attached ? {
+                  file: {
+                    name: attached.name,
+                    data: attached.data,
+                    mime: attached.type,
+                    size: attached.size
+                  }
+                } : {})
               })
             });
             clearTimeout(fetchTimeout);
@@ -3811,6 +3916,27 @@
 
       container.innerHTML = redStudioMessages.map((m, idx) => {
         if (m.isUser) {
+          let fileBadge = '';
+          if (m.file) {
+            fileBadge = `
+              <div class="mt-2 p-1.5 rounded-lg bg-indigo-950/80 border border-indigo-400/40 text-[10px] font-mono flex items-center justify-between gap-2 text-indigo-200">
+                <div class="flex items-center gap-1.5 overflow-hidden">
+                  <span class="text-sm">${m.file.icon || '📄'}</span>
+                  <span class="truncate font-bold">${m.file.name}</span>
+                  <span class="text-indigo-300/70 text-[9px]">(${m.file.sizeStr || ''})</span>
+                </div>
+                <span class="text-[8px] bg-indigo-500/30 px-1.5 py-0.5 rounded text-indigo-200 font-bold tracking-wider shrink-0 uppercase border border-indigo-400/20">RAM Zero-Leak</span>
+              </div>
+            `;
+            if (m.file.isImage && m.file.dataUrl) {
+              fileBadge += `
+                <div class="mt-1.5 rounded-lg overflow-hidden border border-indigo-400/30 max-w-[220px]">
+                  <img src="${m.file.dataUrl}" alt="${m.file.name}" class="w-full h-auto object-cover max-h-36 rounded" />
+                </div>
+              `;
+            }
+          }
+
           return `
             <div class="flex justify-end items-end gap-1.5">
               <div class="max-w-[85%] bg-indigo-600 text-white rounded-2xl rounded-tr-none px-3 py-2 shadow border border-indigo-400/30 text-xs">
@@ -3819,6 +3945,7 @@
                   <span class="opacity-80">${m.time || ''}</span>
                 </div>
                 <div class="whitespace-pre-wrap leading-relaxed">${m.text}</div>
+                ${fileBadge}
               </div>
             </div>
           `;
@@ -3893,10 +4020,15 @@
 
     function submitRedStudio() {
       const input = document.getElementById('red-studio-input');
-      const val = input ? input.value.trim() : '';
-      if (!val) return;
-      input.value = '';
-      sendRedStudioMessage(val);
+      let val = input ? input.value.trim() : '';
+      const attached = stagedRedFile;
+      if (!val && attached) {
+        val = 'Analizá detalladamente este documento adjunto, identificá los puntos clínicos y metodológicos clave, y presentá un informe estructurado.';
+      }
+      if (!val && !attached) return;
+      if (input) input.value = '';
+      clearRedAttachment();
+      sendRedStudioMessage(val, attached);
     }
 
     function sendRedStudioPreset(type) {
@@ -3909,7 +4041,206 @@
       } else if (type === 'feynman_test') {
         switchRedMode('learn');
         sendRedStudioMessage('Explicame la biomecánica de la articulación glenohumeral con la Técnica Feynman');
+      } else if (type === 'file_sample') {
+        switchRedMode('tutor');
+        // Simular archivo clínico cargado directamente desde el dispositivo
+        const sampleText = `HISTORIA CLÍNICA - PACIENTE: Juan Pérez\nEDAD: 42 años\nDIAGNÓSTICO: Tendinopatía rotuliana izquierda en fase subaguda.\nSÍNTOMAS: Dolor en polo inferior de la rótula al descender escaleras y tras 20 minutos de trote.\nTESTS REALIZADOS: Test de declive positivo a 30 grados de flexión. Dolor a la palpación de 6/10.\nINDICACIONES: Protocolo de carga isométrica excéntrica y neuromodulación percutánea.`;
+        const b64 = btoa(unescape(encodeURIComponent(sampleText)));
+        const mockFile = {
+          name: 'historia_clinica_juan_perez.txt',
+          size: sampleText.length,
+          sizeStr: sampleText.length + ' B',
+          type: 'text/plain',
+          data: b64,
+          dataUrl: 'data:text/plain;base64,' + b64,
+          icon: '📝'
+        };
+        sendRedStudioMessage('Leé esta historia clínica y decime qué protocolo de rehabilitación recomiendas según el documento.', mockFile);
       }
+    }
+
+    
+    // ── 8B. GESTOR UNIVERSAL DE ADJUNTOS DIRECTOS DESDE EL DISPOSITIVO ──
+    let stagedRedFile = null;
+    let stagedFloatingFile = null;
+
+    function triggerRedFileInput() {
+      playClick();
+      const input = document.getElementById('red-file-input');
+      if (input) input.click();
+    }
+
+    function formatFileSize(bytes) {
+      if (!bytes || isNaN(bytes)) return '0 B';
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function getFileIcon(name) {
+      const lower = (name || '').toLowerCase();
+      if (lower.endsWith('.pdf')) return '📄';
+      if (lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.markdown')) return '📝';
+      if (lower.endsWith('.csv') || lower.endsWith('.json') || lower.endsWith('.log')) return '📊';
+      if (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.webp')) return '🖼️';
+      return '📁';
+    }
+
+    function processSelectedFile(file, isRedStudio = true) {
+      if (!file) return;
+      if (file.size > 25 * 1024 * 1024) {
+        alert('El archivo supera el límite de 25 MB para lectura en memoria RAM.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        const pureB64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+        const icon = getFileIcon(file.name);
+        const sizeStr = formatFileSize(file.size);
+
+        if (isRedStudio) {
+          stagedRedFile = {
+            name: file.name,
+            size: file.size,
+            sizeStr: sizeStr,
+            type: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain'),
+            data: pureB64,
+            dataUrl: dataUrl,
+            icon: icon
+          };
+
+          const previewEl = document.getElementById('red-attachment-preview');
+          const nameEl = document.getElementById('red-file-name');
+          const sizeEl = document.getElementById('red-file-size');
+          const iconEl = document.getElementById('red-file-icon-box');
+
+          if (nameEl) nameEl.textContent = file.name;
+          if (sizeEl) sizeEl.textContent = sizeStr;
+          if (iconEl) iconEl.textContent = icon;
+          if (previewEl) previewEl.classList.remove('hidden');
+
+          const inputEl = document.getElementById('red-studio-input');
+          if (inputEl && !inputEl.value.trim()) {
+            inputEl.placeholder = `¿Qué querés que Red analice de ${file.name}? (Enter para análisis completo)`;
+            inputEl.focus();
+          }
+          playChime();
+        } else {
+          stagedFloatingFile = {
+            name: file.name,
+            size: file.size,
+            sizeStr: sizeStr,
+            type: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain'),
+            data: pureB64,
+            dataUrl: dataUrl,
+            icon: icon
+          };
+          const previewEl = document.getElementById('floating-attachment-preview');
+          const nameEl = document.getElementById('floating-file-name');
+          const sizeEl = document.getElementById('floating-file-size');
+          const iconEl = document.getElementById('floating-file-icon');
+          if (nameEl) nameEl.textContent = file.name;
+          if (sizeEl) sizeEl.textContent = `(${sizeStr})`;
+          if (iconEl) iconEl.textContent = icon;
+          if (previewEl) previewEl.classList.remove('hidden');
+          playChime();
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleRedFileSelect(event) {
+      const file = event.target.files && event.target.files[0];
+      if (file) processSelectedFile(file, true);
+    }
+
+    function handleFloatingFileSelect(event) {
+      const file = event.target.files && event.target.files[0];
+      if (file) processSelectedFile(file, false);
+    }
+
+    function clearRedAttachment() {
+      stagedRedFile = null;
+      const previewEl = document.getElementById('red-attachment-preview');
+      if (previewEl) previewEl.classList.add('hidden');
+      const input = document.getElementById('red-file-input');
+      if (input) input.value = '';
+      const textInput = document.getElementById('red-studio-input');
+      if (textInput && textInput.placeholder.includes('¿Qué querés que Red analice')) {
+        textInput.placeholder = 'Escribí a Red o adjuntá un archivo para analizar...';
+      }
+      playClick();
+    }
+
+    function clearFloatingAttachment() {
+      stagedFloatingFile = null;
+      const previewEl = document.getElementById('floating-attachment-preview');
+      if (previewEl) previewEl.classList.add('hidden');
+      const input = document.getElementById('floating-file-input');
+      if (input) input.value = '';
+    }
+
+    function setRedPresetFilePrompt() {
+      const textInput = document.getElementById('red-studio-input');
+      if (textInput) {
+        textInput.value = 'Analizá detalladamente este documento adjunto, identificá los puntos clínicos y metodológicos clave, y presentá un informe estructurado.';
+        textInput.focus();
+      }
+      playClick();
+    }
+
+    function initRedStudioDragAndDrop() {
+      const panel = document.getElementById('center-workspace-panel');
+      const overlay = document.getElementById('red-dropzone-overlay');
+      if (!panel || !overlay) return;
+
+      let dragCounter = 0;
+
+      panel.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter++;
+        overlay.classList.remove('opacity-0', 'pointer-events-none');
+        overlay.classList.add('opacity-100');
+      });
+
+      panel.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
+      panel.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter--;
+        if (dragCounter <= 0) {
+          dragCounter = 0;
+          overlay.classList.remove('opacity-100');
+          overlay.classList.add('opacity-0', 'pointer-events-none');
+        }
+      });
+
+      panel.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter = 0;
+        overlay.classList.remove('opacity-100');
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+
+        const dt = e.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+          processSelectedFile(dt.files[0], true);
+        }
+      });
+
+      // Soporte para Pegar desde portapapeles (Cmd+V / Ctrl+V)
+      window.addEventListener('paste', (e) => {
+        if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+          processSelectedFile(e.clipboardData.files[0], true);
+        }
+      });
     }
 
     function approveRedOutline(jobId) {
@@ -3917,7 +4248,7 @@
       sendRedStudioMessage('Aprobado, dale para adelante con el informe completo siguiendo ese índice exactamente');
     }
 
-    async function sendRedStudioMessage(text) {
+    async function sendRedStudioMessage(text, attachedFile = null) {
       playClick();
       const now = new Date();
       const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -3926,7 +4257,14 @@
         sender: 'Gregorio',
         isUser: true,
         text: text,
-        time: timeStr
+        time: timeStr,
+        file: attachedFile ? {
+          name: attachedFile.name,
+          sizeStr: attachedFile.sizeStr,
+          icon: attachedFile.icon,
+          isImage: attachedFile.type ? attachedFile.type.startsWith('image/') : false,
+          dataUrl: attachedFile.dataUrl
+        } : null
       });
       renderRedStudioMessages();
 
@@ -3934,7 +4272,11 @@
       const typingTxt = document.getElementById('red-studio-typing-txt');
       if (typingEl) {
         if (typingTxt) {
-          typingTxt.innerText = currentRedMode === 'tutor' ? 'Red analizando intento y andamiaje...' : currentRedMode === 'learn' ? 'Red armando Syllabus Feynman...' : 'Red procesando job de investigación...';
+          if (attachedFile) {
+            typingTxt.innerText = `Red leyendo '${attachedFile.name}' en memoria RAM (Zero-Leak)...`;
+          } else {
+            typingTxt.innerText = currentRedMode === 'tutor' ? 'Red analizando intento y andamiaje...' : currentRedMode === 'learn' ? 'Red armando Syllabus Feynman...' : 'Red procesando job de investigación...';
+          }
         }
         typingEl.classList.remove('hidden');
       }
@@ -3943,18 +4285,29 @@
       if (targetMochi) {
         targetMochi.jumpTimer = performance.now();
         playMochiVoice('red');
-        showTemporarySpeech(targetMochi, '🚨 Procesando en Red Studio...');
+        showTemporarySpeech(targetMochi, attachedFile ? '📄 Leyendo archivo en RAM...' : '🚨 Procesando en Red Studio...');
+      }
+
+      const payload = {
+        message: text,
+        red_mode: currentRedMode,
+        chat_id: 'coucou_coco_rojo'
+      };
+
+      if (attachedFile) {
+        payload.file = {
+          name: attachedFile.name,
+          data: attachedFile.data,
+          mime: attachedFile.type,
+          size: attachedFile.size
+        };
       }
 
       try {
         const resp = await fetch('http://127.0.0.1:8080/agente/rojo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: text,
-            red_mode: currentRedMode,
-            chat_id: 'coucou_coco_rojo'
-          })
+          body: JSON.stringify(payload)
         });
 
         if (typingEl) typingEl.classList.add('hidden');
